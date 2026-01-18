@@ -813,11 +813,14 @@ async def get_customize_progress(user_id: str):
     })
 
 
+# ===================== 定制 / 克隆 =====================
+
 @app.post("/customize")
 async def customize_character(req: CustomizeRequest):
     user_id = req.user_id.strip()
     mode = req.mode.strip()
     data = req.data.strip()
+
     user_info = load_user_data(user_id)
 
     try:
@@ -829,11 +832,11 @@ async def customize_character(req: CustomizeRequest):
         time.sleep(0.2)
 
         if mode == "clone":
-            personality = extract_personality_for_clone(data, user_id)
-            system_prompt = generate_system_prompt_clone(personality, user_id)
+            personality = extract_personality_for_clone(data)
+            system_prompt = generate_system_prompt_clone(personality)
         else:
-            personality = extract_personality_for_create(data, user_id)
-            system_prompt = generate_system_prompt_create(personality, user_id)
+            personality = extract_personality_for_create(data)
+            system_prompt = generate_system_prompt_create(personality)
 
         customize_progress[user_id] = 90
         time.sleep(0.2)
@@ -842,43 +845,64 @@ async def customize_character(req: CustomizeRequest):
         customize_progress[user_id] = 100
 
         user_info["system_prompt"] = system_prompt
+
+        if not isinstance(user_info.get("history"), list):
+            user_info["history"] = []
+
         save_user_data(user_id, user_info)
 
-        success_msg = "性格定制成功！可开始聊天" if mode != "clone" else "风格复刻成功！可开始聊天"
-        return JSONResponse({"success": True, "message": success_msg})
+        msg = "风格复刻成功！可开始聊天" if mode == "clone" else "性格定制成功！可开始聊天"
+        return JSONResponse({"success": True, "message": msg})
 
     except Exception as e:
         customize_progress[user_id] = -1
-        import traceback
-        return JSONResponse({
-            "success": False,
-            "message": f"定制失败：{str(e)}",
-            "detail": traceback.format_exc()
-        }, status_code=500)
+        return JSONResponse(
+            {"success": False, "message": f"定制失败：{str(e)}"},
+            status_code=500
+        )
 
+
+# ===================== 聊天（✅ 已彻底修复） =====================
 
 @app.post("/chat_stream")
 async def chat_stream(req: ChatStreamRequest):
     user_id = req.user_id.strip()
     user_input = req.user_input.strip()
-    user_info = load_user_data(user_id)
 
-    if not user_info["system_prompt"]:
+    user_info = load_user_data(user_id)
+    system_prompt = user_info.get("system_prompt")
+
+    if not system_prompt:
         raise HTTPException(status_code=400, detail="请先完成AI性格定制后再聊天")
 
-    if (len(user_input) > 20):
-        add_user_memory(user_id, user_input)
+    # 确保 history 存在
+    history = user_info.get("history")
+    if not isinstance(history, list):
+        history = []
+        user_info["history"] = history
+
+    # 保存用户输入（用于记忆）
+    history.append({
+        "role": "user",
+        "content": user_input
+    })
+    save_user_data(user_id, user_info)
+
+    # ✅ 只传 chat_core 能接的两个参数
+    try:
+        stream = stream_chat_with_deepseek(user_id, user_input)
+    except Exception:
+        def error_stream():
+            yield "（对话异常，请稍后再试）"
+        stream = error_stream()
 
     return StreamingResponse(
-        stream_chat_with_deepseek(
-            user_id=user_id,
-            user_input=user_input,
-            system_prompt=user_info["system_prompt"],
-            history=user_info["history"]
-        ),
+        stream,
         media_type="text/plain"
     )
 
+
+# ===================== 启动 =====================
 
 def run_api():
     import uvicorn
