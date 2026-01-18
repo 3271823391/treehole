@@ -451,6 +451,12 @@ async def root():
                     <i class="fa-solid fa-info-circle"></i>
                     克隆模式：参考文本需≥50字（可粘贴聊天记录）
                 </div>
+            <div class="status-tip" style="margin-bottom: 12px;">
+                <i class="fa-solid fa-heart"></i>
+                <span>
+                    设计原则：让用户感到被理解、被陪伴、被尊重，不制造压力
+                </span>
+            </div>
                 <!-- 性格预设方案（仅捏人模式） -->
                 <div id="preset_box" style="
                 display: flex;
@@ -946,8 +952,6 @@ async def root():
             desc.push(`理性度 ${r}，${r > 70 ? "善于分析问题" : r > 40 ? "适度给建议" : "少分析多共情"}`);
             desc.push(`陪伴感 ${c}，${c > 70 ? "强陪伴型回应" : c > 40 ? "会持续跟进" : "不过度黏人"}`);
             desc.push(`毒舌度 ${t}，${t > 60 ? "允许吐槽但不攻击" : t > 30 ? "偶尔轻微吐槽" : "几乎不毒舌"}`);
-        
-            desc.push("整体目标：让用户感到被理解、被陪伴、被尊重，不制造压力。");
         
             document.getElementById("custom_data").value = desc.join("，") + "。";
         }
