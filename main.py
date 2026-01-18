@@ -445,12 +445,68 @@ async def root():
                 </select>
                 <div id="mode_tip" class="status-tip">
                     <i class="fa-solid fa-lightbulb"></i>
-                    <span>示例：温柔度90，毒舌度10，共情方式是倾听鼓励，口头禅"没关系呀"</span>
+                    <span>示例：温柔度90，毒舌度10，共情方式是倾听鼓励</span>
                 </div>
                 <div id="clone_warning" class="clone-tip">
                     <i class="fa-solid fa-info-circle"></i>
                     克隆模式：参考文本需≥50字（可粘贴聊天记录）
                 </div>
+                <!-- 性格预设方案（仅捏人模式） -->
+                <div id="preset_box" style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-bottom: 16px;
+            ">
+                <button type="button" class="btn" onclick="applyPreset('gentle')">
+                    🌸 温柔治愈
+                </button>
+                <button type="button" class="btn" onclick="applyPreset('rational')">
+                    🧠 理性分析
+                </button>
+                <button type="button" class="btn" onclick="applyPreset('tsundere')">
+                    😈 轻毒舌
+                </button>
+                <button type="button" class="btn" onclick="applyPreset('friend')">
+                    🤝 好朋友
+                </button>
+                <button type="button" class="btn" onclick="applyPreset('listener')">
+                    🧘 倾听者
+                </button>
+            </div>
+            <!-- 滑块捏人 -->
+            <div id="slider_box" style="margin-bottom: 16px;">
+                <div class="status-tip">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>拖动滑块，自动生成性格描述</span>
+                </div>
+            
+                <div style="display: grid; gap: 12px;">
+                    <div>
+                        <label>🌸 温柔度：<span id="val_gentle">50</span></label>
+                        <input type="range" min="0" max="100" value="50" id="gentle"
+                               class="w-full" oninput="updatePersonality()">
+                    </div>
+            
+                    <div>
+                        <label>🧠 理性度：<span id="val_rational">50</span></label>
+                        <input type="range" min="0" max="100" value="50" id="rational"
+                               class="w-full" oninput="updatePersonality()">
+                    </div>
+            
+                    <div>
+                        <label>🤝 陪伴感：<span id="val_companion">50</span></label>
+                        <input type="range" min="0" max="100" value="50" id="companion"
+                               class="w-full" oninput="updatePersonality()">
+                    </div>
+            
+                    <div>
+                        <label>😈 毒舌度：<span id="val_tsundere">10</span></label>
+                        <input type="range" min="0" max="100" value="10" id="tsundere"
+                               class="w-full" oninput="updatePersonality()">
+                    </div>
+                </div>
+            </div>
                 <textarea 
                     id="custom_data" 
                     class="form-input" 
@@ -504,12 +560,16 @@ async def root():
             let pollCount = 0;
 
             function switchMode() {
+                const sliderBox = document.getElementById("slider_box");
+                const presetBox = document.getElementById("preset_box");
                 const mode = document.getElementById("custom_mode").value;
                 const tipDom = document.getElementById("mode_tip");
                 const cloneTipDom = document.getElementById("clone_warning");
                 const dataDom = document.getElementById("custom_data");
 
                 if (mode === "clone") {
+                    sliderBox.style.display = "none";
+                    presetBox.style.display = "none";
                     tipDom.innerHTML = `
                         <i class="fa-solid fa-lightbulb"></i>
                         <span>示例：用户：今天好累 好友：累了就歇会儿～慢慢来嘛，我在呢～</span>
@@ -517,6 +577,8 @@ async def root():
                     dataDom.placeholder = "请粘贴参考文本（≥50字）";
                     cloneTipDom.style.display = "flex";
                 } else {
+                    sliderBox.style.display = "block";
+                    presetBox.style.display = "flex";
                     tipDom.innerHTML = `
                         <i class="fa-solid fa-lightbulb"></i>
                         <span>示例：温柔度90，毒舌度10，共情方式是倾听鼓励，口头禅"没关系呀"</span>
@@ -794,6 +856,61 @@ async def root():
                     sendChat();
                 }
             });
+            /* ===== 捏人模式 · 性格预设 ===== */
+            const PRESET_MAP = {
+                gentle: `温柔、耐心、共情能力强。
+            说话语气轻柔，不说教。
+            多安慰、多陪伴，
+            像一个安全可靠的树洞。`,
+            
+                rational: `理性冷静，逻辑清晰。
+            善于分析问题本质，
+            给出结构化建议，
+            不过度情绪化。`,
+            
+                tsundere: `表面有点毒舌，
+            但内心关心用户。
+            可以吐槽但不攻击，
+            关键时刻会站在用户这边。`,
+            
+                friend: `像多年好友一样聊天，
+            语气自然随和，
+            会接话、会调侃，
+            让人感到陪伴。`,
+            
+                listener: `以倾听为主，
+            少下结论，
+            多用共情与确认，
+            鼓励用户表达真实感受。`
+            };
+            
+            function applyPreset(key) {
+                const textarea = document.getElementById("custom_data");
+                if (!textarea) return;
+                textarea.value = PRESET_MAP[key] || "";
+            }
+            function updatePersonality() {
+            const g = +document.getElementById("gentle").value;
+            const r = +document.getElementById("rational").value;
+            const c = +document.getElementById("companion").value;
+            const t = +document.getElementById("tsundere").value;
+        
+            document.getElementById("val_gentle").textContent = g;
+            document.getElementById("val_rational").textContent = r;
+            document.getElementById("val_companion").textContent = c;
+            document.getElementById("val_tsundere").textContent = t;
+        
+            let desc = [];
+        
+            desc.push(`温柔度 ${g}，${g > 70 ? "语气非常温和" : g > 40 ? "语气偏温和" : "语气偏直接"}`);
+            desc.push(`理性度 ${r}，${r > 70 ? "善于分析问题" : r > 40 ? "适度给建议" : "少分析多共情"}`);
+            desc.push(`陪伴感 ${c}，${c > 70 ? "强陪伴型回应" : c > 40 ? "会持续跟进" : "不过度黏人"}`);
+            desc.push(`毒舌度 ${t}，${t > 60 ? "允许吐槽但不攻击" : t > 30 ? "偶尔轻微吐槽" : "几乎不毒舌"}`);
+        
+            desc.push("整体目标：让用户感到被理解、被陪伴、被尊重，不制造压力。");
+        
+            document.getElementById("custom_data").value = desc.join("，") + "。";
+        }
         </script>
     </body>
     </html>
