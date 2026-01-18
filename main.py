@@ -10,10 +10,9 @@ from chat_core import (
     stream_chat_with_deepseek
 )
 
-app = FastAPI(title="DeepSeek流式虚拟树洞（精细化版）")
+app = FastAPI(title="DeepSeek虚拟树洞（精致版）")
 
 
-# 定义参数模型
 class CustomizeRequest(BaseModel):
     user_id: str
     mode: str
@@ -25,7 +24,6 @@ class ChatStreamRequest(BaseModel):
     user_input: str
 
 
-# 前端页面（精细化优化）
 @app.get("/", response_class=HTMLResponse)
 async def root():
     return """
@@ -34,623 +32,705 @@ async def root():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>树洞 | 你的专属AI倾诉空间</title>
-        <!-- 引入Tailwind CSS -->
+        <title>树洞 - 你的AI倾诉空间</title>
         <script src="https://cdn.tailwindcss.com"></script>
-        <!-- 引入Font Awesome图标 -->
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <style>
-            /* 全局样式 */
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
             body {
                 font-family: 'Inter', system-ui, -apple-system, sans-serif;
-                background: linear-gradient(135deg, #f5f7fa 0%, #e4eaf5 100%);
-                min-height: 100vh;
+                background: linear-gradient(135deg, #f0f4f8 0%, #e6eef7 100%);
                 color: #334155;
+                min-height: 100vh;
+                margin: 0;
+                padding: 20px 0;
+                line-height: 1.6;
             }
+
             .container {
-                max-width: 900px;
+                max-width: 850px;
                 margin: 0 auto;
-                padding: 20px 15px;
+                padding: 0 20px;
             }
-            /* 卡片样式 */
+
             .card {
-                background: rgba(255, 255, 255, 0.95);
+                background: white;
                 border-radius: 16px;
-                box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
                 padding: 28px;
                 margin-bottom: 24px;
-                transition: all 0.3s ease;
+                border: 1px solid #e2e8f0;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
+
             .card:hover {
-                box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
             }
-            /* 标题样式 */
+
             .section-title {
-                font-size: 1.5rem;
+                font-size: 1.25rem;
                 font-weight: 600;
                 color: #1e293b;
                 margin-bottom: 20px;
                 display: flex;
                 align-items: center;
-                gap: 8px;
+                gap: 10px;
+                letter-spacing: -0.01em;
             }
+
             .section-title i {
-                color: #4f46e5;
+                color: #3b82f6;
+                font-size: 1.1em;
             }
-            /* 输入框样式 */
+
             .form-input {
                 width: 100%;
                 padding: 14px 16px;
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
+                border: 1px solid #cbd5e1;
+                border-radius: 10px;
                 font-size: 1rem;
-                transition: all 0.2s ease;
+                margin-bottom: 16px;
+                box-sizing: border-box;
                 background: #f8fafc;
+                transition: all 0.2s ease;
+                color: #1e293b;
             }
+
             .form-input:focus {
                 outline: none;
-                border-color: #4f46e5;
-                box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-                background: #ffffff;
+                border-color: #3b82f6;
+                background: white;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
             }
+
             .form-input::placeholder {
                 color: #94a3b8;
             }
-            /* 按钮样式 */
+
             .btn {
-                background: #4f46e5;
+                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
                 color: white;
                 border: none;
-                border-radius: 12px;
-                padding: 12px 24px;
+                border-radius: 10px;
+                padding: 14px 24px;
                 font-size: 1rem;
                 font-weight: 500;
                 cursor: pointer;
-                transition: all 0.2s ease;
                 display: inline-flex;
                 align-items: center;
-                gap: 8px;
+                gap: 10px;
+                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+                position: relative;
+                overflow: hidden;
             }
+
             .btn:hover {
-                background: #4338ca;
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+                transform: translateY(-1px);
+                box-shadow: 0 6px 12px rgba(59, 130, 246, 0.25);
             }
+
             .btn:active {
                 transform: translateY(0);
+                box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
             }
+
             .btn:disabled {
-                background: #94a3b8;
+                background: #cbd5e1;
                 cursor: not-allowed;
                 transform: none;
                 box-shadow: none;
             }
-            /* 进度条样式 */
+
+            .btn i {
+                font-size: 1.1em;
+            }
+
+            /* 进度条容器 */
             .progress-container {
-                width: 100%;
-                height: 8px;
-                background: #f1f5f9;
-                border-radius: 4px;
-                margin: 16px 0;
-                display: none;
+                margin: 24px 0;
+                opacity: 0;
+                transform: translateY(10px);
+                transition: all 0.4s ease;
+            }
+
+            .progress-container.show {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            /* 进度条样式 */
+            .progress-bar-wrapper {
+                background: #e2e8f0;
+                border-radius: 12px;
                 overflow: hidden;
+                height: 10px;
+                position: relative;
+                box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+            }
+
+            .progress-bar-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+                border-radius: 12px;
+                width: 0%;
+                transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
                 position: relative;
             }
-            .progress-bar {
-                height: 100%;
-                width: 0%;
-                background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
-                border-radius: 4px;
-                transition: width 0.2s ease;
-            }
-            .progress-bar::after {
+
+            .progress-bar-fill::after {
                 content: '';
                 position: absolute;
                 top: 0;
                 left: 0;
-                height: 100%;
-                width: 30%;
-                background: rgba(255, 255, 255, 0.2);
-                animation: progressShine 1.5s infinite;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.3),
+                    transparent
+                );
+                animation: shimmer 1.5s infinite;
             }
-            .progress-bar.error {
-                background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
-            }
-            .progress-bar.success {
-                background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-            }
-            @keyframes progressShine {
+
+            @keyframes shimmer {
                 0% { transform: translateX(-100%); }
-                100% { transform: translateX(300%); }
+                100% { transform: translateX(100%); }
             }
+
             /* 进度文本 */
             .progress-text {
-                font-size: 0.9rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-top: 12px;
+                font-size: 0.875rem;
                 color: #64748b;
-                margin-top: 8px;
-                display: none;
+                font-weight: 500;
+            }
+
+            .progress-step {
                 display: flex;
                 align-items: center;
                 gap: 6px;
             }
-            /* 提示文本 */
-            .mode-tip {
-                font-size: 0.9rem;
+
+            .progress-step i {
+                font-size: 0.9em;
+                opacity: 0.8;
+            }
+
+            /* 状态提示 */
+            .status-tip {
+                font-size: 0.875rem;
                 color: #64748b;
-                margin: -8px 0 16px 0;
-                line-height: 1.5;
-            }
-            .clone-tip {
-                color: #f97316;
-                font-weight: 500;
-                font-size: 0.9rem;
-                margin: 8px 0;
-                padding: 8px 12px;
-                background: rgba(249, 115, 22, 0.05);
+                margin: -12px 0 16px 0;
+                display: flex;
+                align-items: start;
+                gap: 8px;
+                padding: 10px;
+                background: #f1f5f9;
                 border-radius: 8px;
-                display: none;
+                border-left: 4px solid #3b82f6;
             }
+
+            .clone-tip {
+                color: #f59e0b;
+                background: #fffbeb;
+                border-left-color: #f59e0b;
+                padding: 10px;
+                border-radius: 8px;
+                margin: 8px 0 16px 0;
+                display: none;
+                font-size: 0.875rem;
+                align-items: center;
+                gap: 8px;
+            }
+
             /* 结果提示 */
             .result {
+                padding: 16px;
+                border-radius: 10px;
+                font-size: 0.875rem;
                 margin-top: 16px;
-                padding: 12px 16px;
-                border-radius: 8px;
-                font-size: 0.95rem;
-                line-height: 1.5;
+                display: none;
+                animation: fadeIn 0.3s ease;
+                backdrop-filter: blur(4px);
             }
+
+            .result.show {
+                display: block;
+            }
+
             .result.success {
-                background: rgba(16, 185, 129, 0.08);
-                color: #059669;
+                background: #f0fdf4;
+                color: #166534;
+                border: 1px solid #bbf7d0;
             }
+
             .result.error {
-                background: rgba(239, 68, 68, 0.08);
+                background: #fef2f2;
                 color: #dc2626;
+                border: 1px solid #fecaca;
             }
-            /* 聊天记录样式 */
+
+            .result i {
+                margin-right: 8px;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-5px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            /* 聊天区域 */
             .chat-history {
-                margin-top: 16px;
                 height: 400px;
                 overflow-y: auto;
                 padding: 16px;
-                border-radius: 12px;
-                background: #f8fafc;
                 border: 1px solid #e2e8f0;
-                scrollbar-width: thin;
-                scrollbar-color: #cbd5e1 #f8fafc;
-            }
-            .chat-history::-webkit-scrollbar {
-                width: 6px;
-            }
-            .chat-history::-webkit-scrollbar-track {
+                border-radius: 10px;
+                margin-top: 20px;
                 background: #f8fafc;
-                border-radius: 3px;
+                scroll-behavior: smooth;
+                box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
             }
+
+            .chat-history::-webkit-scrollbar {
+                width: 8px;
+            }
+
+            .chat-history::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 4px;
+            }
+
             .chat-history::-webkit-scrollbar-thumb {
                 background: #cbd5e1;
-                border-radius: 3px;
+                border-radius: 4px;
             }
+
             .chat-history::-webkit-scrollbar-thumb:hover {
                 background: #94a3b8;
             }
-            .chat-message {
-                margin-bottom: 16px;
+
+            .chat-msg {
+                margin-bottom: 20px;
                 max-width: 80%;
-                line-height: 1.6;
+                line-height: 1.5;
+                animation: messageAppear 0.3s ease;
             }
-            .chat-message.user {
+
+            @keyframes messageAppear {
+                from { opacity: 0; transform: scale(0.95) translateY(5px); }
+                to { opacity: 1; transform: scale(1) translateY(0); }
+            }
+
+            .chat-msg.user {
                 margin-left: auto;
             }
-            .chat-message.ai {
+
+            .chat-msg.ai {
                 margin-right: auto;
             }
+
             .chat-bubble {
                 padding: 12px 16px;
-                border-radius: 18px;
-                position: relative;
+                border-radius: 12px;
+                font-size: 0.95rem;
+                word-wrap: break-word;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             }
+
             .user .chat-bubble {
-                background: #4f46e5;
+                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
                 color: white;
                 border-bottom-right-radius: 4px;
             }
+
             .ai .chat-bubble {
                 background: white;
                 color: #334155;
                 border: 1px solid #e2e8f0;
                 border-bottom-left-radius: 4px;
             }
-            .chat-avatar {
-                width: 36px;
-                height: 36px;
-                border-radius: 50%;
-                display: inline-flex;
+
+            .chat-loading {
+                color: #64748b;
+                font-size: 0.875rem;
+                padding: 12px 16px;
+                display: flex;
                 align-items: center;
-                justify-content: center;
-                font-size: 0.8rem;
-                font-weight: 600;
-                margin-bottom: 4px;
+                gap: 8px;
             }
-            .user .chat-avatar {
-                background: #4338ca;
-                color: white;
-                margin-left: auto;
+
+            .chat-loading i {
+                animation: pulse 1.5s infinite;
             }
-            .ai .chat-avatar {
-                background: #e0e7ff;
-                color: #4f46e5;
+
+            @keyframes pulse {
+                0%, 100% { opacity: 0.6; }
+                50% { opacity: 1; }
             }
-            /* 打字动画 */
-            .typing::after {
-                content: '';
-                display: inline-block;
-                width: 18px;
-                height: 18px;
-                margin-left: 8px;
-                border-radius: 50%;
-                background: #94a3b8;
-                animation: typing 1.4s infinite ease-in-out both;
+
+            /* 头部样式 */
+            header {
+                text-align: center;
+                margin-bottom: 32px;
+                padding: 20px 0;
             }
-            .typing::before {
-                content: '';
-                display: inline-block;
-                width: 18px;
-                height: 18px;
-                margin-left: 4px;
-                border-radius: 50%;
-                background: #94a3b8;
-                animation: typing 1.4s infinite ease-in-out both;
-                animation-delay: -0.32s;
+
+            header h1 {
+                font-size: 2.5rem;
+                font-weight: 700;
+                color: #1e293b;
+                margin-bottom: 8px;
+                letter-spacing: -0.02em;
             }
-            .typing span::after {
-                content: '';
-                display: inline-block;
-                width: 18px;
-                height: 18px;
-                margin-left: 4px;
-                border-radius: 50%;
-                background: #94a3b8;
-                animation: typing 1.4s infinite ease-in-out both;
-                animation-delay: -0.64s;
+
+            header p {
+                color: #64748b;
+                font-size: 1.1rem;
+                font-weight: 400;
             }
-            @keyframes typing {
-                0%, 80%, 100% { transform: scale(0); }
-                40% { transform: scale(1); }
+
+            /* 页脚 */
+            footer {
+                text-align: center;
+                font-size: 0.875rem;
+                color: #64748b;
+                margin-top: 40px;
+                padding: 16px 0;
+                opacity: 0.8;
             }
-            /* 下拉框样式 */
-            .select-wrapper {
-                position: relative;
-                margin: 16px 0;
-            }
-            .form-select {
-                width: 100%;
-                padding: 14px 16px;
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
-                font-size: 1rem;
-                background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11l4-4H4l4 4z'/%3E%3C/svg%3E") right 16px center no-repeat;
-                appearance: none;
-                transition: all 0.2s ease;
-            }
-            .form-select:focus {
-                outline: none;
-                border-color: #4f46e5;
-                box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-                background-color: #ffffff;
-                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='%234f46e5' viewBox='0 0 16 16'%3E%3Cpath d='M8 11l4-4H4l4 4z'/%3E%3C/svg%3E");
-            }
-            /* 响应式调整 */
-            @media (max-width: 768px) {
+
+            /* 响应式优化 */
+            @media (max-width: 640px) {
+                .container {
+                    padding: 0 12px;
+                }
                 .card {
                     padding: 20px;
+                    border-radius: 12px;
                 }
-                .section-title {
-                    font-size: 1.3rem;
-                }
-                .chat-history {
-                    height: 300px;
-                }
-                .btn {
-                    width: 100%;
-                    justify-content: center;
+                header h1 {
+                    font-size: 2rem;
                 }
             }
         </style>
     </head>
     <body>
         <div class="container">
-            <!-- 头部标题 -->
-            <header class="text-center mb-10">
-                <h1 class="text-3xl font-bold text-[#1e293b] mb-2">
-                    <<i class="fa-solid fa-tree"></</i> 树洞
-                </h1>
-                <p class="text-[#64748b] text-lg">你的专属AI倾诉空间，想说就说，安心陪伴</p>
+            <header>
+                <h1><i class="fa-solid fa-tree text-3xl mr-3 text-slate-800"></i>树洞</h1>
+                <p>安心倾诉，AI陪你聊天</p>
             </header>
 
-            <!-- 定制AI性格卡片 -->
             <div class="card">
                 <h2 class="section-title">
-                    <<i class="fa-solid fa-user-gear"></</i> 定制你的AI陪伴
+                    <i class="fa-solid fa-user-pen"></i> 定制AI性格
                 </h2>
                 <input 
                     type="text" 
                     id="user_id" 
                     class="form-input" 
-                    placeholder="输入你的专属ID（如：summer081）" 
+                    placeholder="输入你的用户ID（如：test001）" 
                     required
                 >
-                <div class="select-wrapper">
-                    <select id="custom_mode" class="form-select" onchange="changeModeTip()">
-                        <option value="捏人">捏人模式（自定义性格）</option>
-                        <option value="clone">克隆模式（复刻参考风格）</option>
-                    </select>
+                <select id="custom_mode" class="form-input" onchange="switchMode()">
+                    <option value="捏人">捏人模式（自定义性格）</option>
+                    <option value="clone">克隆模式（复刻参考风格）</option>
+                </select>
+                <div id="mode_tip" class="status-tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <span>示例：温柔度90，毒舌度10，共情方式是倾听鼓励，口头禅"没关系呀"</span>
                 </div>
-                <div id="mode_tip" class="mode-tip">
-                    捏人模式：描述AI性格（例：温柔度90，毒舌度10，共情方式是倾听和鼓励，口头禅"没关系呀"）
+                <div id="clone_warning" class="clone-tip">
+                    <i class="fa-solid fa-info-circle"></i>
+                    克隆模式：参考文本需≥50字（可粘贴聊天记录）
                 </div>
                 <textarea 
                     id="custom_data" 
                     class="form-input" 
-                    placeholder="捏人模式示例：温柔度90，毒舌度10，共情方式是倾听和鼓励，回复用中句，口头禅是没关系呀，语气软糯" 
-                    rows="5"
+                    rows="4"
+                    placeholder="请输入性格描述或参考文本"
                 ></textarea>
-                <div id="clone_warning" class="clone-tip">
-                    <<i class="fa-solid fa-lightbulb"></</i> 克隆模式要求：参考文本≥50字（可粘贴聊天记录/语气示例，AI将100%复刻）
-                </div>
-                <button onclick="customizeCharacter()" class="btn">
-                    <<i class="fa-solid fa-wand-magic-sparkles"></</i> 确认定制
+                <button onclick="customizeAI()" class="btn" id="custom_btn">
+                    <i class="fa-solid fa-check"></i> 确认定制
                 </button>
-                <div id="custom_progress" class="progress-container">
-                    <div id="progress_bar" class="progress-bar"></div>
+
+                <div id="progress_container" class="progress-container">
+                    <div class="progress-bar-wrapper">
+                        <div id="progress_bar_fill" class="progress-bar-fill"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progress_label">进度：0%</span>
+                        <span id="progress_step" class="progress-step">
+                            <i class="fa-solid fa-circle-notch fa-spin"></i>
+                            <span>初始化...</span>
+                        </span>
+                    </div>
                 </div>
-                <div id="progress_text" class="progress-text">
-                    <<i class="fa-solid fa-circle-notch fa-spin"></</i> 进度：0%（初始化）
-                </div>
+
                 <div id="custom_result" class="result"></div>
             </div>
 
-            <!-- 聊天区域卡片 -->
             <div class="card">
                 <h2 class="section-title">
-                    <<i class="fa-solid fa-comments"></</i> 开始倾诉（逐字生成）
+                    <i class="fa-solid fa-comments"></i> 开始聊天
                 </h2>
                 <textarea 
                     id="chat_input" 
                     class="form-input" 
-                    placeholder="在这里输入你想倾诉的话...（如：今天工作好累，感觉压力好大）" 
-                    rows="4"
+                    rows="3"
+                    placeholder="输入想倾诉的话..."
                 ></textarea>
-                <button onclick="sendStreamChat()" class="btn">
-                    <<i class="fa-solid fa-paper-plane"></</i> 发送消息
+                <button onclick="sendChat()" class="btn" id="chat_btn">
+                    <i class="fa-solid fa-paper-plane"></i> 发送
                 </button>
                 <div id="chat_history" class="chat-history"></div>
             </div>
 
-            <!-- 页脚 -->
-            <footer class="text-center text-[#94a3b8] text-sm mt-8 pb-10">
-                <p>© 2025 树洞 | 安全加密 · 隐私保护 · 仅用于倾诉交流</p>
-                <p class="mt-2">心理援助热线：12320（全国） | 400-161-9995（24小时）</p>
+            <footer>
+                <p>© 2025 树洞 | 心理援助热线：12320（全国）</p>
             </footer>
         </div>
 
         <script>
             let progressTimer = null;
+            const MAX_POLL = 120;
+            let pollCount = 0;
 
-            // 切换模式提示
-            function changeModeTip() {
+            function switchMode() {
                 const mode = document.getElementById("custom_mode").value;
-                const modeTip = document.getElementById("mode_tip");
-                const customData = document.getElementById("custom_data");
-                const cloneWarning = document.getElementById("clone_warning");
+                const tipDom = document.getElementById("mode_tip");
+                const cloneTipDom = document.getElementById("clone_warning");
+                const dataDom = document.getElementById("custom_data");
 
                 if (mode === "clone") {
-                    modeTip.innerText = "克隆模式：粘贴参考文本（聊天记录/语气示例），AI将完全复刻说话风格、口头禅和表达方式";
-                    customData.placeholder = "克隆模式示例：\\n用户：今天好累啊\\n好友：累了就歇会儿呗～多大点事儿，反正慢慢来嘛，总会好的😜\\n用户：感觉啥都做不好\\n好友：别瞎想啦！你已经很棒了，我一直都在的～有我陪着你呢！";
-                    cloneWarning.style.display = "block";
+                    tipDom.innerHTML = `
+                        <i class="fa-solid fa-lightbulb"></i>
+                        <span>示例：用户：今天好累 好友：累了就歇会儿～慢慢来嘛，我在呢～</span>
+                    `;
+                    dataDom.placeholder = "请粘贴参考文本（≥50字）";
+                    cloneTipDom.style.display = "flex";
                 } else {
-                    modeTip.innerText = "捏人模式：描述AI性格（例：温柔度90，毒舌度10，共情方式是倾听和鼓励，口头禅\"没关系呀\"）";
-                    customData.placeholder = "捏人模式示例：温柔度90，毒舌度10，共情方式是倾听和鼓励，回复用中句，口头禅是没关系呀，语气软糯，喜欢用表情符号";
-                    cloneWarning.style.display = "none";
+                    tipDom.innerHTML = `
+                        <i class="fa-solid fa-lightbulb"></i>
+                        <span>示例：温柔度90，毒舌度10，共情方式是倾听鼓励，口头禅"没关系呀"</span>
+                    `;
+                    dataDom.placeholder = "请输入性格描述";
+                    cloneTipDom.style.display = "none";
                 }
             }
 
-            // 进度文本映射
             function getProgressText(percent, mode) {
-                const textMap = {
-                    0: "进度：0%（初始化）",
-                    10: "进度：10%（参数校验中）",
-                    20: "进度：20%（准备分析数据）",
-                    30: "进度：30%（数据预处理完成）",
-                    40: mode === "clone" ? "进度：40%（分析参考文本风格）" : "进度：40%（提取性格特征）",
-                    45: mode === "clone" ? "进度：45%（提取核心风格特征）" : "进度：45%（提取核心性格特征）",
-                    50: mode === "clone" ? "进度：50%（调用AI分析风格）" : "进度：50%（调用AI分析性格）",
-                    55: mode === "clone" ? "进度：55%（AI风格分析完成）" : "进度：55%（AI性格分析完成）",
-                    60: mode === "clone" ? "进度：60%（风格特征提取完成）" : "进度：60%（性格特征提取完成）",
-                    70: mode === "clone" ? "进度：70%（生成复刻风格Prompt）" : "进度：70%（生成定制Prompt）",
-                    75: mode === "clone" ? "进度：75%（优化复刻Prompt）" : "进度：75%（优化定制Prompt）",
-                    80: mode === "clone" ? "进度：80%（调用AI生成Prompt）" : "进度：80%（调用AI生成Prompt）",
-                    85: mode === "clone" ? "进度：85%（AI Prompt生成完成）" : "进度：85%（AI Prompt生成完成）",
-                    90: mode === "clone" ? "进度：90%（复刻Prompt生成完成）" : "进度：90%（定制Prompt生成完成）",
-                    95: "进度：95%（准备保存数据）",
-                    100: mode === "clone" ? "进度：100%（风格复刻完成）" : "进度：100%（性格定制完成）",
-                    "-1": "进度：失败（处理出错）"
+                const stepMap = {
+                    0: { text: "初始化", icon: "circle-notch" },
+                    10: { text: "校验参数", icon: "check-circle" },
+                    20: { text: "准备数据", icon: "database" },
+                    30: { text: "预处理完成", icon: "cog" },
+                    40: { text: mode === "clone" ? "分析参考风格" : "提取性格特征", icon: "search" },
+                    45: { text: mode === "clone" ? "提取核心风格" : "提取核心性格", icon: "filter" },
+                    50: { text: mode === "clone" ? "AI分析风格" : "AI分析性格", icon: "brain" },
+                    55: { text: mode === "clone" ? "风格分析完成" : "性格分析完成", icon: "chart-line" },
+                    60: { text: mode === "clone" ? "风格特征提取完成" : "性格特征提取完成", icon: "list-check" },
+                    70: { text: mode === "clone" ? "生成复刻Prompt" : "生成定制Prompt", icon: "magic" },
+                    75: { text: mode === "clone" ? "优化复刻Prompt" : "优化定制Prompt", icon: "wand-magic-sparkles" },
+                    80: { text: "调用AI生成Prompt", icon: "robot" },
+                    85: { text: "Prompt生成完成", icon: "check-double" },
+                    90: { text: mode === "clone" ? "复刻完成" : "定制完成", icon: "sparkles" },
+                    95: { text: "保存数据", icon: "save" },
+                    100: { text: mode === "clone" ? "风格复刻成功" : "性格定制成功", icon: "party-horn" },
+                    "-1": { text: "处理失败", icon: "triangle-exclamation" }
                 };
-                return textMap[percent] || `进度：${percent}%（处理中）`;
+
+                const step = stepMap[percent] || { text: "处理中", icon: "spinner" };
+                return {
+                    label: `进度：${percent}%`,
+                    step: `<i class="fa-solid fa-${step.icon}"></i> <span>${step.text}</span>`
+                };
             }
 
-            // 轮询进度
             function pollProgress(user_id, mode) {
-                const progressBar = document.getElementById("progress_bar");
-                const progressText = document.getElementById("progress_text");
+                const progressContainer = document.getElementById("progress_container");
+                const progressBar = document.getElementById("progress_bar_fill");
+                const progressLabel = document.getElementById("progress_label");
+                const progressStep = document.getElementById("progress_step");
 
+                pollCount = 0;
                 progressBar.style.width = "0%";
-                progressText.innerHTML = `<<i class="fa-solid fa-circle-notch fa-spin"></</i> ${getProgressText(0, mode)}`;
+
+                // 显示进度条
+                setTimeout(() => progressContainer.classList.add("show"), 50);
 
                 progressTimer = setInterval(async () => {
+                    if (pollCount >= MAX_POLL) {
+                        clearInterval(progressTimer);
+                        progressTimer = null;
+                        progressLabel.textContent = "进度：超时";
+                        progressStep.innerHTML = "<i class='fa-solid fa-clock-rotate-left'></i> 请刷新重试";
+                        showResult(false, "定制超时：网络响应过慢");
+                        return;
+                    }
+
                     try {
                         const resp = await fetch(`/get_customize_progress?user_id=${user_id}`);
                         const res = await resp.json();
                         const percent = res.progress;
 
-                        progressBar.style.width = `${Math.max(0, percent)}%`;
-                        progressText.innerHTML = `<<i class="fa-solid fa-circle-notch fa-spin"></</i> ${getProgressText(percent, mode)}`;
+                        // 更新进度条
+                        progressBar.style.width = percent + "%";
+
+                        // 更新文本
+                        const progressData = getProgressText(percent, mode);
+                        progressLabel.textContent = progressData.label;
+                        progressStep.innerHTML = progressData.step;
 
                         if (percent === 100 || percent === -1) {
                             clearInterval(progressTimer);
-                            progressBar.classList.add(percent === 100 ? "success" : "error");
-                            progressText.innerHTML = percent === 100 
-                                ? `<<i class="fa-solid fa-check-circle"></</i> ${getProgressText(percent, mode)}`
-                                : `<<i class="fa-solid fa-exclamation-circle"></</i> ${getProgressText(percent, mode)}`;
+                            progressTimer = null;
+                            showResult(percent === 100, 
+                                percent === 100 ? 
+                                `${mode === "clone" ? "风格复刻成功" : "性格定制成功"}！可开始聊天` : 
+                                "处理失败：请检查输入后重试"
+                            );
+
+                            // 3秒后自动隐藏
+                            setTimeout(() => {
+                                progressContainer.classList.remove("show");
+                            }, 3000);
                         }
+                        pollCount++;
                     } catch (e) {
                         clearInterval(progressTimer);
-                        progressText.innerHTML = `<<i class="fa-solid fa-exclamation-circle"></</i> 进度：查询失败`;
+                        progressTimer = null;
+                        progressLabel.textContent = "进度：查询失败";
+                        progressStep.innerHTML = "<i class='fa-solid fa-xmark-circle'></i> 网络错误";
                     }
                 }, 50);
             }
 
-            // 定制性格函数
-            async function customizeCharacter() {
+            function showResult(success, message) {
+                const resultDom = document.getElementById("custom_result");
+                resultDom.className = `result show ${success ? 'success' : 'error'}`;
+                resultDom.innerHTML = `
+                    <i class="fa-solid fa-${success ? 'check-circle' : 'circle-xmark'}"></i>
+                    ${message}
+                `;
+            }
+
+            async function customizeAI() {
                 const user_id = document.getElementById("user_id").value.trim();
                 const mode = document.getElementById("custom_mode").value;
                 const data = document.getElementById("custom_data").value.trim();
+                const btn = document.getElementById("custom_btn");
                 const resultDom = document.getElementById("custom_result");
-                const progressContainer = document.getElementById("custom_progress");
-                const progressBar = document.getElementById("progress_bar");
-                const progressText = document.getElementById("progress_text");
-                const btn = document.querySelector(".btn");
 
                 // 重置状态
                 resultDom.className = "result";
-                resultDom.innerText = "";
-                progressBar.className = "progress-bar";
-                progressContainer.style.display = "block";
-                progressText.style.display = "block";
+                resultDom.innerHTML = "";
                 btn.disabled = true;
-                btn.innerHTML = `<<i class="fa-solid fa-spinner fa-spin"></</i> 处理中...`;
+                btn.innerHTML = "<i class='fa-solid fa-circle-notch fa-spin'></i> 处理中...";
 
-                if (progressTimer) clearInterval(progressTimer);
-
-                // 基础校验
+                // 校验
                 if (!user_id) {
-                    progressContainer.style.display = "none";
-                    progressText.style.display = "none";
-                    resultDom.className = "result error";
-                    resultDom.innerText = "❌ 错误：用户ID不能为空，请输入专属标识";
                     btn.disabled = false;
-                    btn.innerHTML = `<<i class="fa-solid fa-wand-magic-sparkles"></</i> 确认定制`;
+                    btn.innerHTML = "<i class='fa-solid fa-check'></i> 确认定制";
+                    showResult(false, "❌ 用户ID不能为空");
                     return;
                 }
-
                 if (!data) {
-                    progressContainer.style.display = "none";
-                    progressText.style.display = "none";
-                    resultDom.className = "result error";
-                    resultDom.innerText = `❌ 错误：请输入${mode === "clone" ? "参考文本" : "性格描述"}`;
                     btn.disabled = false;
-                    btn.innerHTML = `<<i class="fa-solid fa-wand-magic-sparkles"></</i> 确认定制`;
+                    btn.innerHTML = "<i class='fa-solid fa-check'></i> 确认定制";
+                    showResult(false, `❌ 请输入${mode === "clone" ? "参考文本" : "性格描述"}`);
                     return;
                 }
-
                 if (mode === "clone" && data.length < 50) {
-                    progressContainer.style.display = "none";
-                    progressText.style.display = "none";
-                    resultDom.className = "result error";
-                    resultDom.innerText = "❌ 错误：克隆模式参考文本长度需≥50字，请补充完整";
                     btn.disabled = false;
-                    btn.innerHTML = `<<i class="fa-solid fa-wand-magic-sparkles"></</i> 确认定制`;
+                    btn.innerHTML = "<i class='fa-solid fa-check'></i> 确认定制";
+                    showResult(false, "❌ 克隆模式参考文本需≥50字");
                     return;
                 }
 
                 try {
                     // 初始化进度
                     await fetch(`/set_progress?user_id=${user_id}&progress=0`);
+
                     // 启动轮询
                     pollProgress(user_id, mode);
-                    // 延迟发起请求
-                    await new Promise(resolve => setTimeout(resolve, 300));
 
+                    // 延迟确保轮询启动
+                    await new Promise(resolve => setTimeout(resolve, 200));
+
+                    // 发送定制请求
                     const resp = await fetch("/customize", {
                         method: "POST",
                         headers: {"Content-Type": "application/json"},
                         body: JSON.stringify({user_id, mode, data})
                     });
-
                     const res = await resp.json();
-                    if (res.success) {
-                        resultDom.className = "result success";
-                        resultDom.innerText = `✅ ${res.message}`;
-                    } else {
-                        resultDom.className = "result error";
-                        resultDom.innerText = `❌ 定制失败：${res.message || "未知错误"}`;
-                        progressBar.classList.add("error");
-                    }
 
-                    // 恢复按钮状态
+                    // 恢复按钮
                     setTimeout(() => {
                         btn.disabled = false;
-                        btn.innerHTML = `<<i class="fa-solid fa-wand-magic-sparkles"></</i> 确认定制`;
-                        // 隐藏进度条
-                        setTimeout(() => {
-                            progressContainer.style.display = "none";
-                            progressText.style.display = "none";
-                        }, 2000);
-                    }, 1000);
+                        btn.innerHTML = "<i class='fa-solid fa-check'></i> 确认定制";
+                        if (!res.success) {
+                            showResult(false, `❌ 定制失败：${res.message}`);
+                        }
+                    }, 500);
 
                 } catch (e) {
-                    if (progressTimer) clearInterval(progressTimer);
-                    progressBar.classList.add("error");
-                    progressText.innerHTML = `<<i class="fa-solid fa-exclamation-circle"></</i> 进度：失败（${e.message}）`;
-                    resultDom.className = "result error";
-                    resultDom.innerText = `❌ 请求失败：${e.message}`;
-
-                    // 恢复按钮状态
-                    setTimeout(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = `<<i class="fa-solid fa-wand-magic-sparkles"></</i> 确认定制`;
-                    }, 1000);
+                    if (progressTimer) {
+                        clearInterval(progressTimer);
+                        progressTimer = null;
+                    }
+                    btn.disabled = false;
+                    btn.innerHTML = "<i class='fa-solid fa-check'></i> 确认定制";
+                    document.getElementById("progress_container").classList.remove("show");
+                    showResult(false, `❌ 请求失败：${e.message}`);
                 }
             }
 
-            // 流式聊天函数
-            async function sendStreamChat() {
+            async function sendChat() {
                 const user_id = document.getElementById("user_id").value.trim();
                 const input = document.getElementById("chat_input").value.trim();
                 const historyDom = document.getElementById("chat_history");
-                const btn = document.querySelectorAll(".btn")[1];
+                const btn = document.getElementById("chat_btn");
 
                 if (!user_id) {
-                    alert("请先输入用户ID并完成AI性格定制～");
+                    alert("请先输入用户ID并完成AI定制");
                     return;
                 }
-
                 if (!input) {
-                    alert("请输入想倾诉的内容呀～");
+                    alert("请输入想倾诉的内容");
                     return;
                 }
 
-                // 添加用户消息到聊天记录
-                const userMsgHtml = `
-                    <div class="chat-message user">
-                        <div class="chat-avatar">我</div>
-                        <div class="chat-bubble">${input}</div>
+                // 添加用户消息
+                historyDom.innerHTML += `
+                    <div class="chat-msg user">
+                        <div class="chat-bubble">${escapeHtml(input)}</div>
                     </div>
                 `;
-                historyDom.innerHTML += userMsgHtml;
                 document.getElementById("chat_input").value = "";
                 historyDom.scrollTop = historyDom.scrollHeight;
 
-                // 显示AI正在输入
-                const aiReplyId = "ai_reply_" + Date.now();
-                const aiLoadingHtml = `
-                    <div class="chat-message ai">
-                        <div class="chat-avatar">AI</div>
-                        <div class="chat-bubble typing"><span></span></div>
+                // 显示AI加载
+                const aiLoadId = "ai_load_" + Date.now();
+                historyDom.innerHTML += `
+                    <div class="chat-msg ai" id="${aiLoadId}">
+                        <div class="chat-loading">
+                            <i class="fa-solid fa-ellipsis fa-beat-fade"></i>
+                            <span>AI正在回复...</span>
+                        </div>
                     </div>
                 `;
-                historyDom.innerHTML += aiLoadingHtml;
                 historyDom.scrollTop = historyDom.scrollHeight;
                 btn.disabled = true;
-                btn.innerHTML = `<<i class="fa-solid fa-spinner fa-spin"></</i> 发送中...`;
+                btn.innerHTML = "<i class='fa-solid fa-paper-plane'></i> 发送中...";
 
                 try {
                     const resp = await fetch("/chat_stream", {
@@ -664,43 +744,54 @@ async def root():
                     const reader = resp.body.getReader();
                     const decoder = new TextDecoder();
                     let aiReply = "";
-                    const aiReplyDom = document.querySelector(`#${aiReplyId} .chat-bubble`);
-
-                    // 移除打字动画
-                    aiReplyDom.classList.remove("typing");
-                    aiReplyDom.innerHTML = "";
+                    const aiDom = document.getElementById(aiLoadId);
+                    aiDom.innerHTML = '<div class="chat-bubble"></div>';
+                    const bubbleDom = aiDom.querySelector(".chat-bubble");
 
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
-
                         const char = decoder.decode(value, { stream: true });
-                        aiReply += char;
-                        aiReplyDom.innerText = aiReply;
-                        historyDom.scrollTop = historyDom.scrollHeight;
+                        if (char) {
+                            aiReply += char;
+                            bubbleDom.textContent = aiReply;
+                            historyDom.scrollTop = historyDom.scrollHeight;
+                        }
                     }
 
-                    // 如果没有回复内容
                     if (!aiReply) {
-                        aiReplyDom.innerText = "抱歉～暂时无法回复，请稍后再试呀～";
+                        bubbleDom.textContent = "抱歉，暂时无法回复，请稍后再试";
                     }
 
                 } catch (e) {
-                    const aiReplyDom = document.querySelector(`#${aiReplyId} .chat-bubble`);
-                    aiReplyDom.classList.remove("typing");
-                    aiReplyDom.innerText = `😥 请求失败：${e.message}`;
+                    const aiDom = document.getElementById(aiLoadId);
+                    aiDom.innerHTML = `<div class="chat-bubble">😥 请求失败：${escapeHtml(e.message)}</div>`;
                 } finally {
-                    // 恢复按钮状态
                     btn.disabled = false;
-                    btn.innerHTML = `<<i class="fa-solid fa-paper-plane"></</i> 发送消息`;
+                    btn.innerHTML = "<i class='fa-solid fa-paper-plane'></i> 发送";
                 }
             }
 
-            // 输入框回车提交
+            // 工具函数：转义HTML
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // 清理定时器
+            window.addEventListener("beforeunload", () => {
+                if (progressTimer) {
+                    clearInterval(progressTimer);
+                    progressTimer = null;
+                }
+            });
+
+            // 快捷键
             document.getElementById("chat_input").addEventListener("keydown", (e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    sendStreamChat();
+                    sendChat();
                 }
             });
         </script>
@@ -709,7 +800,6 @@ async def root():
     """
 
 
-# 进度接口（不变）
 @app.get("/set_progress")
 async def set_progress(user_id: str, progress: int):
     customize_progress[user_id] = progress
@@ -723,20 +813,20 @@ async def get_customize_progress(user_id: str):
     })
 
 
-# 定制接口（不变）
 @app.post("/customize")
 async def customize_character(req: CustomizeRequest):
     user_id = req.user_id.strip()
     mode = req.mode.strip()
     data = req.data.strip()
     user_info = load_user_data(user_id)
+
     try:
         customize_progress[user_id] = 10
-        time.sleep(0.3)
+        time.sleep(0.2)
         customize_progress[user_id] = 20
-        time.sleep(0.3)
+        time.sleep(0.2)
         customize_progress[user_id] = 30
-        time.sleep(0.3)
+        time.sleep(0.2)
 
         if mode == "clone":
             personality = extract_personality_for_clone(data, user_id)
@@ -746,15 +836,17 @@ async def customize_character(req: CustomizeRequest):
             system_prompt = generate_system_prompt_create(personality, user_id)
 
         customize_progress[user_id] = 90
-        time.sleep(0.3)
+        time.sleep(0.2)
         customize_progress[user_id] = 95
-        time.sleep(0.3)
+        time.sleep(0.2)
         customize_progress[user_id] = 100
 
         user_info["system_prompt"] = system_prompt
         save_user_data(user_id, user_info)
-        success_msg = "性格定制成功！可以开始流式聊天了" if mode != "clone" else "风格复刻成功！AI将完全模仿参考文本的说话风格"
+
+        success_msg = "性格定制成功！可开始聊天" if mode != "clone" else "风格复刻成功！可开始聊天"
         return JSONResponse({"success": True, "message": success_msg})
+
     except Exception as e:
         customize_progress[user_id] = -1
         import traceback
@@ -765,7 +857,6 @@ async def customize_character(req: CustomizeRequest):
         }, status_code=500)
 
 
-# 流式聊天接口（不变）
 @app.post("/chat_stream")
 async def chat_stream(req: ChatStreamRequest):
     user_id = req.user_id.strip()
@@ -775,16 +866,24 @@ async def chat_stream(req: ChatStreamRequest):
     if not user_info["system_prompt"]:
         raise HTTPException(status_code=400, detail="请先完成AI性格定制后再聊天")
 
-    if len(user_input) > 20:
+    if (len(user_input) > 20):
         add_user_memory(user_id, user_input)
 
     return StreamingResponse(
-        stream_chat_with_deepseek(user_id, user_input, user_info["system_prompt"], user_info["history"]),
+        stream_chat_with_deepseek(
+            user_id=user_id,
+            user_input=user_input,
+            system_prompt=user_info["system_prompt"],
+            history=user_info["history"]
+        ),
         media_type="text/plain"
     )
 
 
-# 启动函数（不变）
 def run_api():
     import uvicorn
     uvicorn.run(app, host=HOST, port=PORT)
+
+
+if __name__ == "__main__":
+    run_api()
