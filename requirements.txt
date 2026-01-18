@@ -1,10 +1,16 @@
+# Web framework
+fastapi
+uvicorn
+python-multipart
+
+# OCR core (CPU, Linux friendly)
 numpy==1.26.4
-fastapi==0.104.1
-uvicorn==0.24.0
-requests==2.31.0
-python-dotenv==1.0.0
-pydantic==2.4.2
-httpx>=0.25.0
 paddlepaddle==2.6.2
 paddleocr==2.7.0.3
 
+# Image handling
+Pillow
+
+# Utils
+python-dotenv
+requests
