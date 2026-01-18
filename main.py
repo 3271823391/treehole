@@ -857,6 +857,38 @@ async def root():
                 }
             });
             /* ===== 捏人模式 · 性格预设 ===== */
+            const PRESET_SLIDER_MAP = {
+                gentle: {
+                    gentle: 90,
+                    rational: 40,
+                    companion: 85,
+                    tsundere: 5
+                },
+                rational: {
+                    gentle: 40,
+                    rational: 90,
+                    companion: 40,
+                    tsundere: 10
+                },
+                tsundere: {
+                    gentle: 60,
+                    rational: 60,
+                    companion: 50,
+                    tsundere: 60
+                },
+                friend: {
+                    gentle: 70,
+                    rational: 50,
+                    companion: 80,
+                    tsundere: 20
+                },
+                listener: {
+                    gentle: 80,
+                    rational: 30,
+                    companion: 90,
+                    tsundere: 0
+                }
+            };
             const PRESET_MAP = {
                 gentle: `温柔、耐心、共情能力强。
             说话语气轻柔，不说教。
@@ -885,10 +917,18 @@ async def root():
             };
             
             function applyPreset(key) {
-                const textarea = document.getElementById("custom_data");
-                if (!textarea) return;
-                textarea.value = PRESET_MAP[key] || "";
-            }
+            const preset = PRESET_SLIDER_MAP[key];
+            if (!preset) return;
+        
+            // 设置滑块
+            document.getElementById("gentle").value = preset.gentle;
+            document.getElementById("rational").value = preset.rational;
+            document.getElementById("companion").value = preset.companion;
+            document.getElementById("tsundere").value = preset.tsundere;
+        
+            // 同步生成性格描述
+            updatePersonality();
+        }
             function updatePersonality() {
             const g = +document.getElementById("gentle").value;
             const r = +document.getElementById("rational").value;
@@ -911,6 +951,9 @@ async def root():
         
             document.getElementById("custom_data").value = desc.join("，") + "。";
         }
+            document.addEventListener("DOMContentLoaded", () => {
+            updatePersonality();
+        });
         </script>
     </body>
     </html>
