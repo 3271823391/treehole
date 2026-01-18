@@ -10,7 +10,19 @@ DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/chat/
 
 # 服务器配置
 HOST = os.getenv("HOST", "0.0.0.0")
-PORT = int(os.getenv("PORT", 8000))
+
+# 安全获取 PORT 环境变量，处理空值/非数字情况
+def get_port():
+    try:
+        port_str = os.getenv("PORT")
+        # 如果 PORT 为空字符串/None，或无法转整数，返回默认值
+        if not port_str:
+            return 8000
+        return int(port_str)
+    except (ValueError, TypeError):
+        return 8000
+
+PORT = get_port()
 
 # 自定义配置
 MAX_HISTORY = 8  # 最多保留8轮对话历史
