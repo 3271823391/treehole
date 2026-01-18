@@ -1,4 +1,6 @@
-from paddleocr import PaddleOCR
+def get_ocr():
+    from paddleocr import PaddleOCR
+    return PaddleOCR(use_angle_cls=True, lang="ch", use_gpu=False)
 from PIL import Image
 import numpy as np
 import io
@@ -30,5 +32,6 @@ def extract_texts_from_uploadfiles(files):
                     txt = txt.strip()
                     if txt:
                         all_texts.append(txt)
+
 
     return all_texts
