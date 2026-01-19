@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException
+预设点不动了，帮我分析一下from
+fastapi
+import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from pydantic import BaseModel
 import time
@@ -445,12 +447,68 @@ async def root():
                 </select>
                 <div id="mode_tip" class="status-tip">
                     <i class="fa-solid fa-lightbulb"></i>
-                    <span>示例：温柔度90，毒舌度10，共情方式是倾听鼓励，口头禅"没关系呀"</span>
+                    <span>示例：温柔度90，毒舌度10，共情方式是倾听鼓励</span>
                 </div>
                 <div id="clone_warning" class="clone-tip">
                     <i class="fa-solid fa-info-circle"></i>
                     克隆模式：参考文本需≥50字（可粘贴聊天记录）
                 </div>
+                <!-- 性格预设方案（仅捏人模式） -->
+                <div id="preset_box" style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-bottom: 16px;
+            ">
+                <button type="button" class="btn" onclick="applyPreset('gentle')">
+                    🌸 温柔治愈
+                </button>
+                <button type="button" class="btn" onclick="applyPreset('rational')">
+                    🧠 理性分析
+                </button>
+                <button type="button" class="btn" onclick="applyPreset('tsundere')">
+                    😈 轻毒舌
+                </button>
+                <button type="button" class="btn" onclick="applyPreset('friend')">
+                    🤝 好朋友
+                </button>
+                <button type="button" class="btn" onclick="applyPreset('listener')">
+                    🧘 倾听者
+                </button>
+            </div>
+            <!-- 滑块捏人 -->
+            <div id="slider_box" style="margin-bottom: 16px;">
+                <div class="status-tip">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>拖动滑块，自动生成性格描述</span>
+                </div>
+
+                <div style="display: grid; gap: 12px;">
+                    <div>
+                        <label>🌸 温柔度：<span id="val_gentle">50</span></label>
+                        <input type="range" min="0" max="100" value="50" id="gentle"
+                               class="w-full" oninput="updatePersonality()">
+                    </div>
+
+                    <div>
+                        <label>🧠 理性度：<span id="val_rational">50</span></label>
+                        <input type="range" min="0" max="100" value="50" id="rational"
+                               class="w-full" oninput="updatePersonality()">
+                    </div>
+
+                    <div>
+                        <label>🤝 陪伴感：<span id="val_companion">50</span></label>
+                        <input type="range" min="0" max="100" value="50" id="companion"
+                               class="w-full" oninput="updatePersonality()">
+                    </div>
+
+                    <div>
+                        <label>😈 毒舌度：<span id="val_tsundere">10</span></label>
+                        <input type="range" min="0" max="100" value="10" id="tsundere"
+                               class="w-full" oninput="updatePersonality()">
+                    </div>
+                </div>
+            </div>
                 <textarea 
                     id="custom_data" 
                     class="form-input" 
@@ -504,12 +562,16 @@ async def root():
             let pollCount = 0;
 
             function switchMode() {
+                const sliderBox = document.getElementById("slider_box");
+                const presetBox = document.getElementById("preset_box");
                 const mode = document.getElementById("custom_mode").value;
                 const tipDom = document.getElementById("mode_tip");
                 const cloneTipDom = document.getElementById("clone_warning");
                 const dataDom = document.getElementById("custom_data");
 
                 if (mode === "clone") {
+                    sliderBox.style.display = "none";
+                    presetBox.style.display = "none";
                     tipDom.innerHTML = `
                         <i class="fa-solid fa-lightbulb"></i>
                         <span>示例：用户：今天好累 好友：累了就歇会儿～慢慢来嘛，我在呢～</span>
@@ -517,6 +579,8 @@ async def root():
                     dataDom.placeholder = "请粘贴参考文本（≥50字）";
                     cloneTipDom.style.display = "flex";
                 } else {
+                    sliderBox.style.display = "block";
+                    presetBox.style.display = "flex";
                     tipDom.innerHTML = `
                         <i class="fa-solid fa-lightbulb"></i>
                         <span>示例：温柔度90，毒舌度10，共情方式是倾听鼓励，口头禅"没关系呀"</span>
@@ -794,6 +858,104 @@ async def root():
                     sendChat();
                 }
             });
+            /* ===== 捏人模式 · 性格预设 ===== */
+            const PRESET_SLIDER_MAP = {
+                gentle: {
+                    gentle: 90,
+                    rational: 40,
+                    companion: 85,
+                    tsundere: 5
+                },
+                rational: {
+                    gentle: 40,
+                    rational: 90,
+                    companion: 40,
+                    tsundere: 10
+                },
+                tsundere: {
+                    gentle: 60,
+                    rational: 60,
+                    companion: 50,
+                    tsundere: 60
+                },
+                friend: {
+                    gentle: 70,
+                    rational: 50,
+                    companion: 80,
+                    tsundere: 20
+                },
+                listener: {
+                    gentle: 80,
+                    rational: 30,
+                    companion: 90,
+                    tsundere: 0
+                }
+            };
+            const PRESET_MAP = {
+                gentle: `温柔、耐心、共情能力强。
+            说话语气轻柔，不说教。
+            多安慰、多陪伴，
+            像一个安全可靠的树洞。`,
+
+                rational: `理性冷静，逻辑清晰。
+            善于分析问题本质，
+            给出结构化建议，
+            不过度情绪化。`,
+
+                tsundere: `表面有点毒舌，
+            但内心关心用户。
+            可以吐槽但不攻击，
+            关键时刻会站在用户这边。`,
+
+                friend: `像多年好友一样聊天，
+            语气自然随和，
+            会接话、会调侃，
+            让人感到陪伴。`,
+
+                listener: `以倾听为主，
+            少下结论，
+            多用共情与确认，
+            鼓励用户表达真实感受。`
+            };
+
+            function applyPreset(key) {
+                const preset = PRESET_SLIDER_MAP[key];
+                if (!preset) return;
+            
+                // 设置滑块
+                document.getElementById("gentle").value = preset.gentle;
+                document.getElementById("rational").value = preset.rational;
+                document.getElementById("companion").value = preset.companion;
+                document.getElementById("tsundere").value = preset.tsundere;
+            
+                // 同步生成性格描述
+                updatePersonality();
+            }
+            function updatePersonality() {
+            const g = +document.getElementById("gentle").value;
+            const r = +document.getElementById("rational").value;
+            const c = +document.getElementById("companion").value;
+            const t = +document.getElementById("tsundere").value;
+
+            document.getElementById("val_gentle").textContent = g;
+            document.getElementById("val_rational").textContent = r;
+            document.getElementById("val_companion").textContent = c;
+            document.getElementById("val_tsundere").textContent = t;
+
+            let desc = [];
+
+            desc.push(`温柔度 ${g}，${g > 70 ? "语气非常温和" : g > 40 ? "语气偏温和" : "语气偏直接"}`);
+            desc.push(`理性度 ${r}，${r > 70 ? "善于分析问题" : r > 40 ? "适度给建议" : "少分析多共情"}`);
+            desc.push(`陪伴感 ${c}，${c > 70 ? "强陪伴型回应" : c > 40 ? "会持续跟进" : "不过度黏人"}`);
+            desc.push(`毒舌度 ${t}，${t > 60 ? "允许吐槽但不攻击" : t > 30 ? "偶尔轻微吐槽" : "几乎不毒舌"}`);
+
+            desc.push("整体目标：让用户感到被理解、被陪伴、被尊重，不制造压力。");
+
+            document.getElementById("custom_data").value = desc.join("，") + "。";
+        }
+            document.addEventListener("DOMContentLoaded", () => {
+            updatePersonality();
+        });
         </script>
     </body>
     </html>
@@ -813,11 +975,14 @@ async def get_customize_progress(user_id: str):
     })
 
 
+# ===================== 定制 / 克隆 =====================
+
 @app.post("/customize")
 async def customize_character(req: CustomizeRequest):
     user_id = req.user_id.strip()
     mode = req.mode.strip()
     data = req.data.strip()
+
     user_info = load_user_data(user_id)
 
     try:
@@ -829,11 +994,11 @@ async def customize_character(req: CustomizeRequest):
         time.sleep(0.2)
 
         if mode == "clone":
-            personality = extract_personality_for_clone(data, user_id)
-            system_prompt = generate_system_prompt_clone(personality, user_id)
+            personality = extract_personality_for_clone(data)
+            system_prompt = generate_system_prompt_clone(personality)
         else:
-            personality = extract_personality_for_create(data, user_id)
-            system_prompt = generate_system_prompt_create(personality, user_id)
+            personality = extract_personality_for_create(data)
+            system_prompt = generate_system_prompt_create(personality)
 
         customize_progress[user_id] = 90
         time.sleep(0.2)
@@ -842,43 +1007,65 @@ async def customize_character(req: CustomizeRequest):
         customize_progress[user_id] = 100
 
         user_info["system_prompt"] = system_prompt
+
+        if not isinstance(user_info.get("history"), list):
+            user_info["history"] = []
+
         save_user_data(user_id, user_info)
 
-        success_msg = "性格定制成功！可开始聊天" if mode != "clone" else "风格复刻成功！可开始聊天"
-        return JSONResponse({"success": True, "message": success_msg})
+        msg = "风格复刻成功！可开始聊天" if mode == "clone" else "性格定制成功！可开始聊天"
+        return JSONResponse({"success": True, "message": msg})
 
     except Exception as e:
         customize_progress[user_id] = -1
-        import traceback
-        return JSONResponse({
-            "success": False,
-            "message": f"定制失败：{str(e)}",
-            "detail": traceback.format_exc()
-        }, status_code=500)
+        return JSONResponse(
+            {"success": False, "message": f"定制失败：{str(e)}"},
+            status_code=500
+        )
 
+
+# ===================== 聊天（✅ 已彻底修复） =====================
 
 @app.post("/chat_stream")
 async def chat_stream(req: ChatStreamRequest):
     user_id = req.user_id.strip()
     user_input = req.user_input.strip()
-    user_info = load_user_data(user_id)
 
-    if not user_info["system_prompt"]:
+    user_info = load_user_data(user_id)
+    system_prompt = user_info.get("system_prompt")
+
+    if not system_prompt:
         raise HTTPException(status_code=400, detail="请先完成AI性格定制后再聊天")
 
-    if (len(user_input) > 20):
-        add_user_memory(user_id, user_input)
+    # 确保 history 存在
+    history = user_info.get("history")
+    if not isinstance(history, list):
+        history = []
+        user_info["history"] = history
+
+    # 保存用户输入（用于记忆）
+    history.append({
+        "role": "user",
+        "content": user_input
+    })
+    save_user_data(user_id, user_info)
+
+    # ✅ 只传 chat_core 能接的两个参数
+    try:
+        stream = stream_chat_with_deepseek(user_id, user_input)
+    except Exception:
+        def error_stream():
+            yield "（对话异常，请稍后再试）"
+
+        stream = error_stream()
 
     return StreamingResponse(
-        stream_chat_with_deepseek(
-            user_id=user_id,
-            user_input=user_input,
-            system_prompt=user_info["system_prompt"],
-            history=user_info["history"]
-        ),
+        stream,
         media_type="text/plain"
     )
 
+
+# ===================== 启动 =====================
 
 def run_api():
     import uvicorn
