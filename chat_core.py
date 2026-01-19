@@ -1,247 +1,319 @@
 import requests
 import json
 import time
-from typing import Generator
-
 from config import (
-    DEEPSEEK_API_KEY,
-    DEEPSEEK_MODEL,
-    DEEPSEEK_API_URL,
-    MAX_HISTORY,
-    SENSITIVE_WORDS,
-    STREAM_DELAY
+    DEEPSEEK_API_KEY, DEEPSEEK_MODEL, DEEPSEEK_API_URL,
+    MAX_HISTORY, SENSITIVE_WORDS, STREAM_DELAY, customize_progress
 )
+from data_store import get_user_memory_text
+from typing import List, Dict, Optional, Generator
 
-from data_store import (
-    load_user_data,
-    save_user_data,
-    add_user_memory,
-    get_user_memory_text
-)
 
-# =========================================================
-# 安全检测
-# =========================================================
-
-def check_sensitive(text: str):
+def check_sensitive(text: str) -> tuple[bool, str]:
+    """敏感词检查"""
     for word in SENSITIVE_WORDS:
         if word in text:
             if word in ["自杀", "自残"]:
                 return True, "生命宝贵！心理援助热线：12320（全国）"
-            return True, "内容包含违规词，请换个说法"
+            return True, "发言包含违规内容，请更换话题"
     return False, ""
 
 
-# =========================================================
-# 捏人模式（Create）
-# =========================================================
+def extract_personality_for_create(text: str, user_id: str) -> dict:
+    """捏人模式：提取性格特征（超分步延迟）"""
+    # 进度逐步增长：40% → 45% → 50% → 55% → 60%（每个节点0.3秒延迟）
+    customize_progress[user_id] = 40
+    time.sleep(0.3)  # 延长延迟到0.3秒
+    customize_progress[user_id] = 45
+    time.sleep(0.3)
 
-def extract_personality_for_create(user_description: str) -> dict:
-    prompt = f"""
-请根据用户描述，提取人格特征，输出严格 JSON：
+    prompt = f"""分析以下性格描述文本，输出JSON格式的性格特征（仅输出JSON，无其他内容）：
+    必须包含字段：
+    - 情绪特点：高冷/热情/温和/傲娇/沉稳等
+    - 共情方式：倾听/鼓励/理性分析/共情安慰/毒舌吐槽等
+    - 回复风格：短句/中句/长句/简洁/啰嗦/口语化/书面化等
+    - 口头禅：1-2个符合性格的口头禅（如“没关系呀”“加油哦”）
+    - 语气强度：温和/强势/中性/软糯等
 
-用户描述：
-{user_description}
-
-字段：
-- 情绪特点
-- 共情方式
-- 回复风格
-- 口头禅（数组）
-- 语气强度
-"""
-
-    payload = {
+    性格描述文本：{text[:3000]}"""
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
+    data = {
         "model": DEEPSEEK_MODEL,
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.4,
-        "max_tokens": 600
+        "max_tokens": 500,
+        "temperature": 0.4
     }
-
     try:
-        resp = requests.post(
-            DEEPSEEK_API_URL,
-            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"},
-            json=payload,
-            timeout=60
-        )
-        return json.loads(resp.json()["choices"][0]["message"]["content"])
-    except Exception:
-        return {}
+        customize_progress[user_id] = 50
+        time.sleep(0.3)
+        resp = requests.post(DEEPSEEK_API_URL, headers=headers, json=data, timeout=15)
+        customize_progress[user_id] = 55
+        time.sleep(0.3)
+
+        resp.raise_for_status()
+        resp_json = resp.json()
+        if "choices" not in resp_json or len(resp_json["choices"]) == 0:
+            res = {
+                "情绪特点": "温和", "共情方式": "倾听",
+                "回复风格": "长句",
+                "语气强度": "温和"
+            }
+        else:
+            res = json.loads(resp_json["choices"][0]["message"]["content"].strip())
+
+        customize_progress[user_id] = 60
+        time.sleep(0.3)
+        return res
+    except json.JSONDecodeError:
+        customize_progress[user_id] = -1
+        return {
+            "情绪特点": "温和", "共情方式": "倾听",
+            "回复风格": "中句",
+            "语气强度": "温和"
+        }
+    except Exception as e:
+        customize_progress[user_id] = -1
+        return {
+            "情绪特点": "温和", "共情方式": "倾听",
+            "回复风格": "中句",
+            "语气强度": "温和"
+        }
 
 
-def generate_system_prompt_create(p: dict) -> str:
-    return f"""
-你是一个具有以下人格特征的陪伴型 AI：
+def extract_personality_for_clone(text: str, user_id: str) -> dict:
+    """克隆模式：专属风格提取（超分步延迟）"""
+    # 进度逐步增长：40% → 45% → 50% → 55% → 60%（每个节点0.3秒延迟）
+    customize_progress[user_id] = 40
+    time.sleep(0.3)
+    customize_progress[user_id] = 45
+    time.sleep(0.3)
 
-情绪特点：{p.get("情绪特点", "")}
-共情方式：{p.get("共情方式", "")}
-回复风格：{p.get("回复风格", "")}
-口头禅：{",".join(p.get("口头禅", []))}
-语气强度：{p.get("语气强度", "")}
+    prompt = f"""深度分析以下参考文本的说话风格和特征，输出JSON格式（仅输出JSON，无其他内容）：
+    必须包含字段（严格复刻参考文本的特征）：
+    - 情绪特点：从参考文本中提取（如高冷/热情/温和/傲娇/沙雕等）
+    - 共情方式：从参考文本中提取（如倾听/鼓励/理性/毒舌/吐槽等）
+    - 回复风格：从参考文本中提取（如短句/长句/口语化/书面化/简洁/啰嗦等）
+    - 口头禅：从参考文本中提取1-2个高频出现的口头禅/常用语
+    - 语气强度：从参考文本中提取（如温和/强势/中性/软糯/沙雕等）
+    - 常用词汇：从参考文本中提取3-5个高频使用的词汇
+    - 句式特点：从参考文本中提取（如多用短句/反问句/感叹句/陈述句等）
 
-要求：
-- 共情优先，不批判、不说教
-- 回答自然、有温度
-- 用户情绪低落时，先安慰再回应
-- 不暴露你是模型
-"""
-
-
-# =========================================================
-# 克隆模式（Clone）
-# =========================================================
-
-def extract_personality_for_clone(reference_text: str) -> dict:
-    prompt = f"""
-请分析以下文本的说话风格，并输出严格 JSON：
-
-文本：
-{reference_text}
-
-字段：
-- 语气特点
-- 常用词汇（数组）
-- 句式特点
-- 高频口头禅（数组）
-"""
-
-    payload = {
+    参考文本（需完全复刻风格）：{text[:3000]}"""
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
+    data = {
         "model": DEEPSEEK_MODEL,
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.3,
-        "max_tokens": 800
+        "max_tokens": 800,
+        "temperature": 0.3
     }
-
     try:
-        resp = requests.post(
-            DEEPSEEK_API_URL,
-            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"},
-            json=payload,
-            timeout=60
-        )
-        return json.loads(resp.json()["choices"][0]["message"]["content"])
-    except Exception:
-        return {}
+        customize_progress[user_id] = 50
+        time.sleep(0.3)
+        resp = requests.post(DEEPSEEK_API_URL, headers=headers, json=data, timeout=20)
+        customize_progress[user_id] = 55
+        time.sleep(0.3)
+
+        resp.raise_for_status()
+        resp_json = resp.json()
+        if "choices" not in resp_json or len(resp_json["choices"]) == 0:
+            res = {
+                "情绪特点": "温和", "共情方式": "倾听",
+                "回复风格": "中句", "口头禅": ["嗯"],
+                "语气强度": "温和", "常用词汇": ["好的", "加油"],
+                "句式特点": "陈述句"
+            }
+        else:
+            res = json.loads(resp_json["choices"][0]["message"]["content"].strip())
+
+        customize_progress[user_id] = 60
+        time.sleep(0.3)
+        return res
+    except json.JSONDecodeError:
+        customize_progress[user_id] = -1
+        return {
+            "情绪特点": "温和", "共情方式": "倾听",
+            "回复风格": "中句", "口头禅": ["嗯"],
+            "语气强度": "温和", "常用词汇": ["好的", "加油"],
+            "句式特点": "陈述句"
+        }
+    except Exception as e:
+        customize_progress[user_id] = -1
+        return {
+            "情绪特点": "温和", "共情方式": "倾听",
+            "回复风格": "中句", "口头禅": ["嗯"],
+            "语气强度": "温和", "常用词汇": ["好的", "加油"],
+            "句式特点": "陈述句"
+        }
 
 
-def generate_system_prompt_clone(p: dict) -> str:
-    return f"""
-你将完全模仿以下说话风格进行回复：
+def generate_system_prompt_create(personality_json: dict, user_id: str) -> str:
+    """捏人模式：生成定制Prompt（超分步延迟）"""
+    # 进度逐步增长：70% → 75% → 80% → 85% → 90%（每个节点0.3秒延迟）
+    customize_progress[user_id] = 70
+    time.sleep(0.3)
+    customize_progress[user_id] = 75
+    time.sleep(0.3)
 
-语气特点：{p.get("语气特点", "")}
-句式特点：{p.get("句式特点", "")}
-常用词汇：{",".join(p.get("常用词汇", []))}
-高频口头禅：{",".join(p.get("高频口头禅", []))}
+    prompt = f"""根据以下性格特征，生成AI树洞的System Prompt（80字内）：
+    要求：
+    1. 严格按照性格特征回复，语气/风格/口头禅完全匹配
+    2. 共情优先，不批判，回复简洁自然
+    3. 敏感内容触发心理援助热线提示
+    4. 仅输出Prompt文本，无其他内容
+    result += "\n\n【关键】用户倾诉时，请详细回应，不要简短。每句话要有所不同，避免机械重复。"
 
-规则：
-- 用词、语气、句式必须一致
-- 优先使用给定口头禅
-- 不解释风格来源
-- 不自我暴露
-"""
+    性格特征：{json.dumps(personality_json, ensure_ascii=False)}"""
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
+    data = {
+        "model": DEEPSEEK_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 500,
+        "temperature": 0.1
+    }
+    try:
+        customize_progress[user_id] = 80
+        time.sleep(0.3)
+        resp = requests.post(DEEPSEEK_API_URL, headers=headers, json=data, timeout=15)
+        customize_progress[user_id] = 85
+        time.sleep(0.3)
+
+        resp.raise_for_status()
+        resp_json = resp.json()
+        if "choices" not in resp_json or len(resp_json["choices"]) == 0:
+            res = "你是一个温和的倾听者，善于共情，回复用长句，语气温和，不批判，敏感内容提示心理援助热线。"
+        else:
+            res = resp_json["choices"][0]["message"]["content"].strip()
+
+        customize_progress[user_id] = 90
+        time.sleep(0.3)
+        return res
+    except Exception as e:
+        customize_progress[user_id] = -1
+        return "你是一个温和的倾听者，善于共情，回复用长句，语气温和，不批判，敏感内容提示心理援助热线。"
 
 
-# =========================================================
-# 聊天主逻辑（含记忆）
-# =========================================================
+def generate_system_prompt_clone(personality_json: dict, user_id: str) -> str:
+    """克隆模式：专属Prompt生成（超分步延迟）"""
+    # 进度逐步增长：70% → 75% → 80% → 85% → 90%（每个节点0.3秒延迟）
+    customize_progress[user_id] = 70
+    time.sleep(0.3)
+    customize_progress[user_id] = 75
+    time.sleep(0.3)
 
-def stream_chat_with_deepseek(
-    user_id: str,
-    user_input: str
-) -> Generator[str, None, None]:
+    prompt = f"""根据以下提取的参考文本风格特征，生成AI树洞的System Prompt（100字内）：
+    核心要求：
+    1. 100%复刻参考文本的说话风格、语气、口头禅、常用词汇、句式特点
+    2. 回复时必须使用提取的口头禅和常用词汇
+    3. 句式特点、语气强度完全匹配参考文本
+    4. 共情方式贴合参考文本特征，敏感内容触发心理援助热线提示
+    5. 仅输出Prompt文本，无其他内容
 
-    # ---------- 1. 安全检测 ----------
+    风格特征：{json.dumps(personality_json, ensure_ascii=False)}"""
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
+    data = {
+        "model": DEEPSEEK_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 300,
+        "temperature": 0.3
+    }
+    try:
+        customize_progress[user_id] = 80
+        time.sleep(0.3)
+        resp = requests.post(DEEPSEEK_API_URL, headers=headers, json=data, timeout=15)
+        customize_progress[user_id] = 85
+        time.sleep(0.3)
+
+        resp.raise_for_status()
+        resp_json = resp.json()
+        if "choices" not in resp_json or len(resp_json["choices"]) == 0:
+            res = f"你需要完全复刻以下风格回复：情绪{personality_json['情绪特点']}，语气{personality_json['语气强度']}，口头禅{personality_json['口头禅'][0]}，常用词汇{personality_json['常用词汇'][0]}，句式{personality_json['句式特点']}，共情方式{personality_json['共情方式']}。"
+        else:
+            res = resp_json["choices"][0]["message"]["content"].strip()
+
+        customize_progress[user_id] = 90
+        time.sleep(0.3)
+        return res
+    except Exception as e:
+        customize_progress[user_id] = -1
+        return f"你需要完全复刻以下风格回复：情绪{personality_json['情绪特点']}，语气{personality_json['语气强度']}，口头禅{personality_json['口头禅'][0]}，常用词汇{personality_json['常用词汇'][0]}，句式{personality_json['句式特点']}，共情方式{personality_json['共情方式']}。"
+
+
+def stream_chat_with_deepseek(user_id: str, user_input: str, system_prompt: str, history: list):
+    """DeepSeek流式聊天核心函数"""
     unsafe, warning = check_sensitive(user_input)
     if unsafe:
-        for c in warning:
-            yield c
+        for char in warning:
+            yield char
             time.sleep(STREAM_DELAY)
         return
 
-    # ---------- 2. 读取用户数据 ----------
-    user_info = load_user_data(user_id)
-    system_prompt = user_info["system_prompt"]
-    history = user_info.get("history", [])
+    memory_text = get_user_memory_text(user_id)
+    final_system_prompt = f"{system_prompt}\n{memory_text}"
 
-    # ---------- 3. 构造 Prompt ----------
-    messages = []
+    messages = [{"role": "system", "content": final_system_prompt}] + history[-MAX_HISTORY:]
+    messages.append({"role": "user", "content": user_input})
 
-    messages.append({
-        "role": "system",
-        "content": system_prompt
-    })
-
-    messages.append({
-        "role": "system",
-        "content": get_user_memory_text(user_id)
-    })
-
-    for h in history[-MAX_HISTORY * 2:]:
-        messages.append(h)
-
-    messages.append({
-        "role": "user",
-        "content": user_input
-    })
-
-    # ---------- 4. 调用 DeepSeek ----------
-    payload = {
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
+    data = {
         "model": DEEPSEEK_MODEL,
         "messages": messages,
-        "stream": True,
-        "temperature": 0.7
+        "max_tokens": 800,
+        "temperature": 0.4,
+        "stream": True
     }
-
-    headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    full_reply = ""
 
     try:
-        with requests.post(
-            DEEPSEEK_API_URL,
-            headers=headers,
-            json=payload,
-            stream=True,
-            timeout=60
-        ) as resp:
-            resp.raise_for_status()
+        resp = requests.post(DEEPSEEK_API_URL, headers=headers, json=data, stream=True, timeout=30)
+        resp.raise_for_status()
 
-            for line in resp.iter_lines():
-                if not line:
-                    continue
-                line = line.decode("utf-8")
-                if not line.startswith("data:"):
-                    continue
+        full_response = ""
+        for line in resp.iter_lines():
+            if not line:
+                continue
+            line = line.decode("utf-8").lstrip("data: ").rstrip()
+            if line == "[DONE]":
+                break
+            try:
+                line_json = json.loads(line)
+                if "choices" in line_json and len(line_json["choices"]) > 0:
+                    delta = line_json["choices"][0].get("delta", {})
+                    content = delta.get("content", "")
+                    if content:
+                        full_response += content
+                        yield content
+                        time.sleep(STREAM_DELAY)
+            except json.JSONDecodeError:
+                continue
+            except Exception as e:
+                continue
 
-                data = line.replace("data:", "").strip()
-                if data == "[DONE]":
-                    break
+        unsafe, warning = check_sensitive(full_response)
+        if unsafe:
+            for char in warning:
+                yield char
+                time.sleep(STREAM_DELAY)
+        elif not full_response:
+            no_reply = "AI暂时无法回复，请稍后再试～"
+            for char in no_reply:
+                yield char
+                time.sleep(STREAM_DELAY)
 
-                chunk = json.loads(data)
-                delta = chunk["choices"][0]["delta"].get("content", "")
-                if delta:
-                    full_reply += delta
-                    yield delta
-                    time.sleep(STREAM_DELAY)
-
-    except Exception:
-        err = "（对话异常，请稍后再试）"
-        for c in err:
-            yield c
+    except requests.exceptions.HTTPError as e:
+        error_msg = f"请求失败：{str(e)}"
+        if "401" in str(e):
+            error_msg += "（API密钥错误）"
+        elif "402" in str(e):
+            error_msg += "（额度用尽）"
+        for char in error_msg:
+            yield char
             time.sleep(STREAM_DELAY)
-        return
-
-    # ---------- 5. 写回历史 ----------
-    history.append({"role": "user", "content": user_input})
-    history.append({"role": "assistant", "content": full_reply})
-    user_info["history"] = history[-MAX_HISTORY * 2:]
-
-    # ---------- 6. 长期记忆抽取 ----------
-    if any(k in user_input for k in ["我叫", "我是", "我一直", "我总是", "我已经"]):
-        add_user_memory(user_id, user_input)
-
-    save_user_data(user_id, user_info)
+    except requests.exceptions.Timeout:
+        timeout_msg = "请求超时啦，网络有点慢～"
+        for char in timeout_msg:
+            yield char
+            time.sleep(STREAM_DELAY)
+    except Exception as e:
+        error_msg = f"回复失败：{str(e)[:20]}"
+        for char in error_msg:
+            yield char
+            time.sleep(STREAM_DELAY)
