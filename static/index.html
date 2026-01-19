@@ -990,12 +990,39 @@
         if (res.success && res.preview_text) {
             document.getElementById("custom_data").value = res.preview_text;
         }
-    } catch (e) {
+    }
+    catch (e) {
         alert("请求失败：" + e.message);
     }
 }
+    async function debugClone() {
+        const userId = localStorage.getItem("user_id") || "test_user";
 
+        const text = document.getElementById("debugCloneText").value;
+        const texts = text.split("\n").map(t => t.trim()).filter(Boolean);
+
+        const res = await fetch("/clone_from_text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            user_id: userId,
+            texts: texts
+          })
+      });
+
+    const data = await res.json();
+    alert(data.message);
+}
         </script>
+    <textarea id="debugCloneText" rows="6" style="width:100%;">
+    今天真是累死我了
+    感觉什么事情都不顺
+    有时候真的很想躲起来
+    但还是得装作没事
+    算了，继续吧
+    </textarea>
+
+    <button onclick="debugClone()">测试文本克隆</button>
     </body>
     </html>
     """
