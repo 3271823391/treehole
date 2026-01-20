@@ -639,7 +639,9 @@ async def root():
                                 `${mode === "clone" ? "风格复刻成功" : "性格定制成功"}！可开始聊天` : 
                                 "处理失败：请检查输入后重试"
                             );
-
+                                if (percent === 100) {
+                                    fetchGreetingOnce();
+                                }
                             // 3秒后自动隐藏
                             setTimeout(() => {
                                 progressContainer.classList.remove("show");
@@ -828,7 +830,26 @@ async def root():
                     progressTimer = null;
                 }
             });
-
+            async function fetchGreetingOnce() {
+                const user_id = document.getElementById("user_id").value.trim();
+                if (!user_id) return;
+            
+                try {
+                    const resp = await fetch(`/greeting?user_id=${user_id}`);
+                    const data = await resp.json();
+                    if (data.text) {
+                        const historyDom = document.getElementById("chat_history");
+                        historyDom.innerHTML += `
+                            <div class="chat-msg ai">
+                                <div class="chat-bubble">${escapeHtml(data.text)}</div>
+                            </div>
+                        `;
+                        historyDom.scrollTop = historyDom.scrollHeight;
+                    }
+                } catch (e) {
+                    console.error("greeting failed", e);
+                }
+            }
             // 快捷键
             document.getElementById("chat_input").addEventListener("keydown", (e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
