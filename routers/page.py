@@ -419,6 +419,11 @@ async def root():
                     placeholder="输入你的用户ID（如：test001）" 
                     required
                 >
+                <select id="plan" class="form-input">
+                    <option value="free">🌱 免费模式</option>
+                    <option value="plus">🌿 陪伴模式</option>
+                    <option value="pro">🌳 深度模式</option>
+                </select>
                 <select id="custom_mode" class="form-input" onchange="switchMode()">
                     <option value="捏人">捏人模式（自定义性格）</option>
                     <option value="clone">克隆模式（复刻参考风格）</option>
@@ -670,6 +675,7 @@ async def root():
                 const user_id = document.getElementById("user_id").value.trim();
                 const mode = document.getElementById("custom_mode").value;
                 const data = document.getElementById("custom_data").value.trim();
+                const plan = document.getElementById("plan").value;
                 const btn = document.getElementById("custom_btn");
                 const resultDom = document.getElementById("custom_result");
 
@@ -713,7 +719,12 @@ async def root():
                     const resp = await fetch("/customize", {
                         method: "POST",
                         headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({user_id, mode, data})
+                        body: JSON.stringify({
+                            user_id,
+                            mode,
+                            data,
+                            plan
+                        })
                     });
                     const res = await resp.json();
 
