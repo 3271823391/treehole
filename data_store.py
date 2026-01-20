@@ -11,14 +11,15 @@ if not os.path.exists(USER_DATA_FILE):
         json.dump({}, f)
 
 def load_user_data(user_id: str) -> dict:
-    """加载用户数据（性格、记忆、历史）"""
     with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
     return data.get(user_id, {
+        "plan": "free",   # 👈 新增：free / plus / pro
         "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
-        "memories": [],  # 存储用户关键记忆
-        "history": [],   # 聊天历史
-        "has_greeted": False
+        "memories": [],
+        "history": [],
+        "has_greeted": False,
+        "chat_count": 0   # 👈 用于免费额度
     })
 
 def save_user_data(user_id: str, user_info: dict):
@@ -30,11 +31,13 @@ def save_user_data(user_id: str, user_info: dict):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def add_user_memory(user_id: str, memory_text: str):
-    """添加用户记忆（简化版：只保留关键信息）"""
     user_info = load_user_data(user_id)
-    # 拼接记忆，控制长度
+
+    if user_info.get("plan") == "free":
+        return  # ❌ 免费用户不存记忆
+
     new_memory = f"[{datetime.now().strftime('%m-%d')}] {memory_text[:100]}"
-    user_info["memories"] = (user_info["memories"] + [new_memory])[-5:]  # 最多保留5条核心记忆
+    user_info["memories"] = (user_info["memories"] + [new_memory])[-5:]
     save_user_data(user_id, user_info)
 
 def get_user_memory_text(user_id: str) -> str:
