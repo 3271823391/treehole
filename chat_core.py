@@ -2,7 +2,7 @@ import requests
 import json
 import time
 from typing import Generator
-
+from core.plan import get_features
 from config import (
     DEEPSEEK_API_KEY,
     DEEPSEEK_MODEL,
@@ -161,12 +161,35 @@ def stream_chat_with_deepseek(
 
     # ---------- 2. 读取用户数据 ----------
     user_info = load_user_data(user_id)
-    system_prompt = user_info["system_prompt"]
-    history = user_info.get("history", [])
 
+    if user_info.get("plan") == "free":
+        chat_count = user_info.get("chat_count", 0)
+
+        if chat_count >= 20:
+            tip = "今天的免费聊天次数已用完，可以升级获得更多陪伴 🌱"
+            for c in tip:
+                yield c
+                time.sleep(STREAM_DELAY)
+            return
+
+        user_info["chat_count"] = chat_count + 1
+        save_user_data(user_id, user_info)
+    base_prompt = user_info.get("system_prompt", "")
+
+    if user_info.get("plan") == "pro":
+        system_prompt = base_prompt + "你可以进行适度的情绪分析与引导，帮助用户理解情绪根源。"
+    elif user_info.get("plan") == "plus":
+        system_prompt = base_prompt + "以陪伴和倾听为主，回应温柔、有持续性。"
+    else:
+        system_prompt = "你是一个温柔但简短的倾听者，回复保持克制，不进行深入分析。"
+
+    history = user_info.get("history", [])
     # ---------- 2.x 主动问候（只触发一次） ----------
 
-    if not user_info.get("has_greeted", False):
+    if (
+            user_info.get("plan") in ["plus", "pro"]
+            and not user_info.get("has_greeted", False)
+    ):
         greet_text = "我在呢。想从哪里开始说起都可以。"
 
         history.append({
