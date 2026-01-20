@@ -3,7 +3,8 @@ from fastapi.responses import HTMLResponse
 
 router = APIRouter()
 
-@app.get("/", response_class=HTMLResponse)
+
+@router.get("/", response_class=HTMLResponse)
 async def root():
     return """
     <!DOCTYPE html>
