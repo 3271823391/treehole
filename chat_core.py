@@ -165,17 +165,18 @@ def stream_chat_with_deepseek(
     history = user_info.get("history", [])
 
     # ---------- 2.x 主动问候（只触发一次） ----------
-    user_info = load_user_data(user_id)
 
     if not user_info.get("has_greeted", False):
-        greeting = "你好。我在这儿，慢慢说也没关系。"
-        user_info["has_greeted"] = True
-        save_user_data(user_id, user_info)
+        greet_text = "我在呢。想从哪里开始说起都可以。"
 
-        for c in greeting:
-            yield c
-            time.sleep(STREAM_DELAY)
-        return
+        history.append({
+            "role": "assistant",
+            "content": greet_text
+        })
+
+        user_info["has_greeted"] = True
+        user_info["history"] = history
+        save_user_data(user_id, user_info)
 
     # ---------- 3. 构造 Prompt ----------
     messages = []
