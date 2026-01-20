@@ -17,7 +17,8 @@ def load_user_data(user_id: str) -> dict:
     return data.get(user_id, {
         "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
         "memories": [],  # 存储用户关键记忆
-        "history": []    # 聊天历史
+        "history": [],   # 聊天历史
+        "has_greeted": False
     })
 
 def save_user_data(user_id: str, user_info: dict):
