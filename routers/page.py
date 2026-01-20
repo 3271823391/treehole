@@ -940,29 +940,39 @@ async def root():
 
                 // 同步生成性格描述
                 updatePersonality();
+                }
+                function updatePersonality() {
+                const g = +document.getElementById("gentle").value;
+                const r = +document.getElementById("rational").value;
+                const c = +document.getElementById("companion").value;
+                const t = +document.getElementById("tsundere").value;
+    
+                document.getElementById("val_gentle").textContent = g;
+                document.getElementById("val_rational").textContent = r;
+                document.getElementById("val_companion").textContent = c;
+                document.getElementById("val_tsundere").textContent = t;
+    
+                let desc = [];
+    
+                desc.push(`温柔度 ${g}，${g > 70 ? "语气非常温和" : g > 40 ? "语气偏温和" : "语气偏直接"}`);
+                desc.push(`理性度 ${r}，${r > 70 ? "善于分析问题" : r > 40 ? "适度给建议" : "少分析多共情"}`);
+                desc.push(`陪伴感 ${c}，${c > 70 ? "强陪伴型回应" : c > 40 ? "会持续跟进" : "不过度黏人"}`);
+                desc.push(`毒舌度 ${t}，${t > 60 ? "允许直接吐槽、反问、指出问题本身" : t > 30 ? "轻度调侃" : "不使用吐槽语气"}`);
+                
+                if (t > 60) {
+                    desc.push("当用户问题空泛或逃避时，应优先反问或拆解问题，而不是直接给建议");
+                }
+                
+                if (r > 70) {
+                    desc.push("可以直接给判断或结论，不需要安慰性铺垫");
+                }
+                
+                if (g > 70 && t < 40) {
+                    desc.push("先共情情绪，再给建议");
+                }
+                
+                document.getElementById("custom_data").value = desc.join("。") + "。";
             }
-            function updatePersonality() {
-            const g = +document.getElementById("gentle").value;
-            const r = +document.getElementById("rational").value;
-            const c = +document.getElementById("companion").value;
-            const t = +document.getElementById("tsundere").value;
-
-            document.getElementById("val_gentle").textContent = g;
-            document.getElementById("val_rational").textContent = r;
-            document.getElementById("val_companion").textContent = c;
-            document.getElementById("val_tsundere").textContent = t;
-
-            let desc = [];
-
-            desc.push(`温柔度 ${g}，${g > 70 ? "语气非常温和" : g > 40 ? "语气偏温和" : "语气偏直接"}`);
-            desc.push(`理性度 ${r}，${r > 70 ? "善于分析问题" : r > 40 ? "适度给建议" : "少分析多共情"}`);
-            desc.push(`陪伴感 ${c}，${c > 70 ? "强陪伴型回应" : c > 40 ? "会持续跟进" : "不过度黏人"}`);
-            desc.push(`毒舌度 ${t}，${t > 60 ? "允许吐槽但不攻击" : t > 30 ? "偶尔轻微吐槽" : "几乎不毒舌"}`);
-
-            desc.push("整体目标：让用户感到被理解、被陪伴、被尊重，不制造压力。");
-
-            document.getElementById("custom_data").value = desc.join("，") + "。";
-        }
             document.addEventListener("DOMContentLoaded", () => {
             updatePersonality();
         });
