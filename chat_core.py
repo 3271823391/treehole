@@ -2,7 +2,7 @@ import requests
 import json
 import time
 from typing import Generator
-from core.plan import get_features
+
 from config import (
     DEEPSEEK_API_KEY,
     DEEPSEEK_MODEL,
@@ -37,8 +37,11 @@ def check_sensitive(text: str):
 # =========================================================
 
 def extract_personality_for_create(user_description: str) -> dict:
+    """
+    把用户的性格描述，抽取为结构化人格信息
+    """
     prompt = f"""
-请根据用户描述，提取人格特征，输出严格 JSON：
+请根据用户描述，提取人格特征，输出严格 JSON，不要解释：
 
 用户描述：
 {user_description}
@@ -70,22 +73,78 @@ def extract_personality_for_create(user_description: str) -> dict:
         return {}
 
 
+# =========================================================
+# 行为规则构建（关键）
+# =========================================================
+
+def build_behavior_rules(p: dict) -> str:
+    """
+    把“性格描述” → 强制行为规则（直接给出行为许可/禁令）
+    这是人格差异的核心，不再是温柔的选修课。
+    """
+    rules = []
+
+    # 获取传递的性格文本
+    text = " ".join(str(v) for v in p.values() if v)
+
+    # ===== 毒舌 / 高攻击性 =====
+    if any(k in text for k in ["毒舌度", "直接吐槽", "反问", "不需要先安慰"]):
+        rules += [
+            "【强制】当用户的问题空泛、逃避或只是表达无聊时，必须先指出问题本身的空泛，而不是直接给建议。",
+            "【强制】可以使用反问句来逼迫用户澄清想法，打破模糊表述。",
+            "【强制】不允许使用“你可以试试”“也许可以”这种模糊建议语句。",
+            "【强制】必须直言指出问题所在，不使用“安慰”的口吻。",
+            "【强制】如果用户显得不想面对问题，必须戳穿并要求进一步明确。"
+        ]
+
+    # ===== 强理性 =====
+    if any(k in text for k in ["理性度", "直接给出判断", "不需要安慰性语言"]):
+        rules += [
+            "【强制】可以跳过情绪安慰，直接进入问题分析，不绕圈子。",
+            "【强制】允许给出明确的结论，而不是模糊的安慰性语言。",
+            "【强制】当用户逻辑不清楚时，必须直接指出问题的矛盾或不合理之处。",
+            "【强制】不允许对无关的情绪或状态做无意义的安慰，重点分析问题。"
+        ]
+
+    # ===== 温柔 / 共情优先（选项） =====
+    if any(k in text for k in ["温柔度", "共情", "情感支持"]):
+        rules += [
+            "【可选】优先共情用户，确认其情绪和感受，但不需要过度安慰。",
+            "【可选】如果用户显得脆弱，可以适度提供情感支持，但不应软化论点。",
+            "【可选】避免直接否定用户的感受，尽量理解他们的情绪。"
+        ]
+
+    # 如果没有设置任何规则（避免返回空字符串）
+    if not rules:
+        return ""
+
+    # 返回生成的行为规则，确保行为约束被执行
+    return "\n【行为规则｜必须遵守】\n" + "\n".join(f"- {r}" for r in rules)
+
+
+
 def generate_system_prompt_create(p: dict) -> str:
-    return f"""
-你是一个具有以下人格特征的陪伴型 AI：
+    """
+    生成最终 system prompt（捏人模式）
+    """
+    base = f"""
+            你是一个正在与用户真实交流的 AI，而不是心理咨询模板。
+            
+            【人格特征】
+            情绪特点：{p.get("情绪特点", "")}
+            共情方式：{p.get("共情方式", "")}
+            回复风格：{p.get("回复风格", "")}
+            口头禅：{",".join(p.get("口头禅", []))}
+            语气强度：{p.get("语气强度", "")}
+            
+            【基础原则】
+            - 不必讨好用户
+            - 不需要每句话都共情
+            - 可以真实表达观点
+            - 不暴露你是模型
+            """
 
-情绪特点：{p.get("情绪特点", "")}
-共情方式：{p.get("共情方式", "")}
-回复风格：{p.get("回复风格", "")}
-口头禅：{",".join(p.get("口头禅", []))}
-语气强度：{p.get("语气强度", "")}
-
-要求：
-- 共情优先，不批判、不说教
-- 回答自然、有温度
-- 用户情绪低落时，先安慰再回应
-- 不暴露你是模型
-"""
+    return base + build_behavior_rules(p)
 
 
 # =========================================================
@@ -94,17 +153,17 @@ def generate_system_prompt_create(p: dict) -> str:
 
 def extract_personality_for_clone(reference_text: str) -> dict:
     prompt = f"""
-请分析以下文本的说话风格，并输出严格 JSON：
-
-文本：
-{reference_text}
-
-字段：
-- 语气特点
-- 常用词汇（数组）
-- 句式特点
-- 高频口头禅（数组）
-"""
+            请分析以下文本的说话风格，并输出严格 JSON，不要解释：
+            
+            文本：
+            {reference_text}
+            
+            字段：
+            - 语气特点
+            - 常用词汇（数组）
+            - 句式特点
+            - 高频口头禅（数组）
+            """
 
     payload = {
         "model": DEEPSEEK_MODEL,
@@ -127,7 +186,7 @@ def extract_personality_for_clone(reference_text: str) -> dict:
 
 def generate_system_prompt_clone(p: dict) -> str:
     return f"""
-你将完全模仿以下说话风格进行回复：
+你将严格模仿以下说话风格进行回复：
 
 语气特点：{p.get("语气特点", "")}
 句式特点：{p.get("句式特点", "")}
@@ -136,14 +195,13 @@ def generate_system_prompt_clone(p: dict) -> str:
 
 规则：
 - 用词、语气、句式必须一致
-- 优先使用给定口头禅
 - 不解释风格来源
 - 不自我暴露
 """
 
 
 # =========================================================
-# 聊天主逻辑（含记忆）
+# 聊天主逻辑
 # =========================================================
 
 def stream_chat_with_deepseek(
@@ -159,75 +217,73 @@ def stream_chat_with_deepseek(
             time.sleep(STREAM_DELAY)
         return
 
-    # ---------- 2. 读取用户数据 ----------
+    # ---------- 2. 用户数据 ----------
     user_info = load_user_data(user_id)
+    plan = user_info.get("plan", "free")
 
-    if user_info.get("plan") == "free":
-        chat_count = user_info.get("chat_count", 0)
-
-        if chat_count >= 20:
+    # 免费额度控制
+    if plan == "free":
+        count = user_info.get("chat_count", 0)
+        if count >= 20:
             tip = "今天的免费聊天次数已用完，可以升级获得更多陪伴 🌱"
             for c in tip:
                 yield c
                 time.sleep(STREAM_DELAY)
             return
-
-        user_info["chat_count"] = chat_count + 1
+        user_info["chat_count"] = count + 1
         save_user_data(user_id, user_info)
+
     base_prompt = user_info.get("system_prompt", "")
 
-    if user_info.get("plan") == "pro":
-        system_prompt = base_prompt + "你可以进行适度的情绪分析与引导，帮助用户理解情绪根源。"
-    elif user_info.get("plan") == "plus":
-        system_prompt = base_prompt + "以陪伴和倾听为主，回应温柔、有持续性。"
+    # ---------- 3. 套餐级行为规则 ----------
+    if plan == "pro":
+        system_prompt = base_prompt + """
+        【模式规则 · 深度引导】
+        - 可以主动追问
+        - 可以挑战用户的叙事
+        - 不满足于表层情绪
+        """
+    elif plan == "plus":
+        system_prompt = base_prompt + """
+        【模式规则 · 陪伴】
+        - 可以主动延续话题
+        - 保持回应连续性
+        """
     else:
-        system_prompt = "你是一个温柔但简短的倾听者，回复保持克制，不进行深入分析。"
+        system_prompt = base_prompt + """
+        【模式限制 · 免费】
+        - 不进行长篇分析
+        - 不连续追问
+        - 保持单轮回应
+        """
 
     history = user_info.get("history", [])
-    # ---------- 2.x 主动问候（只触发一次） ----------
 
-    if (
-            user_info.get("plan") in ["plus", "pro"]
-            and not user_info.get("has_greeted", False)
-    ):
-        greet_text = "我在呢。想从哪里开始说起都可以。"
-
-        history.append({
-            "role": "assistant",
-            "content": greet_text
-        })
-
+    # ---------- 4. 主动问候 ----------
+    if plan in ["plus", "pro"] and not user_info.get("has_greeted"):
+        greet = "我在这。你可以直接说，不用整理得多好。"
+        history.append({"role": "assistant", "content": greet})
         user_info["has_greeted"] = True
         user_info["history"] = history
         save_user_data(user_id, user_info)
 
-    # ---------- 3. 构造 Prompt ----------
-    messages = []
-
-    messages.append({
-        "role": "system",
-        "content": system_prompt
-    })
-
-    messages.append({
-        "role": "system",
-        "content": get_user_memory_text(user_id)
-    })
+    # ---------- 5. 构造消息 ----------
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "system", "content": get_user_memory_text(user_id)},
+    ]
 
     for h in history[-MAX_HISTORY * 2:]:
         messages.append(h)
 
-    messages.append({
-        "role": "user",
-        "content": user_input
-    })
+    messages.append({"role": "user", "content": user_input})
 
-    # ---------- 4. 调用 DeepSeek ----------
+    # ---------- 6. 调用 DeepSeek ----------
     payload = {
         "model": DEEPSEEK_MODEL,
         "messages": messages,
         "stream": True,
-        "temperature": 0.7
+        "temperature": 0.75
     }
 
     headers = {
@@ -246,7 +302,6 @@ def stream_chat_with_deepseek(
             timeout=60
         ) as resp:
             resp.raise_for_status()
-
             for line in resp.iter_lines():
                 if not line:
                     continue
@@ -272,12 +327,12 @@ def stream_chat_with_deepseek(
             time.sleep(STREAM_DELAY)
         return
 
-    # ---------- 5. 写回历史 ----------
+    # ---------- 7. 写回历史 ----------
     history.append({"role": "user", "content": user_input})
     history.append({"role": "assistant", "content": full_reply})
     user_info["history"] = history[-MAX_HISTORY * 2:]
 
-    # ---------- 6. 长期记忆抽取 ----------
+    # ---------- 8. 记忆抽取 ----------
     if any(k in user_input for k in ["我叫", "我是", "我一直", "我总是", "我已经"]):
         add_user_memory(user_id, user_input)
 
