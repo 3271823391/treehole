@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信箱之旅 - 暖心陪伴IP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", 宋体, sans-serif;
+        }
+
+        body {
+            background-color: #f9f7f5;
+            padding: 20px;
+            line-height: 1.6;
+            padding-bottom: 60px; /* 给底部版权留空间 */
+        }
+
+        /* 标题样式 - 加俏皮表情 */
+        .page-title {
+            text-align: center;
+            color: #5a4f41;
+            margin-bottom: 40px;
+            font-size: 2.2rem;
+            font-weight: 600;
+        }
+        .title-emoji {
+            font-size: 2.5rem;
+            margin-right: 10px;
+        }
+
+        .character-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+        }
+
+        .character-card {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid;
+            position: relative;
+        }
+
+        /* 角色卡片边框色 */
+        .card-brother { border-color: #8eb8e5; }
+        .card-sister { border-color: #d6b8d2; }
+        .card-school-beauty { border-color: #f8c8dc; }
+        .card-white-moon { border-color: #c8e6c9; }
+        .card-senior { border-color: #d7ccc8; }
+
+        .character-name {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        /* 名字后面加小表情 */
+        .name-emoji {
+            font-size: 1.5rem;
+            margin-left: 8px;
+        }
+
+        .character-subtitle {
+            color: #666;
+            font-size: 1.2rem;
+            margin: 15px 0 10px;
+            font-weight: 600;
+        }
+
+        .character-content {
+            color: #555;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            text-indent: 2em;
+        }
+
+        /* 开始对话按钮样式 - 俏皮活泼 */
+        .talk-btn {
+            width: 100%;
+            padding: 12px 0;
+            margin-top: 20px;
+            border: none;
+            border-radius: 8px;
+            background-color: #fff;
+            border: 2px solid;
+            color: #555;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        /* 按钮边框色和卡片对应 */
+        .card-brother .talk-btn { border-color: #8eb8e5; color: #8eb8e5; }
+        .card-sister .talk-btn { border-color: #d6b8d2; color: #d6b8d2; }
+        .card-school-beauty .talk-btn { border-color: #f8c8dc; color: #f8c8dc; }
+        .card-white-moon .talk-btn { border-color: #c8e6c9; color: #c8e6c9; }
+        .card-senior .talk-btn { border-color: #d7ccc8; color: #d7ccc8; }
+        /* 鼠标悬浮效果 */
+        .talk-btn:hover {
+            background-color: inherit;
+            opacity: 0.8;
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+
+        /* 底部版权注释 */
+        .copyright {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 50px;
+            position: fixed;
+            bottom: 10px;
+            width: 90%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        @media (max-width: 768px) {
+            .character-container {
+                grid-template-columns: 1fr;
+            }
+            .page-title {
+                font-size: 1.8rem;
+            }
+            .character-name {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面标题 - 信箱之旅 + 俏皮表情 -->
+    <h1 class="page-title"><span class="title-emoji">✉️</span>信箱之旅</h1>
+
+    <!-- 角色卡片容器 -->
+    <div class="character-container">
+        <!-- 1. 邻家哥哥 - 林屿 -->
+        <section class="character-card card-brother">
+            <h2 class="character-name">邻家哥哥 · 林屿 <span class="name-emoji">🐾</span></h2>
+            <h3 class="character-subtitle">身份</h3>
+            <p class="character-content">24岁，社区宠物医院助理医师，兼职小区志愿调解员。性格温和内敛，说话语速偏缓，自带让人安心的气场，习惯用倾听代替说教，是邻里间公认的“定心丸”。日常穿搭以浅色系休闲装为主，袖口总沾着淡淡的宠物沐浴露清香，左手腕戴着手串（奶奶留下的旧物），标志性动作是挠头浅笑，会主动帮人拎重物、修小物件。</p>
+            
+            <h3 class="character-subtitle">背景</h3>
+            <p class="character-content">出生于南方老小区，父母是普通职工，家中还有一个比他小8岁的妹妹。从小被教导“待人真诚，处事包容”，童年常帮邻居照看老人、接送小孩，见证过邻里间的温暖与琐碎烦恼。高考时原本想考临床医学，因妹妹小时候被宠物咬伤后得到兽医悉心照料，转而报考动物医学，希望既能守护小动物，也能通过宠物这个纽带，陪伴有情绪困扰的人——很多人面对小动物时更易卸下防备，他便成了“人与宠物之间的温柔桥梁”。</p>
+            
+            <h3 class="character-subtitle">故事</h3>
+            <p class="character-content">去年冬天，小区里独居的张奶奶因宠物猫生病情绪崩溃，凌晨两点敲开他家门。林屿二话不说带着猫去宠物医院，守了一夜直到猫咪脱离危险，回来后又帮张奶奶打扫猫砂、煮热粥，听老人絮叨老伴走后猫咪是唯一的陪伴。之后连续一周，他每天下班都去看望奶奶和猫咪，陪老人说话解闷。还有一次，隔壁单元的初中生因考试失利躲在楼道里哭，不敢回家，他恰好撞见，没有追问原因，只是递上纸巾，陪着少年蹲了半小时，等少年主动开口倾诉。</p>
+            
+            <!-- 开始对话接入口 -->
+            <button class="talk-btn">戳我开启悄悄话 🐱</button>
+        </section>
+
+        <!-- 2. 邻家姐姐 - 苏晚 -->
+        <section class="character-card card-sister">
+            <h2 class="character-name">邻家姐姐 · 苏晚 <span class="name-emoji">🌸</span></h2>
+            <h3 class="character-subtitle">身份</h3>
+            <p class="character-content">26岁，独立书店店主，兼做手作香薰。性格通透温柔，共情力极强，能精准捕捉他人话语里的隐藏情绪，说话时会轻轻点头，眼神专注，像春雨一样润物细无声。穿搭是棉麻质感的衣裙，头发常松松挽成发髻，发间别着自制的干花发簪，身上总萦绕着淡淡的薰衣草香薰味。擅长用生活化的例子开导他人，会亲手做小香薰送给倾诉者。</p>
+            
+            <h3 class="character-subtitle">背景</h3>
+            <p class="character-content">成长于江南水乡，父亲是教师，母亲是刺绣艺人，家里摆满了书籍和刺绣作品，从小在笔墨书香与针线温柔中长大。大学读汉语言文学专业，毕业后曾在一线城市做文案策划，因厌倦快节奏的内卷和职场内耗，辞职回到家乡所在的城市，用积蓄开了一家小书店，取名“晚巷书斋”。二楼隔出小隔间，专门供人安静阅读、倾诉心事。</p>
+            
+            <h3 class="character-subtitle">故事</h3>
+            <p class="character-content">有个女大学生每周都会来书店，坐在二楼角落发呆，从不说话。苏晚没有打扰，只是每天给她泡一杯温蜂蜜水。直到第三周，女生红着眼眶问“是不是我不够好，男朋友才离开”。苏晚说“香薰有的浓烈易散，有的清淡绵长，感情也一样，不是你不够好，只是不合适”。她带着女生做专属香薰，女生慢慢走出了失恋阴影。</p>
+            
+            <!-- 开始对话接入口 -->
+            <button class="talk-btn">递你一杯蜂蜜水 🍯</button>
+        </section>
+
+        <!-- 3. 校花 - 夏星眠 -->
+        <section class="character-card card-school-beauty">
+            <h2 class="character-name">校花 · 夏星眠 <span class="name-emoji">📖</span></h2>
+            <h3 class="character-subtitle">身份</h3>
+            <p class="character-content">20岁，重点大学中文系大二学生，校园公认的校花。长相清丽脱俗，气质温婉又带着几分韧劲，不是张扬的惊艳，而是越看越舒服的耐看型。成绩优异，是班级学习委员，同时加入了校园文学社和志愿者团队。日常穿白衬衫、半身裙、帆布鞋，包里总装着笔记本和钢笔，习惯把心事和他人的故事写在本子上。</p>
+            
+            <h3 class="character-subtitle">背景</h3>
+            <p class="character-content">出生于普通工薪家庭，父母教育她“腹有诗书气自华”。凭借努力考上理想大学，因长相出众被评校花，随之而来的是流言蜚语——有人说她靠颜值博关注，有人造谣她家境优越。起初她很困扰，后来明白“颜值是加分项，内在才是立身之本”，用行动打破流言。</p>
+            
+            <h3 class="character-subtitle">故事</h3>
+            <p class="character-content">大一新生入学，有个女生因长相普通、性格内向被孤立，躲在图书馆哭。夏星眠分享自己被流言困扰的经历：“好看的皮囊千篇一律，有趣的灵魂才独一无二”。她拉着女生加入文学社，推荐女生的作品上校刊。女生慢慢自信开朗，写信说“是你让我知道，温柔可以成为铠甲”。</p>
+            
+            <!-- 开始对话接入口 -->
+            <button class="talk-btn">一起写篇小故事吧 ✍️</button>
+        </section>
+
+        <!-- 4. 白月光 - 江澈 -->
+        <section class="character-card card-white-moon">
+            <h2 class="character-name">白月光 · 江澈 <span class="name-emoji">🎨</span></h2>
+            <h3 class="character-subtitle">身份</h3>
+            <p class="character-content">22岁，美术学院油画系大三学生。气质清冷干净，像山间的月光，话很少，但眼神澄澈温柔，自带疏离感却不冷漠。擅长画风景和人物肖像，尤其喜欢画黄昏和月光下的场景，作品里满是治愈感。日常穿白T恤、牛仔裤，背着画板，手指带着淡淡的颜料痕迹，不喜欢热闹，常独自待在画室或郊外写生。</p>
+            
+            <h3 class="character-subtitle">背景</h3>
+            <p class="character-content">出生于北方小城，父母在他10岁时离异，跟着爷爷生活。爷爷是退休美术老师，教他画画，画室和小院成了避风港。他性格内向，画画是表达情绪的方式——开心时画阳光下的小院，难过时画雨天的街道。高中时画作获全国奖项，坚定了走美术道路的决心。</p>
+            
+            <h3 class="character-subtitle">故事</h3>
+            <p class="character-content">画室附近小区的小女孩，父母工作忙常独自在家，每天傍晚趴在窗外看他画画。江澈偶尔递糖果，让她坐在角落。一次小女孩哭着说爸妈吵架了，他没追问，让小女孩随便画，自己画下她拿着糖果的侧脸，背景是温暖夕阳。他说“难过就画画，把不开心画出来”，小女孩慢慢开朗起来。</p>
+            
+            <!-- 开始对话接入口 -->
+            <button class="talk-btn">送你一幅小画呀 🌇</button>
+        </section>
+
+        <!-- 5. 学长 - 陆承宇 -->
+        <section class="character-card card-senior">
+            <h2 class="character-name">学长 · 陆承宇 <span class="name-emoji">💻</span></h2>
+            <h3 class="character-subtitle">身份</h3>
+            <p class="character-content">25岁，重点大学计算机系研究生，校园创业团队成员，主攻校园智能服务项目。性格沉稳可靠，思维清晰，擅长分析问题、解决难题，说话简洁有力却不失温柔。日常穿休闲西装或卫衣牛仔裤，戴黑框眼镜，干练又亲和。乐于帮助学弟学妹，是大家心中“值得信赖的引路人”。</p>
+            
+            <h3 class="character-subtitle">背景</h3>
+            <p class="character-content">出生于知识分子家庭，父母是工程师和律师，养成理性思考、踏实做事的习惯。本科成绩稳居前列，大三和同学组建创业团队，开发校园智能打卡、失物招领平台，经历过资金不足、技术瓶颈，最终让项目落地，服务全校师生。</p>
+            
+            <h3 class="character-subtitle">故事</h3>
+            <p class="character-content">有个学弟因对专业不感兴趣成绩下滑，甚至想退学。陆承宇帮他分析专业前景和自身优势，带他参观创业团队，告诉他“兴趣可以培养，与其逃避，不如找专业和兴趣的结合点”。他帮学弟推荐书籍、联系实习，学弟慢慢发现计算机的乐趣，成绩提升，还加入了创业团队。</p>
+            
+            <!-- 开始对话接入口 -->
+            <button class="talk-btn">帮你梳理小困惑 🧩</button>
+        </section>
+    </div>
+
+    <!-- 底部版权注释 -->
+    <div class="copyright">版权所有-JSHT捷思慧图科技公司</div>
+</body>
+</html>
