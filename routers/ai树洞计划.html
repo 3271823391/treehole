@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>轻语信箱 - 版本介绍 | 你的专属AI倾诉空间</title>
+    <style>
+        /* 全局样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
+
+        /* 页面背景与整体布局 */
+        body {
+            background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
+            min-height: 100vh;
+            color: #333;
+            padding: 20px;
+        }
+
+        /* 页面容器 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px 0;
+        }
+
+        /* 页面头部 */
+        .header {
+            text-align: center;
+            margin: 40px 0 60px;
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+            color: #5a67d8;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #666;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.8;
+        }
+
+        /* 版本卡片区域 */
+        .versions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 80px;
+        }
+
+        /* 版本卡片通用样式 */
+        .version-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+
+        .version-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        /* 版本标签 */
+        .version-tag {
+            padding: 12px 0;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.3rem;
+            color: white;
+            position: relative;
+        }
+
+        /* 不同版本的标签颜色 */
+        .tag-basic {
+            background: linear-gradient(90deg, #6b7280, #9ca3af);
+        }
+
+        .tag-evolution {
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        }
+
+        .tag-allround {
+            background: linear-gradient(90deg, #10b981, #34d399);
+        }
+
+        .tag-custom {
+            background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+        }
+
+        /* 版本内容区域 */
+        .version-content {
+            padding: 30px 25px;
+        }
+
+        .version-content h3 {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: #444;
+            display: flex;
+            align-items: center;
+        }
+
+        .version-content h3 i {
+            margin-right: 10px;
+            color: #5a67d8;
+        }
+
+        /* 功能列表 */
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: flex-start;
+            line-height: 1.6;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+
+        /* 版本亮点 */
+        .version-highlight {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #5a67d8;
+        }
+
+        .version-highlight p {
+            color: #555;
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        /* 行动按钮 */
+        .action-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-top: 30px;
+            text-align: center;
+            background-color: #5a67d8;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            text-decoration: none;
+        }
+
+        .action-btn:hover {
+            background-color: #4c51bf;
+        }
+
+        /* 底部引导 */
+        .footer-guide {
+            text-align: center;
+            margin: 60px 0 40px;
+            padding: 30px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        }
+
+        .footer-guide h2 {
+            color: #5a67d8;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .footer-guide p {
+            color: #666;
+            max-width: 800px;
+            margin: 0 auto 30px;
+            line-height: 1.8;
+        }
+
+        .footer-guide .start-btn {
+            display: inline-block;
+            padding: 18px 40px;
+            background: linear-gradient(90deg, #5a67d8, #818cf8);
+            color: white;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(90, 103, 216, 0.3);
+            transition: transform 0.2s ease;
+        }
+
+        .footer-guide .start-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 0.9rem;
+            margin-top: 60px;
+            padding: 20px 0;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .header {
+                margin: 20px 0 40px;
+            }
+            
+            .versions {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .version-card {
+                margin: 0 10px;
+            }
+            
+            .footer-guide h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 页面头部 -->
+        <div class="header">
+            <h1>轻语信箱 - 版本介绍</h1>
+            <p>选择最适合你的信箱版本，让AI成为你最贴心的倾听者。<br>从基础的情绪陪伴到深度的心理疏导，总有一款适合你。</p>
+        </div>
+
+        <!-- 版本介绍区域 -->
+        <div class="versions">
+            <!-- 普通版 -->
+            <div class="version-card">
+                <div class="version-tag tag-basic">普通版</div>
+                <div class="version-content">
+                    <h3>🌱 基础情绪陪伴</h3>
+                    <ul class="feature-list">
+                        <li>7x24小时在线倾听，无时长限制</li>
+                        <li>基础情绪识别与回应</li>
+                        <li>文字形式的单向倾诉</li>
+                        <li>无广告干扰的纯净体验</li>
+                        <li>简单的情绪分析报告</li>
+                    </ul>
+                    <div class="version-highlight">
+                        <p><strong>适合人群：</strong>初次尝试AI信箱，仅需基础情绪陪伴的用户</p>
+                    </div>
+                    <a href="#basic" class="action-btn">立即体验</a>
+                </div>
+            </div>
+
+            <!-- 进化版 -->
+            <div class="version-card">
+                <div class="version-tag tag-evolution">进化版</div>
+                <div class="version-content">
+                    <h3>🌿 深度情感交流</h3>
+                    <ul class="feature-list">
+                        <li>包含普通版全部功能</li>
+                        <li>多轮对话的情感跟进</li>
+                        <li>个性化的情绪疏导建议</li>
+                        <li>按次收费语音克隆服务</li>
+                        <li>常见心理问题解答库</li>
+                    </ul>
+                    <div class="version-highlight">
+                        <p><strong>适合人群：</strong>需要深度情感交流，想体验基础语音克隆的用户</p>
+                    </div>
+                    <a href="#evolution" class="action-btn">立即体验</a>
+                </div>
+            </div>
+
+            <!-- 全能版 -->
+            <div class="version-card">
+                <div class="version-tag tag-allround">全能版</div>
+                <div class="version-content">
+                    <h3>🌳 专业心理支持</h3>
+                    <ul class="feature-list">
+                        <li>包含进化版全部功能</li>
+                        <li>专业心理量表测评</li>
+                        <li>定制化的情绪管理方案</li>
+                        <li>一对一专属AI心理顾问</li>
+                        <li>隐私加密的云端数据存储</li>
+                        <li>加强版语音克隆套餐</li>
+                    </ul>
+                    <div class="version-highlight">
+                        <p><strong>适合人群：</strong>有长期心理陪伴需求，需要高阶语音克隆的用户</p>
+                    </div>
+                    <a href="#allround" class="action-btn">立即体验</a>
+                </div>
+            </div>
+
+            <!-- 特殊定制版 -->
+            <div class="version-card">
+                <div class="version-tag tag-custom">特殊定制版</div>
+                <div class="version-content">
+                    <h3>🎯 专属定制服务</h3>
+                    <ul class="feature-list">
+                        <li>包含全能版全部功能</li>
+                        <li>读取聊天记录定制专属AI形象</li>
+                        <li>定制那个他/她的专属声音（语音克隆）</li>
+                        <li>定制化的心理疗愈方案</li>
+                        <li>紧急心理干预通道</li>
+                        <li>多场景适配的陪伴模式</li>
+                    </ul>
+                    <div class="version-highlight">
+                        <p><strong>适合人群：</strong>想定制专属AI形象和声音，复刻那个他/她的用户</p>
+                    </div>
+                    <a href="#custom" class="action-btn">立即体验</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部引导区域 -->
+        <div class="footer-guide">
+            <h2>准备好开始你的信箱之旅了吗？</h2>
+            <p>无论你处于人生的哪个阶段，无论你有什么样的情绪需要倾诉，轻语信箱都能为你提供最温暖的陪伴。<br>从普通版开始，体验AI带来的暖心陪伴，根据需求随时升级。</p>
+            <a href="#start" class="start-btn">立即进入轻语信箱</a>
+        </div>
+
+        <!-- 页脚 -->
+        <div class="footer">
+            <p>轻语信箱 © 2026 | 你的情绪，值得被认真对待 | 隐私保障 · 安全加密 | 版权所有-JSHT捷思慧图科技公司</p>
+        </div>
+    </div>
+
+    <script>
+document.querySelectorAll('.action-btn, .start-btn').forEach(btn => {
+    btn.addEventListener('click', function (e) {
+        e.preventDefault();
+
+    const href = this.getAttribute('href');
+    let message = '';
+    let plan = 'free'; // 默认
+
+        switch (href) {
+            case '#basic':
+                message = '即将进入普通版轻语信箱～';
+                plan = 'free';
+                break;
+            case '#evolution':
+                message = '即将进入进化版轻语信箱～';
+                plan = 'plus';
+                break;
+            case '#allround':
+                message = '即将进入全能版轻语信箱～';
+                plan = 'pro';
+                break;
+            case '#custom':
+                message = '即将进入定制咨询服务～';
+                plan = 'pro';
+                break;
+            case '#start':
+                message = '欢迎进入轻语信箱～';
+                plan = 'free';
+                break;
+            default:
+                message = '正在进入轻语信箱...';
+        }
+
+    alert(message);
+
+    window.location.href = `/page?plan=${plan}`;
+  });
+});
+</script>
+
+</body>
+</html>
