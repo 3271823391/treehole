@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>与江澈聊天 - 信箱之旅</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", 宋体, sans-serif;
+        }
+        body {
+            background-color: #f9f7f5;
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+        .chat-header {
+            background-color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .back-btn {
+            font-size: 1.2rem;
+            color: #5a4f41;
+            cursor: pointer;
+        }
+        .chat-title {
+            font-size: 1.2rem;
+            color: #333;
+            font-weight: 600;
+        }
+        .role-tag {
+            font-size: 0.8rem;
+            color: #999;
+            margin-left: 8px;
+        }
+        .chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px 15px;
+        }
+        .message {
+            display: flex;
+            margin-bottom: 25px;
+            max-width: 85%;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #eee;
+            margin-right: 10px;
+            flex-shrink: 0;
+            /* 江澈头像接口：替换为实际URL */
+            /* background-image: url('江澈头像地址'); */
+            /* background-size: cover; */
+        }
+        .role-message {
+            flex-direction: row;
+        }
+        .role-message .message-content {
+            background-color: #fff;
+            border: 1px solid #c8e6c9;
+            color: #555;
+            border-radius: 0 12px 12px 12px;
+            padding: 12px 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+        }
+        .role-name {
+            font-size: 0.8rem;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        .user-message {
+            flex-direction: row-reverse;
+            margin-left: auto;
+        }
+        .user-message .avatar {
+            margin-right: 0;
+            margin-left: 10px;
+            /* 用户头像接口 */
+        }
+        .user-message .message-content {
+            background-color: #c8e6c9;
+            color: #fff;
+            border-radius: 12px 0 12px 12px;
+            padding: 12px 15px;
+        }
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #fff;
+            padding: 10px 15px;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .message-input {
+            flex: 1;
+            height: 45px;
+            border: 1px solid #eee;
+            border-radius: 22px;
+            padding: 0 15px;
+            font-size: 1rem;
+            outline: none;
+            resize: none;
+            line-height: 45px;
+        }
+        .send-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background-color: #c8e6c9;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+        .send-btn:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+        @media (max-width: 768px) {
+            .chat-container {
+                padding: 15px 10px;
+            }
+            .avatar {
+                width: 35px;
+                height: 35px;
+            }
+            .message-content {
+                font-size: 0.9rem;
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-header">
+        <div class="back-btn">←</div>
+        <div>
+            <div class="chat-title">江澈 <span class="role-tag">易碎感+保护欲拉满</span></div>
+        </div>
+    </div>
+
+    <div class="chat-container" id="chatContent">
+        <div class="message role-message">
+            <div class="avatar" style="background-color: #c8e6c9;"></div>
+            <div class="message-wrapper">
+                <div class="role-name">江澈</div>
+                <div class="message-content">
+                    是不是受委屈啦？😥 没关系的，我在这里呢～不管什么事，我都会陪着你，别害怕，我来保护你好不好？
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" class="message-input" id="messageInput" placeholder="输入想对江澈说的话...">
+        <button class="send-btn" id="sendBtn">🎨</button>
+    </div>
+
+    <script>
+        const chatContent = document.getElementById('chatContent');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function sendMessage() {
+            const inputText = messageInput.value.trim();
+            if (!inputText) return;
+
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user-message';
+            userMessage.innerHTML = `
+                <div class="avatar" style="background-color: #888;"></div>
+                <div class="message-content">${inputText}</div>
+            `;
+            chatContent.appendChild(userMessage);
+            messageInput.value = '';
+
+            setTimeout(() => {
+                const roleReply = document.createElement('div');
+                roleReply.className = 'message role-message';
+                roleReply.innerHTML = `
+                    <div class="avatar" style="background-color: #c8e6c9;"></div>
+                    <div class="message-wrapper">
+                        <div class="role-name">江澈</div>
+                        <div class="message-content">
+                            别难过啦～我把攒的零花钱给你买了糖果和画笔，画个彩虹好不好？🌈 不管发生什么，我都会在你身边的，我不累，能保护你就好 💛
+                        </div>
+                    </div>
+                `;
+                chatContent.appendChild(roleReply);
+                chatContent.scrollTop = chatContent.scrollHeight;
+            }, 1000);
+
+            chatContent.scrollTop = chatContent.scrollHeight;
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
