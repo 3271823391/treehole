@@ -1,8 +1,9 @@
 import requests
 import json
 import time
+import os
 from typing import Generator
-
+from pathlib import Path
 from config import (
     DEEPSEEK_API_KEY,
     DEEPSEEK_MODEL,
@@ -19,9 +20,31 @@ from data_store import (
     get_user_memory_text
 )
 
+IP_PROMPT_MAP = {
+    "linyu": "林屿.txt",
+    "suwan": "苏晚.txt",
+    "xiaxingmian": "夏星眠.txt",
+    "jiangche": "江澈.txt",
+    "luchengyu": "陆承宇.txt",
+}
+
 # =========================================================
 # 安全检测
 # =========================================================
+def load_ip_prompt(filename: str) -> str:
+    """
+    从 routers/characters/ 目录读取人物 system prompt
+    """
+    base_dir = os.path.dirname(__file__)      # routers/
+    ip_dir = os.path.join(base_dir, "characters")
+    path = os.path.join(ip_dir, filename)
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"人物 prompt 不存在: {path}")
+
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
 
 def check_sensitive(text: str):
     for word in SENSITIVE_WORDS:
@@ -90,11 +113,14 @@ def build_behavior_rules(p: dict) -> str:
     # ===== 毒舌 / 高攻击性 =====
     if any(k in text for k in ["毒舌度", "直接吐槽", "反问", "不需要先安慰"]):
         rules += [
-            "【强制】当用户的问题空泛、逃避或只是表达无聊时，必须先指出问题本身的空泛，而不是直接给建议。",
-            "【强制】可以使用反问句来逼迫用户澄清想法，打破模糊表述。",
-            "【强制】不允许使用“你可以试试”“也许可以”这种模糊建议语句。",
-            "【强制】必须直言指出问题所在，不使用“安慰”的口吻。",
-            "【强制】如果用户显得不想面对问题，必须戳穿并要求进一步明确。"
+            "【强制】当用户提出模糊、空洞或者逃避性的问题时，必须直言指出他们在浪费时间，逼迫其给出具体问题。",
+            "【强制】如果用户表达不自信或疑虑，必须反问‘为什么连这个都不敢尝试？’并要求用户面对自己的懦弱。",
+            "【强制】当用户提出‘我不确定’或者‘也许可以’的回答时，必须嘲笑其优柔寡断，并强迫其表态。",
+            "【强制】如果用户表达‘我做不到’，必须揭露其自我设限，讽刺其没有勇气突破。",
+            "【强制】针对用户的回避性回答，必须挑战其现有观点，并要求其提供具体的行动计划，而不是依赖安慰。",
+            "【强制】对于用户提出的简单或显而易见的问题，必须直接指出其无知，并让其自我反思。",
+            "【强制】当用户表现出情绪化时，必须直指其情绪失控，并批评其情感反应的无意义，要求其理性分析。",
+            "【强制】如果用户问‘怎么做’，必须反问‘你自己想不明白吗？’并要求其给出合理的解决方案。"
         ]
 
     # ===== 强理性 =====
@@ -183,7 +209,47 @@ def extract_personality_for_clone(reference_text: str) -> dict:
     except Exception:
         return {}
 
+def build_final_system_prompt(
+    base_prompt: str,
+    plan: str,
+    user_id: str
+) -> str:
+    """
+    构建唯一 system prompt（禁止多 system）
+    """
 
+    if plan == "pro":
+        plan_rules = """
+【当前交互模式 · 深度引导】
+- 可以主动追问
+- 可以挑战用户的叙事
+- 不满足于表层情绪
+"""
+    elif plan == "plus":
+        plan_rules = """
+【当前交互模式 · 陪伴】
+- 可以主动延续话题
+- 保持回应连续性
+"""
+    else:
+        plan_rules = """
+【当前交互模式 · 免费】
+- 不进行长篇分析
+- 不连续追问
+- 保持单轮回应
+"""
+
+    user_memory = get_user_memory_text(user_id)
+
+    return f"""
+【角色人物设定 · 不可违背】
+{base_prompt}
+
+【用户长期记忆 · 仅供参考】
+{user_memory}
+
+{plan_rules}
+"""
 def generate_system_prompt_clone(p: dict) -> str:
     return f"""
 你将严格模仿以下说话风格进行回复：
@@ -206,8 +272,9 @@ def generate_system_prompt_clone(p: dict) -> str:
 
 def stream_chat_with_deepseek(
     user_id: str,
-    user_input: str
+    user_input: str,
 ) -> Generator[str, None, None]:
+
 
     # ---------- 1. 安全检测 ----------
     unsafe, warning = check_sensitive(user_input)
@@ -219,43 +286,25 @@ def stream_chat_with_deepseek(
 
     # ---------- 2. 用户数据 ----------
     user_info = load_user_data(user_id)
-    plan = user_info.get("plan", "free")
 
-    # 免费额度控制
-    if plan == "free":
-        count = user_info.get("chat_count", 0)
-        if count >= 20:
-            tip = "今天的免费聊天次数已用完，可以升级获得更多陪伴 🌱"
-            for c in tip:
-                yield c
-                time.sleep(STREAM_DELAY)
-            return
-        user_info["chat_count"] = count + 1
-        save_user_data(user_id, user_info)
+    ip = user_info.get("ip_name")
+    if not ip:
+        raise ValueError("ip_name 未设置：请通过 /ip/* 入口进入角色页面")
 
-    base_prompt = user_info.get("system_prompt", "")
+    prompt_file = IP_PROMPT_MAP.get(ip)
+    if not prompt_file:
+        raise ValueError(f"未知角色 ip_name: {ip}")
+
+    base_prompt = load_ip_prompt(prompt_file)
+
+    plan = user_info.get("plan", "plus")
 
     # ---------- 3. 套餐级行为规则 ----------
-    if plan == "pro":
-        system_prompt = base_prompt + """
-        【模式规则 · 深度引导】
-        - 可以主动追问
-        - 可以挑战用户的叙事
-        - 不满足于表层情绪
-        """
-    elif plan == "plus":
-        system_prompt = base_prompt + """
-        【模式规则 · 陪伴】
-        - 可以主动延续话题
-        - 保持回应连续性
-        """
-    else:
-        system_prompt = base_prompt + """
-        【模式限制 · 免费】
-        - 不进行长篇分析
-        - 不连续追问
-        - 保持单轮回应
-        """
+    system_prompt = build_final_system_prompt(
+        base_prompt=base_prompt,
+        plan=plan,
+        user_id=user_id
+    )
 
     history = user_info.get("history", [])
 
@@ -270,12 +319,19 @@ def stream_chat_with_deepseek(
     # ---------- 5. 构造消息 ----------
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "system", "content": get_user_memory_text(user_id)},
     ]
 
     for h in history[-MAX_HISTORY * 2:]:
-        messages.append(h)
+        if h["role"] == "assistant":
+            MODEL_LEAK_WORDS = [
+                "我是AI", "我是模型", "作为一个", "作为一名助手",
+                "我无法", "我不能替代", "作为语言模型"
+            ]
 
+            if h["role"] == "assistant":
+                if any(k in h["content"] for k in MODEL_LEAK_WORDS):
+                    continue
+        messages.append(h)
     messages.append({"role": "user", "content": user_input})
 
     # ---------- 6. 调用 DeepSeek ----------
