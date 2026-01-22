@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>与林屿哥哥聊天 - 信箱之旅</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", 宋体, sans-serif;
+        }
+        body {
+            background-color: #f9f7f5;
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+        .chat-header {
+            background-color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .back-btn {
+            font-size: 1.2rem;
+            color: #5a4f41;
+            cursor: pointer;
+        }
+        .chat-title {
+            font-size: 1.2rem;
+            color: #333;
+            font-weight: 600;
+        }
+        .role-tag {
+            font-size: 0.8rem;
+            color: #999;
+            margin-left: 8px;
+        }
+        .chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px 15px;
+        }
+        .message {
+            display: flex;
+            margin-bottom: 25px;
+            max-width: 85%;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #eee;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .role-message {
+            flex-direction: row;
+        }
+        .role-message .message-content {
+            background-color: #fff;
+            border: 1px solid #8eb8e5;
+            color: #555;
+            border-radius: 0 12px 12px 12px;
+            padding: 12px 15px;
+        }
+        .role-name {
+            font-size: 0.8rem;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        .user-message {
+            flex-direction: row-reverse;
+            margin-left: auto;
+        }
+        .user-message .avatar {
+            margin-left: 10px;
+        }
+        .user-message .message-content {
+            background-color: #8eb8e5;
+            color: #fff;
+            border-radius: 12px 0 12px 12px;
+            padding: 12px 15px;
+        }
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #fff;
+            padding: 10px 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .message-input {
+            flex: 1;
+            height: 45px;
+            border: 1px solid #eee;
+            border-radius: 22px;
+            padding: 0 15px;
+            font-size: 1rem;
+            outline: none;
+        }
+        .send-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background-color: #8eb8e5;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+
+<body>
+<div class="chat-header">
+    <div class="back-btn">←</div>
+    <div class="chat-title">
+        林屿哥哥 <span class="role-tag">偏执占有欲+主控欲+家境优渥</span>
+    </div>
+</div>
+
+<div class="chat-container" id="chatContent">
+    <div class="message role-message">
+        <div class="avatar" style="background-color:#8eb8e5;"></div>
+        <div>
+            <div class="role-name">林屿</div>
+            <div class="message-content">
+                别想着逃哦，你的生活，哥哥都帮你安排好了。不管是住的地方，还是工作，有我在，你只要乖乖待着就好～
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="input-area">
+    <input id="messageInput" class="message-input" placeholder="输入想对林屿哥哥说的话..." />
+    <button id="sendBtn" class="send-btn">🐾</button>
+</div>
+
+<script>
+const chatContent = document.getElementById('chatContent');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+
+async function sendMessage() {
+    const inputText = messageInput.value.trim();
+    if (!inputText) return;
+
+    // 1. 用户气泡
+    const userMessage = document.createElement('div');
+    userMessage.className = 'message user-message';
+    userMessage.innerHTML = `
+        <div class="avatar" style="background-color: #888;"></div>
+        <div class="message-content">${inputText}</div>
+    `;
+    chatContent.appendChild(userMessage);
+    messageInput.value = '';
+    chatContent.scrollTop = chatContent.scrollHeight;
+
+    let roleMessage = null;
+    let contentDiv = null;
+    let hasStarted = false;
+
+    try {
+        const res = await fetch('/chat_stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: 'web_user',
+                user_input: inputText
+            })
+        });
+
+        if (!res.ok || !res.body) {
+            throw new Error('stream failed');
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            const text = decoder.decode(value, { stream: true });
+            if (!text) continue;
+
+            // 关键点：第一次读到内容时才创建林屿气泡
+            if (!hasStarted) {
+                hasStarted = true;
+                roleMessage = document.createElement('div');
+                roleMessage.className = 'message role-message';
+                roleMessage.innerHTML = `
+                    <div class="avatar" style="background-color: #8eb8e5;"></div>
+                    <div class="message-wrapper">
+                        <div class="role-name">林屿</div>
+                        <div class="message-content"></div>
+                    </div>
+                `;
+                contentDiv = roleMessage.querySelector('.message-content');
+                chatContent.appendChild(roleMessage);
+            }
+
+            contentDiv.textContent += text;
+            chatContent.scrollTop = chatContent.scrollHeight;
+        }
+
+    } catch (e) {
+        // 只有真的失败才显示错误
+        const err = document.createElement('div');
+        err.className = 'message role-message';
+        err.innerHTML = `
+            <div class="avatar" style="background-color: #8eb8e5;"></div>
+            <div class="message-wrapper">
+                <div class="role-name">林屿</div>
+                <div class="message-content">出错了，哥哥不太高兴。</div>
+            </div>
+        `;
+        chatContent.appendChild(err);
+        chatContent.scrollTop = chatContent.scrollHeight;
+    }
+}
+
+sendBtn.addEventListener('click', sendMessage);
+messageInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMessage();
+});
+</script>
+
+</body>
+</html>
