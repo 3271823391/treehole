@@ -12,7 +12,10 @@
             font-family: "Microsoft YaHei", 宋体, sans-serif;
         }
         body {
-            background-color: #f9f7f5;
+            background-image: url("/static/backgrounds/linyu.png");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
             line-height: 1.6;
             padding-bottom: 80px;
         }
@@ -44,8 +47,10 @@
         }
         .chat-container {
             max-width: 800px;
-            margin: 0 auto;
+            margin: 20px auto;
             padding: 20px 15px;
+            background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
         }
         .message {
             display: flex;
@@ -56,7 +61,8 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background-color: #eee;
+            background-size: cover;
+            background-position: center;
             margin-right: 10px;
             flex-shrink: 0;
         }
@@ -130,7 +136,10 @@
 
 <div class="chat-container" id="chatContent">
     <div class="message role-message">
-        <div class="avatar" style="background-color:#8eb8e5;"></div>
+        <div class="avatar"
+             style="background-image: url('/static/avatars/linyu.png');">
+        </div>
+
         <div>
             <div class="role-name">林屿</div>
             <div class="message-content">
@@ -199,7 +208,10 @@ async function sendMessage() {
                 roleMessage = document.createElement('div');
                 roleMessage.className = 'message role-message';
                 roleMessage.innerHTML = `
-                    <div class="avatar" style="background-color: #8eb8e5;"></div>
+                    <div class="avatar"
+                         style="background-image: url('/static/avatars/linyu.png');">
+                    </div>
+
                     <div class="message-wrapper">
                         <div class="role-name">林屿</div>
                         <div class="message-content"></div>
@@ -228,6 +240,7 @@ async function sendMessage() {
         chatContent.scrollTop = chatContent.scrollHeight;
     }
 }
+
 
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keydown', e => {
