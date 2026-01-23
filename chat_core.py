@@ -287,6 +287,7 @@ def stream_chat_with_deepseek(
     # ---------- 2. 用户数据 ----------
     user_info = load_user_data(user_id)
     ip = user_info.get("ip_name")
+
     DEFAULT_TREEHOLE_PROMPT = "你是一个匿名树洞，只负责倾听与回应，不绑定任何角色。"
 
     if ip:
@@ -295,10 +296,10 @@ def stream_chat_with_deepseek(
         if not prompt_file:
             raise ValueError(f"未知角色 ip_name: {ip}")
 
-        system_prompt = load_ip_prompt(prompt_file)
+        base_prompt = load_ip_prompt(prompt_file)
     else:
         # ===== 自由树洞模式 =====
-        system_prompt = DEFAULT_TREEHOLE_PROMPT
+        base_prompt = DEFAULT_TREEHOLE_PROMPT
 
     plan = user_info.get("plan", "plus")
 
