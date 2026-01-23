@@ -5,7 +5,7 @@ load_dotenv()
 
 # DeepSeek API配置
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/chat/completions")
 
 # 服务器配置
@@ -32,4 +32,5 @@ STREAM_DELAY = 0.05  # 流式输出字间隔（秒）
 
 # 关键：新增进度存储全局字典（修复导入错误的核心）
 customize_progress = {}
+
 
