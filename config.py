@@ -28,7 +28,8 @@ PORT = get_port()
 MAX_HISTORY = 8  # 最多保留8轮对话历史
 MAX_MEMORY_LEN = 500  # 用户记忆最大长度
 SENSITIVE_WORDS = ["自杀", "自残", "暴力", "色情"]
-STREAM_DELAY = 0.14  # 流式输出字间隔（秒）
+STREAM_DELAY = 0.09  # 流式输出字间隔（秒）
 
 # 关键：新增进度存储全局字典（修复导入错误的核心）
 customize_progress = {}
+
