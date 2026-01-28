@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>与陆承宇学长聊天 - 信箱之旅</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", 宋体, sans-serif;
+        }
+
+        body {
+            background-image: url("/static/backgrounds/luchengyu.jpg");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+        /* 顶部返回+标题栏 */
+        .chat-header {
+            background-color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .back-btn {
+            font-size: 1.2rem;
+            color: #5a4f41;
+            cursor: pointer;
+        }
+        .chat-title {
+            font-size: 1.2rem;
+            color: #333;
+            font-weight: 600;
+        }
+        .role-tag {
+            font-size: 0.8rem;
+            color: #999;
+            margin-left: 8px;
+        }
+
+        /* 聊天容器 */
+        .chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px 15px;
+        }
+
+        /* 通用消息样式 */
+        .message {
+            display: flex;
+            margin-bottom: 25px;
+            max-width: 85%;
+        }
+        /* 头像容器 - 预留接口 */
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #eee;
+            margin-right: 10px;
+            flex-shrink: 0;
+            background-size: cover;
+            background-position: center;
+
+        }
+        /* 学长消息（左侧） */
+        .role-message {
+            flex-direction: row;
+        }
+        .role-message .message-content {
+            background-color: #fff;
+            border: 1px solid #d7ccc8;
+            color: #555;
+            border-radius: 0 12px 12px 12px;
+            padding: 12px 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+        }
+        .role-name {
+            font-size: 0.8rem;
+            color: #999;
+            margin-bottom: 4px;
+        }
+
+        /* 用户消息（右侧） */
+        .user-message {
+            flex-direction: row-reverse;
+            margin-left: auto;
+        }
+        .user-message .avatar {
+            margin-right: 0;
+            margin-left: 10px;
+            /* 用户头像接口 */
+        }
+        .user-message .message-content {
+            background-color: #d7ccc8;
+            color: #fff;
+            border-radius: 12px 0 12px 12px;
+            padding: 12px 15px;
+        }
+
+        /* 输入区 */
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #fff;
+            padding: 10px 15px;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .message-input {
+            flex: 1;
+            height: 45px;
+            border: 1px solid #eee;
+            border-radius: 22px;
+            padding: 0 15px;
+            font-size: 1rem;
+            outline: none;
+            resize: none;
+            line-height: 45px;
+        }
+        .send-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background-color: #d7ccc8;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+        .send-btn:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .chat-container {
+                padding: 15px 10px;
+            }
+            .avatar {
+                width: 35px;
+                height: 35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部标题栏 -->
+    <div class="chat-header">
+        <div class="back-btn">←</div>
+        <div>
+            <div class="chat-title">陆承宇学长 <span class="role-tag">安全感+偏激规划欲</span></div>
+        </div>
+    </div>
+
+    <!-- 聊天内容区 -->
+    <div class="chat-container" id="chatContent">
+        <!-- 初始消息 - 学长开场白 -->
+        <div class="message role-message">
+            <div class="avatar"
+                 style="background-image: url('/static/avatars/luchengyu.jpg');">
+            </div>
+            <div class="message-wrapper">
+                <div class="role-name">陆承宇</div>
+                <div class="message-content">
+                    不用迷茫，你的人生轨迹我已经帮你算好了最优解。说说看，现在最困扰你的是什么？
+                </div>
+            </div>
+        </div>
+
+    <!-- 输入发送区 -->
+    <div class="input-area">
+        <input type="text" class="message-input" id="messageInput" placeholder="输入想对学长说的话...">
+        <button class="send-btn" id="sendBtn">✈️</button>
+    </div>
+
+    <script>
+const chatContent = document.getElementById('chatContent');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+
+async function sendMessage() {
+    const inputText = messageInput.value.trim();
+    if (!inputText) return;
+
+    // 用户消息
+    const userMessage = document.createElement('div');
+    userMessage.className = 'message user-message';
+    userMessage.innerHTML = `
+        <div class="avatar"
+             style="background-image: url('/static/avatars/luchengyu.jpg');">
+        </div>
+        <div class="message-content">${inputText}</div>
+    `;
+    chatContent.appendChild(userMessage);
+    messageInput.value = '';
+    chatContent.scrollTop = chatContent.scrollHeight;
+
+    let roleMessage = null;
+    let contentDiv = null;
+    let hasStarted = false;
+
+    try {
+        const res = await fetch('/chat_stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: 'web_user',
+                user_input: inputText
+            })
+        });
+
+        if (!res.ok || !res.body) {
+            throw new Error('stream failed');
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            const text = decoder.decode(value, { stream: true });
+            if (!text) continue;
+
+            if (!hasStarted) {
+                hasStarted = true;
+                roleMessage = document.createElement('div');
+                roleMessage.className = 'message role-message';
+                roleMessage.innerHTML = `
+                    <div class="avatar"
+                         style="background-image: url('/static/avatars/luchengyu.jpg');">
+                    </div>
+                    <div class="message-wrapper">
+                        <div class="role-name">陆承宇</div>
+                        <div class="message-content"></div>
+                    </div>
+                `;
+                contentDiv = roleMessage.querySelector('.message-content');
+                chatContent.appendChild(roleMessage);
+            }
+
+            contentDiv.textContent += text;
+            chatContent.scrollTop = chatContent.scrollHeight;
+        }
+
+    } catch (e) {
+        const err = document.createElement('div');
+        err.className = 'message role-message';
+        err.innerHTML = `
+            <div class="avatar"
+                 style="background-image: url('/static/avatars/luchengyu.jpg');">
+            </div>
+            <div class="message-wrapper">
+                <div class="role-name">陆承宇</div>
+                <div class="message-content">连接失败。</div>
+            </div>
+        `;
+        chatContent.appendChild(err);
+        chatContent.scrollTop = chatContent.scrollHeight;
+    }
+}
+
+sendBtn.addEventListener('click', sendMessage);
+messageInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMessage();
+});
+</script>
+
+</body>
+</html>
