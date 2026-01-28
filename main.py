@@ -1,9 +1,8 @@
 from config import HOST, PORT
-from routers import page, customize, chat
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from routers import page,chat,emotion
 import os
-
 app = FastAPI(title="DeepSeek虚拟树洞（精致版）")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -17,10 +16,8 @@ app.mount(
     StaticFiles(directory=STATIC_DIR),
     name="static"
 )
-
-from routers import page, customize, chat
+app.include_router(emotion.router)
 app.include_router(page.router)
-app.include_router(customize.router)
 app.include_router(chat.router)
 
 def run_api():
