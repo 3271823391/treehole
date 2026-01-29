@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心灵避风港 - 小盈陪你说心里话</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
+
+        body {
+            background-color: #f0f7ff;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding-bottom: 40px; /* 为底部版权预留空间 */
+        }
+
+        /* 顶部导航栏 - 移除AI树洞，简化文字 */
+        .header {
+            background: linear-gradient(90deg, #4a90e2, #5ba0f2);
+            color: #fff;
+            padding: 1rem 2rem;
+            text-align: center;
+            box-shadow: 0 3px 15px rgba(74, 144, 226, 0.25);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.95;
+            margin-top: 0.4rem;
+        }
+
+        /* 主容器 - 重构布局，聊天框占主体 */
+        .main-container {
+            flex: 1;
+            display: flex;
+            max-width: 1400px;
+            margin: 1.2rem auto;
+            padding: 0 1rem;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+        }
+
+        /* 聊天区域 - 提升占比，主体视觉 */
+        .chat-section {
+            flex: 4; /* 聊天区占4份，侧边栏占1份，主体更突出 */
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* 聊天窗口 - 优化内边距和阴影 */
+        .chat-window {
+            flex: 1;
+            background-color: #fff;
+            border-radius: 16px;
+            padding: 1.2rem 1.5rem;
+            box-shadow: 0 0 25px rgba(74, 144, 226, 0.08);
+            overflow-y: auto;
+            min-height: 450px;
+            max-height: 650px;
+        }
+
+        /* 滚动条美化升级 */
+        .chat-window::-webkit-scrollbar {
+            width: 7px;
+        }
+        .chat-window::-webkit-scrollbar-thumb {
+            background-color: #c1d9ff;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        .chat-window::-webkit-scrollbar-thumb:hover {
+            background-color: #a3c1ff;
+        }
+        .chat-window::-webkit-scrollbar-track {
+            background-color: #f8fbff;
+        }
+
+        /* 消息容器 - 包含头像+气泡，关键布局 */
+        .msg-container {
+            max-width: 80%;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: flex-end;
+            gap: 0.8rem;
+        }
+
+        /* 头像样式 - 双方专属，圆形带边框 */
+        .msg-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            border: 2px solid #f0f7ff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        /* 用户头像 - 右侧消息，蓝色系 */
+        .user-avatar {
+            background-color: #4a90e2;
+            color: #fff;
+        }
+        /* 小盈头像 - 左侧消息，浅蓝系 */
+        .ai-avatar {
+            background-color: #e8f4ff;
+            color: #4a90e2;
+        }
+
+        /* 消息气泡通用 - 优化内边距和圆角 */
+        .message {
+            padding: 0.9rem 1.3rem;
+            border-radius: 20px;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        /* 用户消息 - 右对齐，蓝色气泡，头像在右 */
+        .user-msg-wrap {
+            margin-left: auto;
+            flex-direction: row-reverse; /* 头像在气泡右侧 */
+        }
+        .user-msg {
+            background-color: #4a90e2;
+            color: #fff;
+            border-bottom-right-radius: 6px;
+        }
+
+        /* 小盈消息 - 左对齐，浅蓝气泡，头像在左 */
+        .ai-msg-wrap {
+            margin-right: auto;
+        }
+        .ai-msg {
+            background-color: #e8f4ff;
+            color: #333;
+            border-bottom-left-radius: 6px;
+        }
+
+        /* 加载动画 - 适配头像布局 */
+        .loading-wrap {
+            margin-right: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        .loading {
+            display: flex;
+            gap: 4px;
+            padding: 0.9rem 1rem;
+            background-color: #e8f4ff;
+            border-radius: 20px;
+            border-bottom-left-radius: 6px;
+        }
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #4a90e2;
+            animation: bounce 1s infinite alternate;
+        }
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-6px); }
+        }
+
+        /* 输入框区域 - 优化圆角和阴影 */
+        .input-area {
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+            background-color: #fff;
+            padding: 0.9rem 1.4rem;
+            border-radius: 36px;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.08);
+        }
+
+        #msg-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 0.95rem;
+            color: #333;
+            resize: none;
+            min-height: 20px;
+            max-height: 120px;
+            overflow-y: auto;
+            padding: 0.3rem 0;
+        }
+
+        #msg-input::placeholder {
+            color: #b0c4de;
+        }
+
+        .send-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background-color: #4a90e2;
+            color: #fff;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+        }
+
+        .send-btn:disabled {
+            background-color: #d0e1ff;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background-color: #357bd8;
+            transform: scale(1.05);
+            box-shadow: 0 3px 10px rgba(74, 144, 226, 0.4);
+        }
+
+        /* 侧边栏 - 收窄宽度，辅助布局 */
+        .sidebar {
+            flex: 1; /* 与聊天区4:1比例，更紧凑 */
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        /* 小盈形象卡片 - 优化渐变和阴影 */
+        .ai-card {
+            background: linear-gradient(135deg, #e8f4ff, #d0e1ff);
+            border-radius: 20px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.12);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        .ai-card-avatar {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background-color: #fff;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            color: #4a90e2;
+            border: 4px solid #4a90e2;
+            box-shadow: 0 3px 10px rgba(74, 144, 226, 0.2);
+        }
+
+        .ai-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #4a90e2;
+            margin-bottom: 0.6rem;
+            letter-spacing: 0.5px;
+        }
+
+        .ai-desc {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        /* 情绪分析报告模块 - 优化内边距和圆角 */
+        .emotion-report {
+            background-color: #fff;
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.08);
+            flex: 1;
+            border: 1px solid rgba(240,247,255,0.8);
+        }
+
+        .report-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #4a90e2;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .report-title i {
+            font-size: 1.3rem;
+        }
+
+        /* 情绪指数进度条 - 优化样式 */
+        .emotion-score {
+            margin-bottom: 1.5rem;
+        }
+
+        .score-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.6rem;
+        }
+
+        .score-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #f0f5ff;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff8a8a, #4a90e2);
+            border-radius: 5px;
+            width: 60%;
+            transition: width 0.8s ease-in-out;
+            box-shadow: 0 0 5px rgba(74, 144, 226, 0.3);
+        }
+
+        /* 情绪标签 - 优化圆角和配色 */
+        .emotion-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .emotion-tag {
+            padding: 0.4rem 1rem;
+            background-color: #e8f4ff;
+            color: #4a90e2;
+            border-radius: 24px;
+            font-size: 0.85rem;
+            border: 1px solid #d0e1ff;
+        }
+
+        /* 分析和建议 - 优化行高 */
+        .emotion-analysis, .emotion-suggest {
+            margin-bottom: 1.2rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .analysis-label, .suggest-label {
+            font-weight: 700;
+            color: #4a90e2;
+            margin-bottom: 0.4rem;
+            display: block;
+        }
+
+        /* 空状态提示 - 优化样式 */
+        .empty-tip {
+            text-align: center;
+            color: #999;
+            font-size: 1rem;
+            padding: 4rem 0;
+            line-height: 1.8;
+        }
+
+        .empty-tip i {
+            font-size: 2.5rem;
+            margin-bottom: 0.8rem;
+            display: block;
+            color: #c1d9ff;
+        }
+
+        /* 底部版权 - 固定底部，小字标明 */
+        .copyright {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 40px;
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            color: #999;
+            border-top: 1px solid #f0f7ff;
+            z-index: 90;
+        }
+
+        /* 响应式适配 - 全尺寸兼容 */
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                margin: 0.8rem auto;
+                gap: 1rem;
+            }
+
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+            }
+
+            .chat-window {
+                min-height: 350px;
+                max-height: 500px;
+                padding: 1rem 1.2rem;
+            }
+
+            .msg-container {
+                max-width: 85%;
+                gap: 0.6rem;
+            }
+
+            .msg-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 1rem;
+            }
+
+            .message {
+                padding: 0.8rem 1.2rem;
+                font-size: 0.9rem;
+            }
+
+            .header h1 {
+                font-size: 1.4rem;
+            }
+
+            .ai-card-avatar {
+                width: 80px;
+                height: 80px;
+                font-size: 2rem;
+            }
+
+            .copyright {
+                font-size: 0.8rem;
+                padding: 0 1rem;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .msg-container {
+                max-width: 90%;
+            }
+
+            .input-area {
+                padding: 0.8rem 1.2rem;
+            }
+
+            .send-btn {
+                width: 36px;
+                height: 36px;
+            }
+        }
+    </style>
+    <!-- 引入字体图标 -->
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- 顶部导航栏 - 移除AI树洞文字 -->
+    <header class="header">
+        <h1>心灵避风港</h1>
+        <p>小盈陪你倾诉所有心事，做你最温暖的倾听者</p>
+    </header>
+
+    <!-- 主容器 - 聊天框占主体 -->
+    <main class="main-container">
+        <!-- 聊天区域 - 主体占比 -->
+        <section class="chat-section">
+            <!-- 聊天窗口 - 显示双方头像 -->
+            <div class="chat-window" id="chat-window">
+                <div class="empty-tip" id="empty-tip">
+                    <i class="fas fa-comments"></i>
+                    你好呀～我是小盈 😊<br>
+                    有什么心事想和我说吗？我会认真倾听的
+                </div>
+            </div>
+
+            <!-- 输入框区域 -->
+            <div class="input-area">
+                <textarea id="msg-input" placeholder="输入想倾诉的内容，按回车发送..." rows="1"></textarea>
+                <button class="send-btn" id="send-btn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- 侧边栏：小盈形象 + 情绪分析报告（辅助布局） -->
+        <aside class="sidebar">
+            <!-- 小盈形象卡片 -->
+            <div class="ai-card">
+                <div class="ai-card-avatar">
+                    <i class="fas fa-girl"></i>
+                </div>
+                <h3 class="ai-name">小盈</h3>
+                <p class="ai-desc">你的专属心灵倾听者<br>温柔·耐心·保密<br>陪你度过每一个情绪时刻</p>
+            </div>
+
+            <!-- 情绪分析报告 -->
+            <div class="emotion-report">
+                <h3 class="report-title">
+                    <i class="fas fa-chart-line"></i>
+                    情绪分析报告
+                </h3>
+                <div class="emotion-score">
+                    <div class="score-label">
+                        <span>情绪指数</span>
+                        <span id="emotion-score-num">60</span>/100
+                    </div>
+                    <div class="score-bar">
+                        <div class="score-fill" id="score-fill"></div>
+                    </div>
+                </div>
+                <div class="emotion-tags" id="emotion-tags">
+                    <span class="emotion-tag">平静</span>
+                    <span class="emotion-tag">期待</span>
+                </div>
+                <div class="emotion-analysis">
+                    <span class="analysis-label">情绪分析：</span>
+                    <span id="emotion-analysis">当前未检测到明显的负面情绪，心态处于平和的状态，对交流抱有轻微期待。</span>
+                </div>
+                <div class="emotion-suggest">
+                    <span class="suggest-label">暖心建议：</span>
+                    <span id="emotion-suggest">保持这份平和的心情，大胆说出你的想法吧，我会一直在这里陪着你～</span>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- 底部版权 - 固定底部，小字标明 -->
+    <div class="copyright">
+        版权所有-JSHT捷思慧图科技 翻版必究
+    </div>
+
+    <script>
+        let userId = localStorage.getItem("treehole_user_id");
+            if (!userId) {
+                userId = crypto.randomUUID();
+                localStorage.setItem("treehole_user_id", userId);
+            }
+        const chatHistory = [];
+        let emotionLocked = false;
+        // ✅【新增：情绪分析轮次控制】
+        let currentRound = 0;
+        let lastEmotionRound = -1;
+        async function updateEmotionOnce(content) {
+            // ✅ 同一轮对话只允许分析一次
+            if (emotionLocked || lastEmotionRound === currentRound) return;
+
+            emotionLocked = true;
+            lastEmotionRound = currentRound;
+
+
+            try {
+                const res = await fetch("/emotion", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        history: chatHistory,
+                        current_input: content,
+                        round_id: currentRound
+                    })
+
+                });
+
+                const data = await res.json();
+
+                // 情绪分数
+                emotionScoreNum.innerText = data.score;
+                scoreFill.style.width = data.score + "%";
+
+                // 情绪标签
+                emotionTags.innerHTML = "";
+                if (Array.isArray(data.tags)) {
+                    data.tags.forEach(tag => {
+                        const span = document.createElement("span");
+                        span.className = "emotion-tag";
+                        span.innerText = tag;
+                        emotionTags.appendChild(span);
+                    });
+                }
+
+                // 分析 & 建议
+                emotionAnalysis.innerText = data.analysis;
+                emotionSuggest.innerText = data.suggestion;
+
+            } catch (e) {
+                console.error("情绪分析失败", e);
+            } finally {
+                emotionLocked = false;
+            }
+        }
+
+        // 获取DOM元素
+        const chatWindow = document.getElementById('chat-window');
+        const msgInput = document.getElementById('msg-input');
+        const sendBtn = document.getElementById('send-btn');
+        const emptyTip = document.getElementById('empty-tip');
+        const emotionScoreNum = document.getElementById('emotion-score-num');
+        const scoreFill = document.getElementById('score-fill');
+        const emotionTags = document.getElementById('emotion-tags');
+        const emotionAnalysis = document.getElementById('emotion-analysis');
+        const emotionSuggest = document.getElementById('emotion-suggest');
+
+        // 监听输入框变化，控制发送按钮状态+自适应高度
+        msgInput.addEventListener('input', () => {
+            const content = msgInput.value.trim();
+            sendBtn.disabled = content === '';
+            // 自适应输入框高度
+            msgInput.style.height = 'auto';
+            msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
+        });
+
+        // 回车发送（按住shift+回车换行）
+        msgInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // 点击发送按钮
+        sendBtn.addEventListener('click', sendMessage);
+
+        async function sendMessage() {
+        const content = msgInput.value.trim();
+        if (!content) return;
+
+        // ✅【新增：开启新一轮对话】
+        currentRound++;
+
+
+        // 用户消息
+            addMessage(content, 'user');
+            chatHistory.push({
+                role: "user",
+                content: content
+            });
+        // 然后更新 UI
+        msgInput.value = '';
+        msgInput.style.height = 'auto';
+        sendBtn.disabled = true;
+        emptyTip.style.display = 'none';
+
+        // 创建 AI 消息气泡（空的，用来流）
+        const aiWrap = document.createElement('div');
+        aiWrap.className = 'msg-container ai-msg-wrap';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'msg-avatar ai-avatar';
+        avatar.innerHTML = '<i class="fas fa-girl"></i>';
+
+        const aiMsg = document.createElement('div');
+        aiMsg.className = 'message ai-msg';
+        aiMsg.innerText = '';
+
+        aiWrap.appendChild(avatar);
+        aiWrap.appendChild(aiMsg);
+        chatWindow.appendChild(aiWrap);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        showLoading();
+
+        try {
+            const resp = await fetch("/chat_stream", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: userId,   // ← 必须有
+                    history: chatHistory,
+                    user_input: content,
+                    round_id: currentRound
+                })
+
+            });
+            removeLoading();
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                aiMsg.innerText += decoder.decode(value);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+            chatHistory.push({
+                role: "assistant",
+                content: aiMsg.innerText
+            });
+
+            // 用完整上下文再分析一次
+            updateEmotionOnce(content);
+        }
+            catch (err) {
+                removeLoading();
+                aiMsg.innerText = "（连接失败了，小盈没接上你 😔）";
+            }
+        }
+
+        // 添加消息到聊天窗口（核心：带双方头像）
+        function addMessage(content, type, emotion = 'normal') {
+            // 创建消息容器（头像+气泡）
+            const msgContainer = document.createElement('div');
+            // 创建头像元素
+            const avatar = document.createElement('div');
+            // 创建消息气泡
+            const messageDiv = document.createElement('div');
+
+            // 区分用户/AI消息的样式和内容
+            if (type === 'user') {
+                // 用户消息：容器右对齐、头像蓝色（用户）、气泡蓝色
+                msgContainer.className = 'msg-container user-msg-wrap';
+                avatar.className = 'msg-avatar user-avatar';
+                avatar.innerHTML = '<i class="fas fa-user"></i>';
+                messageDiv.className = 'message user-msg';
+            } else {
+                // AI消息：容器左对齐、头像浅蓝（小盈）、气泡浅蓝
+                msgContainer.className = 'msg-container ai-msg-wrap';
+                avatar.className = 'msg-avatar ai-avatar';
+                avatar.innerHTML = '<i class="fas fa-girl"></i>';
+                messageDiv.className = 'message ai-msg';
+                messageDiv.dataset.emotion = emotion;
+            }
+
+            // 组装消息结构：容器 -> 头像 + 气泡
+            messageDiv.innerText = content;
+            msgContainer.appendChild(avatar);
+            msgContainer.appendChild(messageDiv);
+            chatWindow.appendChild(msgContainer);
+
+            // 自动滚动到最新消息
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+
+        }
+        // 显示加载动画（带小盈头像，适配布局）
+            function showLoading() {
+                const loadingWrap = document.createElement('div');
+                const avatar = document.createElement('div');
+                const loadingDiv = document.createElement('div');
+
+                loadingWrap.className = 'loading-wrap';
+                avatar.className = 'msg-avatar ai-avatar';
+                avatar.innerHTML = '<i class="fas fa-girl"></i>';
+                loadingDiv.className = 'loading';
+                loadingDiv.id = 'loading-animation';
+                loadingDiv.innerHTML = `
+                <div class="loading-dot"></div>
+                <div class="loading-dot"></div>
+                <div class="loading-dot"></div>
+            `;
+
+                loadingWrap.appendChild(avatar);
+                loadingWrap.appendChild(loadingDiv);
+                chatWindow.appendChild(loadingWrap);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+        // 移除加载动画
+        function removeLoading() {
+            const loading = document.getElementById('loading-animation');
+            if (loading) loading.parentElement.remove();
+        }
+
+    </script>
+</body>
+</html>
