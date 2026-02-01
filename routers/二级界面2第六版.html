@@ -271,17 +271,17 @@
             <p class="text-xs text-gray-500 mb-3">适合轻度使用，满足日常语音对话需求</p>
             <button class="buy-package w-full py-2 bg-pay text-white rounded-lg hover:bg-pay/90 transition-colors text-sm">立即购买</button>
           </div>
-          <!-- 19.9元进阶套餐 -->
-          <div class="package-card border border-gray-200/60 rounded-lg p-3 cursor-pointer" data-price="19.9" data-count="80" data-type="normal">
+          <!-- 19.9元进阶套餐（7天无限使用） -->
+          <div class="package-card border border-gray-200/60 rounded-lg p-3 cursor-pointer" data-price="19.9" data-count="0" data-type="unlimited" data-duration-days="7">
             <div class="flex justify-between items-start mb-2">
               <h3 class="font-medium text-text">进阶套餐</h3>
               <span class="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">高性价比</span>
             </div>
             <div class="flex items-baseline gap-2 mb-3">
               <span class="text-2xl font-bold text-pay">¥19.9</span>
-              <span class="text-gray-500">/80条语音</span>
+              <span class="text-gray-500">/7天无限</span>
             </div>
-            <p class="text-xs text-gray-500 mb-3">单价低至0.25元/条，适合高频使用</p>
+            <p class="text-xs text-gray-500 mb-3">7天不限次数使用，适合高频连续体验</p>
             <button class="buy-package w-full py-2 bg-pay text-white rounded-lg hover:bg-pay/90 transition-colors text-sm">立即购买</button>
           </div>
         </div>
@@ -594,6 +594,7 @@
     let currentBuyPackage = { price: 1.0, count: 4, name: '体验套餐', type: 'experience', limit: true }; // 默认选中体验套餐
     let currentPayMethod = 'wechat'; // 当前选中的支付方式：wechat/alipay
     let hasBoughtExperience = false; // 标记是否已购买体验套餐（初始false，从本地/后台读取）
+    let unlimitedUntil = null; // 7天无限使用到期时间（时间戳）
     // 声音克隆参数（传给后台API）
     const cloneConfig = {
       speed: 1.0,    // 语速
@@ -617,6 +618,8 @@
       toggleVoiceMode();
       // 初始化剩余语音条数+检查体验套餐购买状态
       initVoiceCount();
+      // 初始化7天无限使用状态
+      initUnlimitedStatus();
       // 初始化体验套餐状态（禁用/可用）
       initExperiencePackageStatus();
       // 绑定付费相关事件
@@ -644,12 +647,14 @@
         // 本地测试默认值，实际对接后删除
         voiceCount = 0;
         hasBoughtExperience = localStorage.getItem('hasBoughtExperience') === 'true'; // 本地存储标记
+        unlimitedUntil = parseInt(localStorage.getItem('unlimitedUntil') || '0', 10) || null;
         // 更新页面显示
         updateVoiceCountDisplay();
       } catch (error) {
         console.error('查询用户套餐失败：', error);
         voiceCount = 0;
         hasBoughtExperience = localStorage.getItem('hasBoughtExperience') === 'true';
+        unlimitedUntil = parseInt(localStorage.getItem('unlimitedUntil') || '0', 10) || null;
         updateVoiceCountDisplay();
       }
     }
@@ -669,23 +674,28 @@
 
     // ========== 更新剩余语音条数页面显示 ==========
     function updateVoiceCountDisplay() {
-      currentVoiceCount.textContent = voiceCount;
-      headerVoiceCount.innerHTML = `剩余语音：<span class="font-medium">${voiceCount}</span>条`;
+      const unlimitedActive = isUnlimitedActive();
+      currentVoiceCount.textContent = unlimitedActive ? '无限' : voiceCount;
+      headerVoiceCount.innerHTML = `剩余语音：<span class="font-medium">${unlimitedActive ? '无限' : voiceCount}</span>条`;
       // 更新语音模式状态提示（新增体验套餐引导）
       if (voiceMode.checked) {
-        voiceStatus.textContent = voiceCount > 0 
-          ? '语音模式已开启（按住麦克风说话）' 
-          : hasBoughtExperience
-            ? '语音模式已开启（剩余语音不足，请购买套餐）'
-            : '语音模式已开启（可购<span class="text-experience font-medium">1元体验套餐</span>）';
-        voiceStatus.style.color = voiceCount > 0 ? '#6366F1' : hasBoughtExperience ? '#F97316' : '#EC4899';
+        voiceStatus.textContent = unlimitedActive
+          ? '语音模式已开启（7天无限使用）'
+          : voiceCount > 0 
+            ? '语音模式已开启（按住麦克风说话）' 
+            : hasBoughtExperience
+              ? '语音模式已开启（剩余语音不足，请购买套餐）'
+              : '语音模式已开启（可购<span class="text-experience font-medium">1元体验套餐</span>）';
+        voiceStatus.style.color = unlimitedActive ? '#10B981' : voiceCount > 0 ? '#6366F1' : hasBoughtExperience ? '#F97316' : '#EC4899';
       } else {
-        voiceStatus.textContent = voiceCount > 0 
-          ? '语音模式已关闭' 
-          : hasBoughtExperience
-            ? '语音模式已关闭（需购买套餐使用）'
-            : '语音模式已关闭（新人可购<span class="text-experience font-medium">1元体验套餐</span>）';
-        voiceStatus.style.color = voiceCount > 0 ? '#9CA3AF' : hasBoughtExperience ? '#F97316' : '#EC4899';
+        voiceStatus.textContent = unlimitedActive
+          ? '语音模式已关闭（7天无限可用）'
+          : voiceCount > 0 
+            ? '语音模式已关闭' 
+            : hasBoughtExperience
+              ? '语音模式已关闭（需购买套餐使用）'
+              : '语音模式已关闭（新人可购<span class="text-experience font-medium">1元体验套餐</span>）';
+        voiceStatus.style.color = unlimitedActive ? '#10B981' : voiceCount > 0 ? '#9CA3AF' : hasBoughtExperience ? '#F97316' : '#EC4899';
       }
     }
 
@@ -703,7 +713,8 @@
             count: parseInt(card.dataset.count),
             name: card.querySelector('h3').textContent,
             type: card.dataset.type,
-            limit: card.dataset.limit === 'true'
+            limit: card.dataset.limit === 'true',
+            durationDays: parseInt(card.dataset.durationDays || '0', 10)
           };
         });
       });
@@ -717,7 +728,9 @@
           card.click();
           // 更新支付弹窗内容+样式
           payModalTitle.textContent = `购买${currentBuyPackage.price}元${currentBuyPackage.name}`;
-          payModalCount.textContent = `${currentBuyPackage.count}条`;
+          payModalCount.textContent = currentBuyPackage.type === 'unlimited'
+            ? `${currentBuyPackage.durationDays}天无限`
+            : `${currentBuyPackage.count}条`;
           payModalPrice.textContent = `¥${currentBuyPackage.price}`;
           // 体验套餐显示专属提示，普通套餐显示默认提示
           if (currentBuyPackage.type === 'experience') {
@@ -725,6 +738,11 @@
             payModalCount.style.color = '#EC4899';
             submitPay.style.backgroundColor = '#EC4899';
             submitPay.style.hover = '#EC4899/90';
+          } else if (currentBuyPackage.type === 'unlimited') {
+            payModalTip.textContent = `语音合成次数（${currentBuyPackage.durationDays}天内不限次数）`;
+            payModalCount.style.color = '#10B981';
+            submitPay.style.backgroundColor = '#10B981';
+            submitPay.style.hover = '#10B981/90';
           } else {
             payModalTip.textContent = '语音合成次数（永久有效）';
             payModalCount.style.color = '#F97316';
@@ -774,7 +792,11 @@
           if (payResult.success) {
             // 支付成功 - 关闭弹窗、更新剩余语音、提示用户
             payMask.style.display = 'none';
-            voiceCount += currentBuyPackage.count;
+            if (currentBuyPackage.type === 'unlimited') {
+              setUnlimitedUntil(currentBuyPackage.durationDays);
+            } else {
+              voiceCount += currentBuyPackage.count;
+            }
             updateVoiceCountDisplay();
             // 体验套餐：标记已购买+禁用卡片+本地存储
             if (currentBuyPackage.type === 'experience') {
@@ -782,6 +804,8 @@
               localStorage.setItem('hasBoughtExperience', 'true'); // 本地持久化
               initExperiencePackageStatus(); // 禁用体验套餐卡片
               alert(`新人体验套餐购买成功！已为你添加${currentBuyPackage.count}条语音，当前剩余${voiceCount}条～`);
+            } else if (currentBuyPackage.type === 'unlimited') {
+              alert(`购买成功！已为你开启${currentBuyPackage.durationDays}天无限使用，立即生效～`);
             } else {
               alert(`购买成功！已为你添加${currentBuyPackage.count}条语音，当前剩余${voiceCount}条～`);
             }
@@ -851,7 +875,8 @@
           body: JSON.stringify({
             voiceCount: voiceCount,
             userId: '当前用户ID',
-            hasBoughtExperience: hasBoughtExperience // 同步体验套餐购买状态
+            hasBoughtExperience: hasBoughtExperience, // 同步体验套餐购买状态
+            unlimitedUntil: unlimitedUntil // 同步7天无限使用到期时间
           })
         });
       } catch (error) {
@@ -906,19 +931,50 @@
       voiceInputBtn.style.display = isOpen ? 'flex' : 'none';
       // 根据剩余语音+体验套餐状态更新提示
       if (isOpen) {
-        voiceStatus.textContent = voiceCount > 0 
-          ? '语音模式已开启（按住麦克风说话）' 
-          : hasBoughtExperience
-            ? '语音模式已开启（剩余语音不足，请购买套餐）'
-            : '语音模式已开启（可购<span class="text-experience font-medium">1元体验套餐</span>）';
-        voiceStatus.style.color = voiceCount > 0 ? '#6366F1' : hasBoughtExperience ? '#F97316' : '#EC4899';
+        const unlimitedActive = isUnlimitedActive();
+        voiceStatus.textContent = unlimitedActive
+          ? '语音模式已开启（7天无限使用）'
+          : voiceCount > 0 
+            ? '语音模式已开启（按住麦克风说话）' 
+            : hasBoughtExperience
+              ? '语音模式已开启（剩余语音不足，请购买套餐）'
+              : '语音模式已开启（可购<span class="text-experience font-medium">1元体验套餐</span>）';
+        voiceStatus.style.color = unlimitedActive ? '#10B981' : voiceCount > 0 ? '#6366F1' : hasBoughtExperience ? '#F97316' : '#EC4899';
       } else {
-        voiceStatus.textContent = voiceCount > 0 
-          ? '语音模式已关闭' 
-          : hasBoughtExperience
-            ? '语音模式已关闭（需购买套餐使用）'
-            : '语音模式已关闭（新人可购<span class="text-experience font-medium">1元体验套餐</span>）';
-        voiceStatus.style.color = voiceCount > 0 ? '#9CA3AF' : hasBoughtExperience ? '#F97316' : '#EC4899';
+        const unlimitedActive = isUnlimitedActive();
+        voiceStatus.textContent = unlimitedActive
+          ? '语音模式已关闭（7天无限可用）'
+          : voiceCount > 0 
+            ? '语音模式已关闭' 
+            : hasBoughtExperience
+              ? '语音模式已关闭（需购买套餐使用）'
+              : '语音模式已关闭（新人可购<span class="text-experience font-medium">1元体验套餐</span>）';
+        voiceStatus.style.color = unlimitedActive ? '#10B981' : voiceCount > 0 ? '#9CA3AF' : hasBoughtExperience ? '#F97316' : '#EC4899';
+      }
+    }
+
+    // ========== 7天无限使用状态处理 ==========
+    function initUnlimitedStatus() {
+      normalizeUnlimitedState();
+      updateVoiceCountDisplay();
+    }
+
+    function setUnlimitedUntil(durationDays) {
+      const now = Date.now();
+      unlimitedUntil = now + durationDays * 24 * 60 * 60 * 1000;
+      localStorage.setItem('unlimitedUntil', String(unlimitedUntil));
+      normalizeUnlimitedState();
+    }
+
+    function isUnlimitedActive() {
+      normalizeUnlimitedState();
+      return !!unlimitedUntil;
+    }
+
+    function normalizeUnlimitedState() {
+      if (unlimitedUntil && Date.now() > unlimitedUntil) {
+        unlimitedUntil = null;
+        localStorage.removeItem('unlimitedUntil');
       }
     }
 
