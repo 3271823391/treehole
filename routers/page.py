@@ -21,6 +21,10 @@ async def ip_page():
     with open(html_path, "r", encoding="utf-8") as f:
         return f.read()
 
+@router.get("/二级页面2第六版.html", response_class=HTMLResponse)
+async def evolution_plus_page():
+    return render_html("二级页面2第六版.html")
+
 @router.get("/page", response_class=HTMLResponse)
 async def chat_page(request: Request):
     plan = request.query_params.get("plan", "free")
