@@ -171,6 +171,9 @@
       .answer-content.show {
         max-height: 500px;
       }
+      .kbd-open .footer {
+        display: none !important;
+      }
     }
   </style>
 </head>
@@ -540,7 +543,7 @@
   </div>
 
   <!-- 新增：页面底部版权声明 - JSHT捷思慧图科技公司 -->
-  <footer class="bg-white/80 backdrop-blur-sm py-4 px-4 mt-6 shadow-inner z-20">
+  <footer class="footer bg-white/80 backdrop-blur-sm py-4 px-4 mt-6 shadow-inner z-20">
     <div class="max-w-7xl mx-auto text-center text-sm text-gray-600 font-medium">
       版权所有 © JSHT捷思慧图科技公司 | 翻版必究
     </div>
@@ -617,8 +620,11 @@
       sad: 10,
       angry: 10
     };
+    const isMobile = window.matchMedia('(max-width: 768px)').matches
+      || /Mobi|Android|iP(ad|hone|od)/i.test(navigator.userAgent);
     const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
       || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const kbdClassTarget = document.documentElement;
     let scrollLockY = 0;
 
     function syncViewport() {
@@ -627,6 +633,33 @@
       const offsetTop = viewport ? viewport.offsetTop : 0;
       document.documentElement.style.setProperty('--app-height', `${height}px`);
       document.documentElement.style.setProperty('--vv-top', `${offsetTop}px`);
+    }
+
+    function setKeyboardOpen(isOpen) {
+      kbdClassTarget.classList.toggle('kbd-open', isOpen);
+    }
+
+    function updateKeyboardState() {
+      if (!isMobile || !window.visualViewport) {
+        return;
+      }
+      const keyboardOpen = window.innerHeight - window.visualViewport.height > 120;
+      setKeyboardOpen(keyboardOpen);
+    }
+
+    function enableKeyboardDetection() {
+      if (!isMobile) {
+        setKeyboardOpen(false);
+        return;
+      }
+      if (window.visualViewport) {
+        updateKeyboardState();
+        window.visualViewport.addEventListener('resize', updateKeyboardState);
+        window.visualViewport.addEventListener('scroll', updateKeyboardState);
+        return;
+      }
+      document.addEventListener('focusin', () => setKeyboardOpen(true));
+      document.addEventListener('focusout', () => setKeyboardOpen(false));
     }
 
     function lockBodyScroll() {
@@ -674,6 +707,7 @@
         window.visualViewport.addEventListener('resize', syncViewport);
         window.visualViewport.addEventListener('scroll', syncViewport);
       }
+      enableKeyboardDetection();
       // 同步初始昵称和头像
       syncChatTargetInfo();
       // 同步语音模式状态
