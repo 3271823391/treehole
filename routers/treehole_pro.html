@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>心灵避风港 - 小盈陪你说心里话</title>
+    <link rel="stylesheet" href="/static/shared_shell.css">
     <style>
         * {
             margin: 0;
@@ -1322,6 +1323,7 @@
 
     <div class="mobile-toast" id="mobile-toast" role="status" aria-live="polite"></div>
 
+    <script src="/static/shared_shell.js"></script>
     <script>
         const STORAGE_USERNAME_KEY = "treehole_username";
         const STORAGE_USER_ID_KEY = "treehole_user_id";
@@ -1405,13 +1407,6 @@
             const offsetTop = viewport ? viewport.offsetTop : 0;
             document.documentElement.style.setProperty('--app-height', `${height}px`);
             document.documentElement.style.setProperty('--vv-top', `${offsetTop}px`);
-        }
-
-        function measureFooter() {
-            const footer = document.getElementById('copyrightBar');
-            if (!footer) return;
-            const height = Math.ceil(footer.getBoundingClientRect().height || 0);
-            document.documentElement.style.setProperty('--footer-h', `${height}px`);
         }
 
         function lockBodyScroll() {
@@ -1886,7 +1881,8 @@
         }
 
         function splitTtsBuffer(text) {
-            const pattern = /.*?(?:……|[。！？；\n]+)/g;
+            // 按中文断句符切分，确保 TTS 按句子串行播放。
+            const pattern = /.*?(?:……|…|[。！？；\n]+)/g;
             const segments = [];
             let match;
             while ((match = pattern.exec(text)) !== null) {
@@ -2419,15 +2415,12 @@
         });
 
         syncViewport();
-        measureFooter();
         updateDeviceMode();
         setupTooltips();
         initVoiceOutputToggle();
 
-        window.addEventListener('load', measureFooter);
         window.addEventListener('resize', syncViewport);
         window.addEventListener('orientationchange', syncViewport);
-        window.addEventListener('resize', measureFooter);
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', syncViewport);
             window.visualViewport.addEventListener('scroll', syncViewport);

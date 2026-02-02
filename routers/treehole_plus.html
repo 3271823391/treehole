@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>心灵避风港 - 小盈陪你说心里话</title>
+    <link rel="stylesheet" href="/static/shared_shell.css">
     <style>
         * {
             margin: 0;
@@ -20,12 +21,6 @@
         body {
             background-color: #f0f7ff;
             color: #333;
-            min-height: var(--app-height);
-            height: var(--app-height);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            padding-bottom: 40px; /* 为底部版权预留空间 */
         }
 
         /* 顶部导航栏 - 移除AI树洞，简化文字 */
@@ -35,8 +30,7 @@
             padding: 1rem 2rem;
             text-align: center;
             box-shadow: 0 3px 15px rgba(74, 144, 226, 0.25);
-            position: sticky;
-            top: 0;
+            position: relative;
             z-index: 100;
         }
 
@@ -102,7 +96,7 @@
             padding: 0 1rem;
             gap: 1.2rem;
             flex-wrap: wrap;
-            height: var(--app-height);
+            min-height: 0;
         }
 
         /* 聊天区域 - 提升占比，主体视觉 */
@@ -112,7 +106,7 @@
             display: flex;
             flex-direction: column;
             gap: 1rem;
-            height: var(--app-height);
+            min-height: 0;
         }
 
         /* 聊天窗口 - 优化内边距和阴影 */
@@ -609,10 +603,6 @@
 
         /* 底部版权 - 固定底部，小字标明 */
         .copyright {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
             height: 40px;
             background-color: #fff;
             display: flex;
@@ -621,7 +611,6 @@
             font-size: 0.85rem;
             color: #999;
             border-top: 1px solid #f0f7ff;
-            z-index: 90;
         }
 
         .modal-backdrop {
@@ -885,6 +874,7 @@
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+    <div id="appShell">
     <!-- 顶部导航栏 - 移除AI树洞文字 -->
     <header class="header">
         <div class="header-content">
@@ -901,6 +891,7 @@
         </div>
     </header>
 
+    <div id="mainScroll" class="scroll-area">
     <!-- 主容器 - 聊天框占主体 -->
     <main class="main-container">
         <!-- 聊天区域 - 主体占比 -->
@@ -993,6 +984,13 @@
             </div>
         </aside>
     </main>
+    </div>
+    </div>
+
+    <!-- 底部版权 - 固定底部，小字标明 -->
+    <footer class="copyright" id="copyrightBar">
+        版权所有-JSHT捷思慧图科技 翻版必究
+    </footer>
 
     <div class="modal-backdrop" id="user-modal" aria-hidden="true">
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
@@ -1066,11 +1064,7 @@
 
     <div class="mobile-toast" id="mobile-toast" role="status" aria-live="polite"></div>
 
-    <!-- 底部版权 - 固定底部，小字标明 -->
-    <div class="copyright">
-        版权所有-JSHT捷思慧图科技 翻版必究
-    </div>
-
+    <script src="/static/shared_shell.js"></script>
     <script>
         const STORAGE_USERNAME_KEY = "treehole_username";
         const STORAGE_USER_ID_KEY = "treehole_user_id";
