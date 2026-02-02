@@ -19,7 +19,12 @@ def load_user_data(user_id: str) -> dict:
         "memories": [],
         "history": [],
         "has_greeted": False,
-        "chat_count": 0   # 👈 用于免费额度
+        "chat_count": 0,  # 👈 用于免费额度
+        "profile": {
+            "username": "",
+            "avatar_url": "",
+            "pin_hash": ""
+        }
     })
 
 def save_user_data(user_id: str, user_info: dict):

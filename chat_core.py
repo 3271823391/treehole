@@ -149,23 +149,7 @@ def call_deepseek_stream(messages):
 # =========================================================
 
 def post_process(user_id, user_info, user_input, reply):
-    history = user_info.get("history", [])
-    recent = history[-6:]
-
-    try:
-        r = requests.post(
-            "http://127.0.0.1:8000/emotion",
-            json={
-                "history": recent,
-                "current_input": user_input
-            },
-            timeout=10
-        )
-        payload = r.json()
-        if isinstance(payload, dict) and payload.get("ok"):
-            user_info["last_emotion"] = payload.get("data")
-    except Exception:
-        pass
+    return
 
 
 # =========================================================

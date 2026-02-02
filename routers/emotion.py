@@ -9,6 +9,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from core.auth_utils import verify_token_from_request
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -49,7 +51,15 @@ class EmotionRequest(BaseModel):
 # ===============================
 @router.post("/emotion")
 def analyze_emotion(req: EmotionRequest, request: Request):
+    token_user_id, error = verify_token_from_request(request)
+    if error:
+        return error
+
     user_id = req.user_id
+    if not user_id:
+        return JSONResponse(status_code=401, content={"ok": False, "msg": "unauthorized"})
+    if token_user_id != user_id:
+        return JSONResponse(status_code=401, content={"ok": False, "msg": "unauthorized"})
     history = req.history if req.history is not None else []
     current_input = req.current_input or ""
     round_id = req.round_id if req.round_id is not None else int(time.time())
