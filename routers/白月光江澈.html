@@ -141,6 +141,26 @@
             opacity: 0.8;
             transform: scale(1.05);
         }
+
+        .mobile-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%);
+            background: rgba(28, 37, 59, 0.92);
+            color: #fff;
+            padding: 0.6rem 1rem;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 9999;
+        }
+
+        .mobile-toast.show {
+            opacity: 1;
+        }
         @media (max-width: 768px) {
             .chat-container {
                 padding: 15px 10px;
@@ -183,14 +203,104 @@
         <button class="send-btn" id="sendBtn">🎨</button>
     </div>
 
+    <div class="mobile-toast" id="toast" role="status" aria-live="polite"></div>
+
     <script>
     const chatContent = document.getElementById('chatContent');
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
+    const toast = document.getElementById('toast');
+    const STORAGE_USER_ID_KEY = "treehole_user_id";
+    const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const USER_ID_SHA1_PATTERN = /^u_[0-9a-f]{40}$/i;
+    let toastTimer = null;
+
+    function isValidUserId(userId) {
+        return typeof userId === "string"
+            && (USER_ID_UUID_PATTERN.test(userId) || USER_ID_SHA1_PATTERN.test(userId));
+    }
+
+    function createAnonymousUserId() {
+        if (crypto?.randomUUID) {
+            return `u_${crypto.randomUUID()}`;
+        }
+        // TODO: 老设备/iOS 无痕兜底
+        return `u_${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
+    }
+
+    function safeLocalStorageGet(key) {
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            // TODO: iOS Safari 无痕模式可能禁用 localStorage
+            return "";
+        }
+    }
+
+    function safeLocalStorageSet(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    function showToast(message) {
+        if (!toast) return;
+        toast.innerText = message || "服务暂不可用";
+        toast.classList.add("show");
+        if (toastTimer) {
+            clearTimeout(toastTimer);
+        }
+        toastTimer = setTimeout(() => {
+            toast.classList.remove("show");
+        }, 2200);
+    }
+
+    function initUserId() {
+        const params = new URLSearchParams(window.location.search);
+        const paramId = params.get("user_id") || "";
+        if (isValidUserId(paramId)) {
+            safeLocalStorageSet(STORAGE_USER_ID_KEY, paramId);
+            return paramId;
+        }
+        const stored = safeLocalStorageGet(STORAGE_USER_ID_KEY);
+        if (isValidUserId(stored)) {
+            return stored;
+        }
+        const created = createAnonymousUserId();
+        safeLocalStorageSet(STORAGE_USER_ID_KEY, created);
+        return created;
+    }
+
+    const currentUserId = initUserId();
+
+    async function parseErrorMessage(res) {
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+            try {
+                const data = await res.json();
+                return data?.msg || "服务暂不可用";
+            } catch (e) {
+                return "服务暂不可用";
+            }
+        }
+        try {
+            await res.text();
+        } catch (e) {
+            // ignore
+        }
+        return "服务暂不可用";
+    }
 
     async function sendMessage() {
         const inputText = messageInput.value.trim();
         if (!inputText) return;
+        if (!isValidUserId(currentUserId)) {
+            // TODO: 确保身份初始化成功，避免 invalid_user_id
+            showToast("请输入用户名/初始化身份");
+            return;
+        }
 
         // 用户消息
         const userMessage = document.createElement('div');
@@ -212,13 +322,20 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    user_id: 'web_user',
+                    user_id: currentUserId,
                     user_input: inputText
                 })
             });
 
-            if (!res.ok || !res.body) {
-                throw new Error('stream failed');
+            const contentType = res.headers.get("content-type") || "";
+            if (!res.ok || contentType.includes("application/json") || contentType.includes("text/html")) {
+                const errMsg = await parseErrorMessage(res);
+                showToast(errMsg);
+                return;
+            }
+            if (!res.body) {
+                showToast("服务暂不可用");
+                return;
             }
 
             const reader = res.body.getReader();
@@ -253,19 +370,7 @@
             }
 
         } catch (e) {
-            const err = document.createElement('div');
-            err.className = 'message role-message';
-            err.innerHTML = `
-                <div class="avatar"
-                         style="background-image: url('/static/avatars/jiangche.jpg');">
-                    </div>
-                <div class="message-wrapper">
-                    <div class="role-name">江澈</div>
-                    <div class="message-content">连接失败。</div>
-                </div>
-            `;
-            chatContent.appendChild(err);
-            chatContent.scrollTop = chatContent.scrollHeight;
+            showToast("连接失败，请稍后再试");
         }
     }
 
