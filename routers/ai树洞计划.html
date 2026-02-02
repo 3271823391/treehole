@@ -14,9 +14,13 @@
         }
 
         /* 页面背景与整体布局 */
+        :root {
+            --app-height: 100%;
+        }
+
         body {
             background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
-            min-height: 100vh;
+            min-height: var(--app-height);
             color: #333;
             padding: 20px;
         }
@@ -396,5 +400,18 @@ document.querySelectorAll('.action-btn').forEach(btn => {
 });
 </script>
 
+    <script>
+        function updateAppHeight() {
+            const viewport = window.visualViewport;
+            const height = viewport ? viewport.height : window.innerHeight;
+            document.documentElement.style.setProperty('--app-height', `${height}px`);
+        }
+
+        updateAppHeight();
+        window.addEventListener('resize', updateAppHeight);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', updateAppHeight);
+        }
+    </script>
 </body>
 </html>
