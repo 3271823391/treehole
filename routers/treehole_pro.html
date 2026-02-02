@@ -15,17 +15,18 @@
         :root {
             --app-height: 100%;
             --vv-top: 0px;
+            --footer-h: 56px;
         }
 
         html,
         body {
             height: 100%;
+            margin: 0;
         }
 
         body {
             background-color: #f0f7ff;
             color: #333;
-            margin: 0;
             overflow: hidden; /* TODO: iOS Safari 键盘弹出时保持布局视口稳定 */
         }
 
@@ -110,8 +111,14 @@
             padding: 0 1rem;
             gap: 1.2rem;
             flex-wrap: wrap;
+            min-height: 0;
+        }
+
+        /* TODO: 主内容滚动容器，避免 footer 跟随滚动 */
+        .content-scroll {
             overflow: auto;
             -webkit-overflow-scrolling: touch;
+            padding-bottom: calc(var(--footer-h) + env(safe-area-inset-bottom));
         }
 
         /* 聊天区域 - 提升占比，主体视觉 */
@@ -676,7 +683,7 @@
         }
 
         /* 底部版权 - 固定底部，小字标明 */
-        .copyright {
+        #copyrightBar {
             width: 100%;
             background-color: #fff;
             display: flex;
@@ -685,8 +692,74 @@
             font-size: 0.85rem;
             color: #999;
             border-top: 1px solid #f0f7ff;
-            z-index: 90;
+            z-index: 9999;
             padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        /* TODO: iOS 风格滑块，用于语音输出开关 */
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 0.2rem;
+            border-top: 1px dashed #e6efff;
+            font-size: 0.9rem;
+            color: #3b6fb6;
+        }
+
+        .ios-switch {
+            position: relative;
+            width: 46px;
+            height: 26px;
+            border-radius: 999px;
+            border: none;
+            background: #d8e5fb;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            padding: 0;
+        }
+
+        .ios-switch::after {
+            content: "";
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .ios-switch.on {
+            background: #4a90e2;
+        }
+
+        .ios-switch.on::after {
+            transform: translateX(20px);
+        }
+
+        .voice-stop-btn {
+            border: none;
+            background: #ffe6e6;
+            color: #d9534f;
+            border-radius: 999px;
+            padding: 0.55rem 0.9rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .voice-stop-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
         }
 
         .modal-backdrop {
@@ -902,7 +975,7 @@
                 font-size: 2rem;
             }
 
-            .copyright {
+            #copyrightBar {
                 font-size: 0.8rem;
                 padding: 0 1rem;
                 text-align: center;
@@ -1017,7 +1090,7 @@
         </header>
 
         <!-- 主容器 - 聊天框占主体 -->
-        <main class="main-container">
+        <main class="main-container content-scroll">
             <!-- 聊天区域 - 主体占比 -->
             <section class="chat-section">
                 <!-- 聊天窗口 - 显示双方头像 -->
@@ -1040,6 +1113,10 @@
                     <button class="voice-clone-trigger primary" type="button" data-voice-clone-trigger>
                         <i class="fas fa-microphone"></i>
                         语音克隆
+                    </button>
+                    <button class="voice-stop-btn" id="voice-stop-btn" type="button" disabled>
+                        <i class="fas fa-volume-mute"></i>
+                        停止播报
                     </button>
                 </div>
             </section>
@@ -1081,6 +1158,12 @@
 
                 <div class="user-card-actions">
                     <button id="upload-avatar-btn" class="secondary">上传头像</button>
+                </div>
+
+                <!-- TODO: Pro 菜单新增语音输出开关 -->
+                <div class="setting-row">
+                    <span>语音输出</span>
+                    <button class="ios-switch off" id="voice-output-toggle" type="button" role="switch" aria-checked="false"></button>
                 </div>
             </div>
 
@@ -1129,7 +1212,7 @@
         </main>
 
         <!-- 底部版权 - 固定底部，小字标明 -->
-        <footer class="copyright">
+        <footer class="copyright" id="copyrightBar">
             版权所有-JSHT捷思慧图科技 翻版必究
         </footer>
     </div>
@@ -1221,6 +1304,9 @@
                     <label for="voice-clone-name">名称</label>
                     <input type="text" id="voice-clone-name" value="我的声音" maxlength="32">
 
+                    <label for="voice-profile-id">语音 ID（voice_profile_id）</label>
+                    <input type="text" id="voice-profile-id" placeholder="3~32 位字母/数字/下划线" maxlength="32">
+
                     <label for="voice-clone-desc">描述（可选）</label>
                     <textarea id="voice-clone-desc" rows="2" placeholder="如：情绪平稳、无背景音"></textarea>
 
@@ -1237,6 +1323,8 @@
         const STORAGE_USERNAME_KEY = "treehole_username";
         const STORAGE_USER_ID_KEY = "treehole_user_id";
         const STORAGE_VOICE_AUDIO_ID = "voice_audio_id"; // TODO: PRO 专用语音克隆缓存 key
+        const STORAGE_VOICE_PROFILE_ID = "voice_profile_id"; // TODO: PRO 语音克隆 ID
+        const STORAGE_VOICE_OUTPUT = "voice_output_enabled"; // TODO: PRO 语音输出开关
         const APP_PLAN = "pro"; // TODO: FREE/PLUS/PRO 页面拷贝时按版本调整
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
         let currentUserId = null;
@@ -1251,6 +1339,11 @@
         const EMOTION_HISTORY_LIMIT = 24;
         let isMobile = false;
         let scrollLockY = 0;
+        let voiceOutputEnabled = false;
+        let voiceUnlockHinted = false;
+        let speechQueue = [];
+        let speechBuffer = "";
+        let speechActive = false;
         const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -1305,6 +1398,13 @@
             const offsetTop = viewport ? viewport.offsetTop : 0;
             document.documentElement.style.setProperty('--app-height', `${height}px`);
             document.documentElement.style.setProperty('--vv-top', `${offsetTop}px`);
+        }
+
+        function measureFooter() {
+            const footer = document.getElementById('copyrightBar');
+            if (!footer) return;
+            const height = footer.getBoundingClientRect().height || 0;
+            document.documentElement.style.setProperty('--footer-h', `${height}px`);
         }
 
         function lockBodyScroll() {
@@ -1374,20 +1474,64 @@
             showToast(message || "服务暂不可用");
         }
 
+        function getVoiceProfileId() {
+            return (voiceProfileIdInput?.value || "").trim();
+        }
+
+        function isValidVoiceProfileId(value) {
+            return /^[a-zA-Z0-9_]{3,32}$/.test(value);
+        }
+
+        function syncVoiceProfileIdInput() {
+            if (!voiceProfileIdInput) return;
+            const storedId = safeLocalStorageGet(STORAGE_VOICE_PROFILE_ID);
+            if (storedId) {
+                voiceProfileIdInput.value = storedId;
+            }
+        }
+
+        function updateVoiceProfileIdState() {
+            if (!voiceProfileIdInput || !voiceCloneAction) return false;
+            const profileId = getVoiceProfileId();
+            if (!profileId) {
+                setVoiceCloneStatus("请填写语音 ID（3~32 位字母/数字/下划线）", "error");
+                voiceCloneAction.disabled = true;
+                return false;
+            }
+            if (!isValidVoiceProfileId(profileId)) {
+                setVoiceCloneStatus("语音 ID 格式不合法，仅支持字母/数字/下划线（3~32 位）", "error");
+                voiceCloneAction.disabled = true;
+                return false;
+            }
+            setVoiceCloneStatus("");
+            voiceCloneAction.disabled = false;
+            safeLocalStorageSet(STORAGE_VOICE_PROFILE_ID, profileId);
+            return true;
+        }
+
         async function handleVoiceCloneUpload() {
             if (!voiceCloneFile || !voiceCloneAction) return;
+            if (!updateVoiceProfileIdState()) {
+                showToast("请先填写合法的语音 ID");
+                return;
+            }
             const file = voiceCloneFile.files?.[0];
             if (!file) {
                 setVoiceCloneStatus("请先选择音频文件", "error");
                 showToast("请先选择音频文件");
                 return;
             }
-            const name = (voiceCloneName?.value || "").trim() || "我的声音";
+            const voiceProfileId = getVoiceProfileId();
+            const name = voiceProfileId || (voiceCloneName?.value || "").trim() || "我的声音";
             const describe = (voiceCloneDesc?.value || "").trim();
             const formData = new FormData();
             formData.append("file", file);
             formData.append("name", name);
             formData.append("describe", describe);
+            formData.append("voice_profile_id", voiceProfileId);
+            if (currentUserId) {
+                formData.append("user_id", currentUserId);
+            }
 
             voiceCloneAction.disabled = true;
             setVoiceCloneStatus("上传中，请稍候...");
@@ -1400,6 +1544,7 @@
                     if (isProPlan) {
                         safeLocalStorageSet(STORAGE_VOICE_AUDIO_ID, audioId);
                     }
+                    safeLocalStorageSet(STORAGE_VOICE_PROFILE_ID, voiceProfileId);
                     showToast("语音克隆上传成功");
                     return;
                 }
@@ -1564,6 +1709,104 @@
                 voiceCloneStatus.classList.add(type);
             }
         }
+
+        function initVoiceOutputToggle() {
+            if (!voiceOutputToggle) return;
+            const stored = safeLocalStorageGet(STORAGE_VOICE_OUTPUT);
+            voiceOutputEnabled = stored === "1";
+            voiceOutputToggle.classList.toggle('on', voiceOutputEnabled);
+            voiceOutputToggle.classList.toggle('off', !voiceOutputEnabled);
+            voiceOutputToggle.setAttribute('aria-checked', voiceOutputEnabled ? 'true' : 'false');
+        }
+
+        function setVoiceOutputEnabled(nextValue) {
+            voiceOutputEnabled = Boolean(nextValue);
+            safeLocalStorageSet(STORAGE_VOICE_OUTPUT, voiceOutputEnabled ? "1" : "0");
+            if (voiceOutputToggle) {
+                voiceOutputToggle.classList.toggle('on', voiceOutputEnabled);
+                voiceOutputToggle.classList.toggle('off', !voiceOutputEnabled);
+                voiceOutputToggle.setAttribute('aria-checked', voiceOutputEnabled ? 'true' : 'false');
+            }
+            if (!voiceOutputEnabled) {
+                resetSpeechQueue();
+            }
+            showToast(voiceOutputEnabled ? "语音输出已开启" : "语音输出已关闭");
+        }
+
+        function resetSpeechQueue() {
+            speechQueue = [];
+            speechBuffer = "";
+            speechActive = false;
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        function unlockSpeechForIOS() {
+            if (!voiceOutputEnabled || !window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.resume();
+        }
+
+        function enqueueSpeechSegments(segments) {
+            if (!voiceOutputEnabled || !window.speechSynthesis) return;
+            if (!Array.isArray(segments) || segments.length === 0) return;
+            speechQueue.push(...segments);
+            if (!speechActive) {
+                playNextSpeech();
+            }
+        }
+
+        function playNextSpeech() {
+            if (!voiceOutputEnabled || !window.speechSynthesis) return;
+            const nextText = speechQueue.shift();
+            if (!nextText) {
+                speechActive = false;
+                if (voiceStopBtn) {
+                    voiceStopBtn.disabled = true;
+                }
+                return;
+            }
+            const utterance = new SpeechSynthesisUtterance(nextText);
+            speechActive = true;
+            if (voiceStopBtn) {
+                voiceStopBtn.disabled = false;
+            }
+            utterance.onend = () => {
+                playNextSpeech();
+            };
+            utterance.onerror = () => {
+                speechActive = false;
+                if (!voiceUnlockHinted) {
+                    voiceUnlockHinted = true;
+                    showToast("请先点击一次页面以启用语音播放");
+                }
+            };
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function splitSpeechBuffer(text) {
+            const pattern = /.*?(?:……|[。！？；\n]+)/g;
+            const segments = [];
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                const segment = match[0].trim();
+                if (segment) {
+                    segments.push(segment);
+                }
+            }
+            const rest = text.slice(pattern.lastIndex);
+            return { segments, rest };
+        }
+
+        function appendSpeechBuffer(chunkText) {
+            if (!voiceOutputEnabled) return;
+            speechBuffer += chunkText;
+            const { segments, rest } = splitSpeechBuffer(speechBuffer);
+            speechBuffer = rest;
+            // TODO: 若未来需要克隆音色，可在此改为调用 /api/tts/stream
+            enqueueSpeechSegments(segments);
+        }
         function buildEmotionHistory(roundId, currentInput) {
             const filtered = chatHistory.filter((item) => {
                 if (!item || typeof item !== "object") return false;
@@ -1703,8 +1946,11 @@
         const voiceCloneAction = document.getElementById('voice-clone-action');
         const voiceCloneFile = document.getElementById('voice-clone-file');
         const voiceCloneName = document.getElementById('voice-clone-name');
+        const voiceProfileIdInput = document.getElementById('voice-profile-id');
         const voiceCloneDesc = document.getElementById('voice-clone-desc');
         const voiceCloneStatus = document.getElementById('voice-clone-status');
+        const voiceOutputToggle = document.getElementById('voice-output-toggle');
+        const voiceStopBtn = document.getElementById('voice-stop-btn');
         const isFreePlan = APP_PLAN === "free";
         const isProPlan = APP_PLAN === "pro";
 
@@ -2019,6 +2265,8 @@
             voiceCloneTriggers.forEach((btn) => {
                 btn.addEventListener('click', () => {
                     setVoiceCloneStatus("");
+                    syncVoiceProfileIdInput();
+                    updateVoiceProfileIdState();
                     openModal(voiceCloneModal);
                 });
             });
@@ -2027,6 +2275,25 @@
         if (voiceCloneAction) {
             voiceCloneAction.addEventListener('click', () => {
                 handleVoiceCloneUpload();
+            });
+        }
+
+        if (voiceProfileIdInput) {
+            voiceProfileIdInput.addEventListener('input', () => {
+                updateVoiceProfileIdState();
+            });
+        }
+
+        if (voiceOutputToggle) {
+            voiceOutputToggle.addEventListener('click', () => {
+                setVoiceOutputEnabled(!voiceOutputEnabled);
+            });
+        }
+
+        if (voiceStopBtn) {
+            voiceStopBtn.addEventListener('click', () => {
+                resetSpeechQueue();
+                showToast("已停止播报");
             });
         }
 
@@ -2053,11 +2320,14 @@
         });
 
         syncViewport();
+        measureFooter();
         updateDeviceMode();
         setupTooltips();
+        initVoiceOutputToggle();
 
         window.addEventListener('resize', syncViewport);
         window.addEventListener('orientationchange', syncViewport);
+        window.addEventListener('resize', measureFooter);
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', syncViewport);
             window.visualViewport.addEventListener('scroll', syncViewport);
@@ -2093,6 +2363,11 @@
         }
         const content = msgInput.value.trim();
         if (!content) return;
+
+        if (voiceOutputEnabled) {
+            unlockSpeechForIOS();
+            resetSpeechQueue();
+        }
 
         // ✅【新增：开启新一轮对话】
         currentRound++;
@@ -2163,8 +2438,15 @@
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
-                aiMsg.innerText += decoder.decode(value);
+                const chunkText = decoder.decode(value);
+                aiMsg.innerText += chunkText;
+                // TODO: 流式文本分句播报（Web Speech API 版本）
+                appendSpeechBuffer(chunkText);
                 chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+            if (voiceOutputEnabled && speechBuffer.trim()) {
+                enqueueSpeechSegments([speechBuffer.trim()]);
+                speechBuffer = "";
             }
             chatHistory.push({
                 role: "assistant",
