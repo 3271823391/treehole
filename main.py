@@ -1,7 +1,7 @@
 from config import HOST, PORT
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from routers import auth, chat, emotion, page, profile
+from routers import auth, chat, emotion, page, profile, voice_clone
 import os
 app = FastAPI(title="DeepSeek虚拟树洞（精致版）")
 
@@ -23,6 +23,7 @@ app.include_router(auth.router)
 app.include_router(profile.router)
 app.include_router(page.router)
 app.include_router(chat.router)
+app.include_router(voice_clone.router)
 
 def run_api():
     import uvicorn
