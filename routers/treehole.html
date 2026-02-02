@@ -116,6 +116,14 @@
             border: 2px solid #f0f7ff;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
+
+        .msg-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
         /* 用户头像 - 右侧消息，蓝色系 */
         .user-avatar {
             background-color: #4a90e2;
@@ -308,6 +316,51 @@
         .user-card label {
             font-size: 0.82rem;
             color: #6b7c93;
+        }
+
+        .label-with-tip {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .info-tip {
+            position: relative;
+            border: none;
+            background: transparent;
+            color: #8aa4cf;
+            cursor: pointer;
+            padding: 0;
+            font-size: 0.85rem;
+            line-height: 1;
+        }
+
+        .info-tip .tooltip {
+            position: absolute;
+            right: 0;
+            top: 1.4rem;
+            width: 220px;
+            padding: 0.6rem 0.7rem;
+            border-radius: 10px;
+            background: #2f3b52;
+            color: #fff;
+            font-size: 0.78rem;
+            line-height: 1.4;
+            text-align: left;
+            box-shadow: 0 8px 16px rgba(15, 25, 40, 0.2);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-6px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 10;
+        }
+
+        .info-tip:hover .tooltip,
+        .info-tip:focus .tooltip,
+        .info-tip:focus-within .tooltip {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
         }
 
         .user-card input {
@@ -619,7 +672,7 @@
                         <img src="/static/avatars/default.svg" alt="用户头像" id="user-avatar-img">
                     </div>
                     <div>
-                        <div class="user-card-title">用户中心</div>
+                        <div class="user-card-title" id="user-card-title">用户名</div>
                         <div class="lock-status" id="lock-status">请输入用户名后即可保存资料</div>
                     </div>
                 </div>
@@ -627,7 +680,16 @@
                 <input type="file" id="avatar-input" accept="image/*" hidden>
 
                 <div class="form-row">
-                    <label for="login-username">用户名</label>
+                    <div class="label-with-tip">
+                        <label for="login-username">用户名</label>
+                        <button type="button" class="info-tip" aria-label="用户名说明">
+                            <i class="fas fa-circle-info"></i>
+                            <span class="tooltip">
+                                用户名将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
+                                请认真填写。更改用户名将会切换到另一份全新的对话记忆。
+                            </span>
+                        </button>
+                    </div>
                     <input id="login-username" type="text" placeholder="请输入用户名">
                 </div>
 
@@ -637,7 +699,6 @@
                 </div>
 
                 <div class="user-card-actions">
-                    <button id="save-profile-btn" class="secondary">保存名称</button>
                     <button id="upload-avatar-btn" class="secondary">上传头像</button>
                 </div>
             </div>
@@ -680,6 +741,7 @@
 
     <script>
         const STORAGE_USERNAME_KEY = "treehole_username";
+        const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
         let currentUserId = null;
         const chatHistory = [];
         let emotionLocked = false;
@@ -720,12 +782,30 @@
             return `u_${digest}`;
         }
 
+        let currentProfile = {
+            username: "",
+            display_name: "",
+            avatar_url: ""
+        };
+
+        function resolveTitleText() {
+            const titleText = (currentProfile.display_name || currentProfile.username || "").trim();
+            userCardTitle.innerText = titleText || "用户名";
+        }
+
         function updateAvatar(url) {
-            if (url) {
-                userAvatarImg.src = url;
-            } else {
-                userAvatarImg.src = "/static/avatars/default.svg";
-            }
+            const nextUrl = url || DEFAULT_AVATAR_URL;
+            currentProfile.avatar_url = url || "";
+            userAvatarImg.src = nextUrl;
+        }
+
+        function getUserAvatarUrl() {
+            return currentProfile.avatar_url || DEFAULT_AVATAR_URL;
+        }
+
+        function updateProfileState(profile) {
+            currentProfile = { ...currentProfile, ...profile };
+            resolveTitleText();
         }
 
         async function safeParseEmotionResponse(res) {
@@ -843,12 +923,12 @@
         const emotionSuggest = document.getElementById('emotion-suggest');
         const loginUsernameInput = document.getElementById('login-username');
         const displayUsernameInput = document.getElementById('display-username');
-        const saveProfileBtn = document.getElementById('save-profile-btn');
         const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
         const avatarInput = document.getElementById('avatar-input');
         const userAvatarBox = document.getElementById('user-avatar-box');
         const userAvatarImg = document.getElementById('user-avatar-img');
         const lockStatus = document.getElementById('lock-status');
+        const userCardTitle = document.getElementById('user-card-title');
 
         function clearChatWindow() {
             chatWindow.innerHTML = "";
@@ -884,7 +964,12 @@
             if (!data || !data.ok) {
                 return false;
             }
-            displayUsernameInput.value = data.profile?.username || "";
+            const profileData = data.profile || {};
+            displayUsernameInput.value = profileData.display_name || profileData.username || "";
+            updateProfileState({
+                username: profileData.username || loginUsernameInput.value.trim(),
+                display_name: profileData.display_name || "",
+            });
             updateAvatar(data.profile?.avatar_url);
             await loadHistory();
             return true;
@@ -897,6 +982,7 @@
                 currentUserId = null;
                 displayUsernameInput.value = "";
                 updateAvatar("");
+                updateProfileState({ username: "", display_name: "" });
                 lockStatus.innerText = "请输入用户名后即可保存资料";
                 lockStatus.style.color = "#d9534f";
                 sendBtn.disabled = true;
@@ -908,7 +994,8 @@
             if (token !== usernameChangeToken) return;
             currentUserId = nextUserId;
             localStorage.setItem(STORAGE_USERNAME_KEY, username);
-            lockStatus.innerText = "用户名已就绪，可保存资料或上传头像";
+            updateProfileState({ username });
+            lockStatus.innerText = "用户名已就绪，资料将自动保存";
             lockStatus.style.color = "#3b6fb6";
             if (loadRemote) {
                 await loadProfile();
@@ -916,29 +1003,44 @@
             sendBtn.disabled = msgInput.value.trim() === "";
         }
 
-        async function saveProfile() {
+        async function persistProfile({ displayName, avatarUrl } = {}) {
             if (!currentUserId) {
                 lockStatus.innerText = "请先输入用户名";
                 lockStatus.style.color = "#d9534f";
-                return;
+                return false;
             }
-            const username = displayUsernameInput.value.trim() || loginUsernameInput.value.trim();
+            const username = loginUsernameInput.value.trim();
+            const nextDisplayName = displayName ?? displayUsernameInput.value.trim();
             if (!username) {
-                lockStatus.innerText = "显示名称不能为空";
+                lockStatus.innerText = "用户名不能为空";
                 lockStatus.style.color = "#d9534f";
-                return;
+                return false;
+            }
+            const payload = {
+                user_id: currentUserId,
+                username,
+                display_name: nextDisplayName
+            };
+            if (avatarUrl !== undefined) {
+                payload.avatar_url = avatarUrl || "";
             }
             const data = await fetchJson("/profile", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ user_id: currentUserId, username })
+                body: JSON.stringify(payload)
             });
             if (data?.ok) {
-                lockStatus.innerText = "名称已保存";
+                updateProfileState({
+                    username: data.profile?.username || username,
+                    display_name: data.profile?.display_name ?? nextDisplayName
+                });
+                lockStatus.innerText = "资料已保存";
                 lockStatus.style.color = "#3b6fb6";
+                return true;
             } else {
-                lockStatus.innerText = "名称保存失败";
+                lockStatus.innerText = "资料保存失败";
                 lockStatus.style.color = "#d9534f";
+                return false;
             }
         }
 
@@ -954,8 +1056,11 @@
             });
             if (data?.ok) {
                 updateAvatar(data.avatar_url);
-                lockStatus.innerText = "头像已更新";
-                lockStatus.style.color = "#3b6fb6";
+                const saved = await persistProfile({ avatarUrl: data.avatar_url });
+                if (saved) {
+                    lockStatus.innerText = "头像已更新";
+                    lockStatus.style.color = "#3b6fb6";
+                }
             } else {
                 lockStatus.innerText = "头像上传失败";
                 lockStatus.style.color = "#d9534f";
@@ -971,7 +1076,6 @@
             avatarInput.click();
         }
 
-        saveProfileBtn.addEventListener('click', saveProfile);
         uploadAvatarBtn.addEventListener('click', openAvatarPicker);
         userAvatarBox.addEventListener('click', openAvatarPicker);
         avatarInput.addEventListener('change', (e) => {
@@ -979,6 +1083,7 @@
             if (file) {
                 uploadAvatar(file);
             }
+            e.target.value = "";
         });
 
         let usernameDebounceTimer = null;
@@ -993,6 +1098,20 @@
 
         loginUsernameInput.addEventListener('blur', () => {
             applyUsernameChange({ loadRemote: true });
+        });
+
+        let profileSaveTimer = null;
+        displayUsernameInput.addEventListener('input', () => {
+            if (profileSaveTimer) {
+                clearTimeout(profileSaveTimer);
+            }
+            profileSaveTimer = setTimeout(() => {
+                persistProfile();
+            }, 400);
+        });
+
+        displayUsernameInput.addEventListener('blur', () => {
+            persistProfile();
         });
 
         const lastUsername = localStorage.getItem(STORAGE_USERNAME_KEY);
@@ -1122,7 +1241,10 @@
                 // 用户消息：容器右对齐、头像蓝色（用户）、气泡蓝色
                 msgContainer.className = 'msg-container user-msg-wrap';
                 avatar.className = 'msg-avatar user-avatar';
-                avatar.innerHTML = '<i class="fas fa-user"></i>';
+                const img = document.createElement('img');
+                img.src = getUserAvatarUrl();
+                img.alt = '用户头像';
+                avatar.appendChild(img);
                 messageDiv.className = 'message user-msg';
             } else {
                 // AI消息：容器左对齐、头像浅蓝（小盈）、气泡浅蓝

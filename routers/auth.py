@@ -68,6 +68,7 @@ def auth_init(req: AuthRequest):
     profile["pin_hash"] = hash_pin(req.pin)
     profile["username"] = req.username.strip()
     profile.setdefault("avatar_url", "")
+    profile.setdefault("display_name", "")
 
     save_user_data(user_id, user_info)
     return {"ok": True}
@@ -123,6 +124,7 @@ def auth_verify(req: AuthRequest):
     token = create_token(user_id, secret)
     profile_data = {
         "username": profile.get("username", req.username.strip()),
+        "display_name": profile.get("display_name", ""),
         "avatar_url": profile.get("avatar_url", ""),
     }
     return JSONResponse(
