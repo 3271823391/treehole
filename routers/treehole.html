@@ -620,7 +620,7 @@
                     </div>
                     <div>
                         <div class="user-card-title">用户中心</div>
-                        <div class="lock-status" id="lock-status">请先输入用户名与 PIN 解锁</div>
+                        <div class="lock-status" id="lock-status">请输入用户名后即可保存资料</div>
                     </div>
                 </div>
 
@@ -632,33 +632,14 @@
                 </div>
 
                 <div class="form-row">
-                    <label for="pin-input">PIN（4-6位数字）</label>
-                    <input id="pin-input" type="password" inputmode="numeric" maxlength="6" placeholder="输入PIN">
-                </div>
-
-                <div class="user-card-actions">
-                    <button id="unlock-btn">进入/解锁</button>
-                    <button id="init-btn" class="secondary" style="display:none;">首次设置</button>
-                </div>
-
-                <div class="form-row">
                     <label for="display-username">显示名称</label>
-                    <input id="display-username" type="text" placeholder="解锁后可编辑" disabled>
+                    <input id="display-username" type="text" placeholder="可选">
                 </div>
 
                 <div class="user-card-actions">
-                    <button id="save-profile-btn" class="secondary" disabled>保存名称</button>
-                    <button id="upload-avatar-btn" class="secondary" disabled>上传头像</button>
+                    <button id="save-profile-btn" class="secondary">保存名称</button>
+                    <button id="upload-avatar-btn" class="secondary">上传头像</button>
                 </div>
-            </div>
-
-            <!-- 小盈形象卡片 -->
-            <div class="ai-card">
-                <div class="ai-card-avatar">
-                    <i class="fas fa-girl"></i>
-                </div>
-                <h3 class="ai-name">小盈</h3>
-                <p class="ai-desc">你的专属心灵倾听者<br>温柔·耐心·保密<br>陪你度过每一个情绪时刻</p>
             </div>
 
             <!-- 情绪分析报告 -->
@@ -699,10 +680,7 @@
 
     <script>
         const STORAGE_USERNAME_KEY = "treehole_username";
-        const STORAGE_TOKEN_KEY = "treehole_token";
         let currentUserId = null;
-        let authToken = sessionStorage.getItem(STORAGE_TOKEN_KEY) || "";
-        let isUnlocked = false;
         const chatHistory = [];
         let emotionLocked = false;
         let emotionDebounceTimer = null;
@@ -727,26 +705,19 @@
             }
         }
 
-        function getAuthHeaders() {
-            if (!authToken) return {};
-            return { Authorization: `Bearer ${authToken}` };
+        async function sha1Hex(input) {
+            const data = new TextEncoder().encode(input);
+            const buffer = await crypto.subtle.digest("SHA-1", data);
+            return Array.from(new Uint8Array(buffer))
+                .map((b) => b.toString(16).padStart(2, "0"))
+                .join("");
         }
 
-        function setUnlockedState(unlocked) {
-            isUnlocked = unlocked;
-            msgInput.disabled = !unlocked;
-            sendBtn.disabled = !unlocked || msgInput.value.trim() === "";
-            displayUsernameInput.disabled = !unlocked;
-            saveProfileBtn.disabled = !unlocked;
-            uploadAvatarBtn.disabled = !unlocked;
-            if (unlocked) {
-                lockStatus.innerText = "已解锁，可开始聊天";
-                lockStatus.style.color = "#3b6fb6";
-                initBtn.style.display = "none";
-            } else {
-                lockStatus.innerText = "请先输入用户名与 PIN 解锁";
-                lockStatus.style.color = "#d9534f";
-            }
+        async function makeUserId(username) {
+            const norm = (username || "").trim().toLowerCase();
+            if (!norm) return "";
+            const digest = await sha1Hex(norm);
+            return `u_${digest}`;
         }
 
         function updateAvatar(url) {
@@ -806,7 +777,7 @@
         async function updateEmotionOnce(content) {
             // ✅ 同一轮对话只允许分析一次
             if (emotionLocked || lastEmotionRound === currentRound) return;
-            if (!isUnlocked || !currentUserId) return;
+            if (!currentUserId) return;
 
             emotionLocked = true;
             lastEmotionRound = currentRound;
@@ -816,7 +787,7 @@
             try {
                 const res = await fetch("/emotion", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         user_id: currentUserId,
                         history,
@@ -871,9 +842,6 @@
         const emotionAnalysis = document.getElementById('emotion-analysis');
         const emotionSuggest = document.getElementById('emotion-suggest');
         const loginUsernameInput = document.getElementById('login-username');
-        const pinInput = document.getElementById('pin-input');
-        const unlockBtn = document.getElementById('unlock-btn');
-        const initBtn = document.getElementById('init-btn');
         const displayUsernameInput = document.getElementById('display-username');
         const saveProfileBtn = document.getElementById('save-profile-btn');
         const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
@@ -901,9 +869,7 @@
 
         async function loadHistory() {
             if (!currentUserId) return;
-            const data = await fetchJson(`/load_history?user_id=${encodeURIComponent(currentUserId)}`, {
-                headers: { ...getAuthHeaders() }
-            });
+            const data = await fetchJson(`/load_history?user_id=${encodeURIComponent(currentUserId)}`);
             if (!data || !data.ok) {
                 return;
             }
@@ -913,81 +879,50 @@
         }
 
         async function loadProfile() {
-            const data = await fetchJson("/profile", {
-                headers: { ...getAuthHeaders() }
-            });
+            if (!currentUserId) return false;
+            const data = await fetchJson(`/profile?user_id=${encodeURIComponent(currentUserId)}`);
             if (!data || !data.ok) {
                 return false;
             }
-            currentUserId = data.user_id;
             displayUsernameInput.value = data.profile?.username || "";
             updateAvatar(data.profile?.avatar_url);
-            setUnlockedState(true);
             await loadHistory();
             return true;
         }
 
-        async function handleVerify() {
+        let usernameChangeToken = 0;
+        async function applyUsernameChange({ loadRemote = true } = {}) {
             const username = loginUsernameInput.value.trim();
-            const pin = pinInput.value.trim();
             if (!username) {
-                lockStatus.innerText = "请输入用户名";
+                currentUserId = null;
+                displayUsernameInput.value = "";
+                updateAvatar("");
+                lockStatus.innerText = "请输入用户名后即可保存资料";
                 lockStatus.style.color = "#d9534f";
-                return;
-            }
-            const data = await fetchJson("/auth/verify", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, pin })
-            });
-            if (!data || !data.ok) {
-                if (data?.need_init) {
-                    lockStatus.innerText = "该用户名未设置 PIN，请先初始化";
-                    lockStatus.style.color = "#d9534f";
-                    initBtn.style.display = "inline-flex";
-                } else if (data?.locked) {
-                    lockStatus.innerText = `已锁定，请 ${data.seconds_left}s 后再试`;
-                    lockStatus.style.color = "#d9534f";
-                } else {
-                    lockStatus.innerText = "PIN 错误或验证失败";
-                    lockStatus.style.color = "#d9534f";
-                }
+                sendBtn.disabled = true;
                 return;
             }
 
-            authToken = data.token;
-            sessionStorage.setItem(STORAGE_TOKEN_KEY, authToken);
+            const token = ++usernameChangeToken;
+            const nextUserId = await makeUserId(username);
+            if (token !== usernameChangeToken) return;
+            currentUserId = nextUserId;
             localStorage.setItem(STORAGE_USERNAME_KEY, username);
-            currentUserId = data.user_id;
-            displayUsernameInput.value = data.profile?.username || username;
-            updateAvatar(data.profile?.avatar_url);
-            setUnlockedState(true);
-            await loadHistory();
-        }
-
-        async function handleInit() {
-            const username = loginUsernameInput.value.trim();
-            const pin = pinInput.value.trim();
-            if (!username || !pin) {
-                lockStatus.innerText = "请输入用户名与 PIN";
-                lockStatus.style.color = "#d9534f";
-                return;
+            lockStatus.innerText = "用户名已就绪，可保存资料或上传头像";
+            lockStatus.style.color = "#3b6fb6";
+            if (loadRemote) {
+                await loadProfile();
             }
-            const data = await fetchJson("/auth/init", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, pin })
-            });
-            if (!data || !data.ok) {
-                lockStatus.innerText = "初始化失败，请检查 PIN";
-                lockStatus.style.color = "#d9534f";
-                return;
-            }
-            await handleVerify();
+            sendBtn.disabled = msgInput.value.trim() === "";
         }
 
         async function saveProfile() {
-            const username = displayUsernameInput.value.trim();
+            if (!currentUserId) {
+                lockStatus.innerText = "请先输入用户名";
+                lockStatus.style.color = "#d9534f";
+                return;
+            }
+            const username = displayUsernameInput.value.trim() || loginUsernameInput.value.trim();
             if (!username) {
                 lockStatus.innerText = "显示名称不能为空";
                 lockStatus.style.color = "#d9534f";
@@ -995,11 +930,11 @@
             }
             const data = await fetchJson("/profile", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-                body: JSON.stringify({ username })
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: currentUserId, username })
             });
             if (data?.ok) {
-                lockStatus.innerText = "名称已更新";
+                lockStatus.innerText = "名称已保存";
                 lockStatus.style.color = "#3b6fb6";
             } else {
                 lockStatus.innerText = "名称保存失败";
@@ -1015,7 +950,6 @@
 
             const data = await fetchJson("/avatar_upload", {
                 method: "POST",
-                headers: { ...getAuthHeaders() },
                 body: formData
             });
             if (data?.ok) {
@@ -1028,14 +962,18 @@
             }
         }
 
-        unlockBtn.addEventListener('click', handleVerify);
-        initBtn.addEventListener('click', handleInit);
-        saveProfileBtn.addEventListener('click', saveProfile);
-        uploadAvatarBtn.addEventListener('click', () => avatarInput.click());
-        userAvatarBox.addEventListener('click', () => {
-            if (!isUnlocked) return;
+        function openAvatarPicker() {
+            if (!currentUserId) {
+                lockStatus.innerText = "请先输入用户名";
+                lockStatus.style.color = "#d9534f";
+                return;
+            }
             avatarInput.click();
-        });
+        }
+
+        saveProfileBtn.addEventListener('click', saveProfile);
+        uploadAvatarBtn.addEventListener('click', openAvatarPicker);
+        userAvatarBox.addEventListener('click', openAvatarPicker);
         avatarInput.addEventListener('change', (e) => {
             const file = e.target.files?.[0];
             if (file) {
@@ -1043,31 +981,30 @@
             }
         });
 
+        let usernameDebounceTimer = null;
+        loginUsernameInput.addEventListener('input', () => {
+            if (usernameDebounceTimer) {
+                clearTimeout(usernameDebounceTimer);
+            }
+            usernameDebounceTimer = setTimeout(() => {
+                applyUsernameChange({ loadRemote: true });
+            }, 250);
+        });
+
+        loginUsernameInput.addEventListener('blur', () => {
+            applyUsernameChange({ loadRemote: true });
+        });
+
         const lastUsername = localStorage.getItem(STORAGE_USERNAME_KEY);
         if (lastUsername) {
             loginUsernameInput.value = lastUsername;
-        }
-
-        if (authToken) {
-            loadProfile().then((ok) => {
-                if (!ok) {
-                    sessionStorage.removeItem(STORAGE_TOKEN_KEY);
-                    authToken = "";
-                    setUnlockedState(false);
-                }
-            }).catch(() => {
-                sessionStorage.removeItem(STORAGE_TOKEN_KEY);
-                authToken = "";
-                setUnlockedState(false);
-            });
-        } else {
-            setUnlockedState(false);
+            applyUsernameChange({ loadRemote: true });
         }
 
         // 监听输入框变化，控制发送按钮状态+自适应高度
         msgInput.addEventListener('input', () => {
             const content = msgInput.value.trim();
-            sendBtn.disabled = !isUnlocked || content === '';
+            sendBtn.disabled = !currentUserId || content === '';
             // 自适应输入框高度
             msgInput.style.height = 'auto';
             msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
@@ -1085,8 +1022,8 @@
         sendBtn.addEventListener('click', sendMessage);
 
         async function sendMessage() {
-        if (!isUnlocked || !currentUserId) {
-            lockStatus.innerText = "请先解锁账号";
+        if (!currentUserId) {
+            lockStatus.innerText = "请先输入用户名";
             lockStatus.style.color = "#d9534f";
             return;
         }
@@ -1132,7 +1069,7 @@
         try {
             const resp = await fetch("/chat_stream", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     user_id: currentUserId,   // ← 必须有
                     history: chatHistory,

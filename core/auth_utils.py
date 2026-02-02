@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import time
 from typing import Optional, Tuple
@@ -14,6 +15,7 @@ PIN_MIN_LEN = 4
 PIN_MAX_LEN = 6
 TOKEN_EXPIRE_SECONDS = 12 * 60 * 60
 PBKDF2_ITERATIONS = 120_000
+USER_ID_PATTERN = re.compile(r"^u_[0-9a-f]{40}$")
 
 
 def normalize_username(username: str) -> str:
@@ -24,6 +26,12 @@ def make_user_id(username: str) -> str:
     norm = normalize_username(username)
     digest = hashlib.sha1(norm.encode("utf-8")).hexdigest()
     return f"u_{digest}"
+
+
+def is_valid_user_id(user_id: str) -> bool:
+    if not isinstance(user_id, str):
+        return False
+    return bool(USER_ID_PATTERN.match(user_id))
 
 
 def validate_pin(pin: str) -> Tuple[bool, str]:
