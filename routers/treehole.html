@@ -569,9 +569,12 @@
             }
         const chatHistory = [];
         let emotionLocked = false;
+        let emotionDebounceTimer = null;
         // ✅【新增：情绪分析轮次控制】
         let currentRound = 0;
         let lastEmotionRound = -1;
+        const EMOTION_DEBOUNCE_MS = 450;
+        const EMOTION_HISTORY_LIMIT = 24;
         async function safeParseEmotionResponse(res) {
             const contentType = res.headers.get("content-type") || "";
             const cloned = res.clone();
@@ -593,6 +596,31 @@
                 return null;
             }
         }
+        function buildEmotionHistory(roundId, currentInput) {
+            const filtered = chatHistory.filter((item) => {
+                if (!item || typeof item !== "object") return false;
+                if (item.round_id == null) return true;
+                return item.round_id < roundId;
+            });
+            if (filtered.length && filtered[filtered.length - 1]?.role === "user"
+                && filtered[filtered.length - 1]?.content === currentInput) {
+                filtered.pop();
+            }
+            if (filtered.length > EMOTION_HISTORY_LIMIT) {
+                return filtered.slice(-EMOTION_HISTORY_LIMIT);
+            }
+            return filtered;
+        }
+
+        function scheduleEmotionUpdate(content) {
+            if (emotionDebounceTimer) {
+                clearTimeout(emotionDebounceTimer);
+            }
+            emotionDebounceTimer = setTimeout(() => {
+                updateEmotionOnce(content);
+            }, EMOTION_DEBOUNCE_MS);
+        }
+
         async function updateEmotionOnce(content) {
             // ✅ 同一轮对话只允许分析一次
             if (emotionLocked || lastEmotionRound === currentRound) return;
@@ -600,6 +628,7 @@
             emotionLocked = true;
             lastEmotionRound = currentRound;
 
+            const history = buildEmotionHistory(currentRound, content);
 
             try {
                 const res = await fetch("/emotion", {
@@ -607,7 +636,7 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         user_id: userId,
-                        history: chatHistory,
+                        history,
                         current_input: content,
                         round_id: currentRound
                     })
@@ -689,9 +718,11 @@
 
         // 用户消息
             addMessage(content, 'user');
+            scheduleEmotionUpdate(content);
             chatHistory.push({
                 role: "user",
-                content: content
+                content: content,
+                round_id: currentRound
             });
         // 然后更新 UI
         msgInput.value = '';
@@ -742,11 +773,9 @@
             }
             chatHistory.push({
                 role: "assistant",
-                content: aiMsg.innerText
+                content: aiMsg.innerText,
+                round_id: currentRound
             });
-
-            // 用完整上下文再分析一次
-            updateEmotionOnce(content);
         }
             catch (err) {
                 removeLoading();
