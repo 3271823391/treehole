@@ -22,6 +22,7 @@ def get_profile(user_id: str = ""):
         "user_id": user_id,
         "profile": {
             "username": profile.get("username", ""),
+            "display_name": profile.get("display_name", ""),
             "avatar_url": profile.get("avatar_url", ""),
         },
     }
@@ -34,15 +35,34 @@ def update_profile(payload: dict):
     if not is_valid_user_id(user_id):
         return JSONResponse(status_code=200, content={"ok": False, "msg": "invalid_user_id"})
 
-    username = (payload.get("display_name") or payload.get("username") or "").strip()
-    if not username:
-        return JSONResponse(status_code=200, content={"ok": False, "msg": "username_required"})
+    username = (payload.get("username") or "").strip()
+    display_name = payload.get("display_name")
+    avatar_url = payload.get("avatar_url")
+    if display_name is not None:
+        display_name = (display_name or "").strip()
+    if avatar_url is not None:
+        avatar_url = (avatar_url or "").strip()
+
+    if not username and display_name is None and avatar_url is None:
+        return JSONResponse(status_code=200, content={"ok": False, "msg": "profile_empty"})
 
     user_info = load_user_data(user_id)
     profile = user_info.setdefault("profile", {})
-    profile["username"] = username
+    if username:
+        profile["username"] = username
+    if display_name is not None:
+        profile["display_name"] = display_name
+    if avatar_url is not None:
+        profile["avatar_url"] = avatar_url
     save_user_data(user_id, user_info)
-    return {"ok": True, "profile": {"username": username, "avatar_url": profile.get("avatar_url", "")}}
+    return {
+        "ok": True,
+        "profile": {
+            "username": profile.get("username", ""),
+            "display_name": profile.get("display_name", ""),
+            "avatar_url": profile.get("avatar_url", ""),
+        },
+    }
 
 
 @router.post("/avatar_upload")
