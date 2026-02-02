@@ -17,15 +17,24 @@
             --vv-top: 0px;
         }
 
+        html,
+        body {
+            height: 100%;
+        }
+
         body {
             background-color: #f0f7ff;
             color: #333;
-            min-height: var(--app-height);
-            height: var(--app-height);
+            margin: 0;
+            overflow: hidden; /* TODO: iOS Safari 键盘弹出时保持布局视口稳定 */
+        }
+
+        /* 固定布局容器：避免键盘弹出导致 footer 跳动 */
+        .app-shell {
+            position: fixed;
+            inset: 0;
             display: flex;
             flex-direction: column;
-            position: relative;
-            padding-bottom: 40px; /* 为底部版权预留空间 */
         }
 
         /* 顶部导航栏 - 移除AI树洞，简化文字 */
@@ -35,8 +44,7 @@
             padding: 1rem 2rem;
             text-align: center;
             box-shadow: 0 3px 15px rgba(74, 144, 226, 0.25);
-            position: sticky;
-            top: 0;
+            position: relative;
             z-index: 100;
         }
 
@@ -102,7 +110,8 @@
             padding: 0 1rem;
             gap: 1.2rem;
             flex-wrap: wrap;
-            height: var(--app-height);
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* 聊天区域 - 提升占比，主体视觉 */
@@ -112,7 +121,7 @@
             display: flex;
             flex-direction: column;
             gap: 1rem;
-            height: var(--app-height);
+            min-height: 0;
         }
 
         /* 聊天窗口 - 优化内边距和阴影 */
@@ -123,8 +132,7 @@
             padding: 1.2rem 1.5rem;
             box-shadow: 0 0 25px rgba(74, 144, 226, 0.08);
             overflow-y: auto;
-            min-height: 450px;
-            max-height: 650px;
+            min-height: 0;
         }
 
         /* 滚动条美化升级 */
@@ -249,6 +257,12 @@
         }
 
         /* 输入框区域 - 优化圆角和阴影 */
+        .composer {
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+        }
+
         .input-area {
             display: flex;
             gap: 0.8rem;
@@ -257,6 +271,8 @@
             padding: 0.9rem 1.4rem;
             border-radius: 36px;
             box-shadow: 0 0 20px rgba(74, 144, 226, 0.08);
+            flex: 1;
+            min-height: 44px;
         }
 
         #msg-input {
@@ -303,6 +319,27 @@
             background-color: #357bd8;
             transform: scale(1.05);
             box-shadow: 0 3px 10px rgba(74, 144, 226, 0.4);
+        }
+
+        .voice-clone-trigger {
+            height: 44px;
+            border-radius: 999px;
+            padding: 0 1.2rem;
+            font-size: 0.9rem;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            background: #e8f1ff;
+            color: #3b6fb6;
+            flex: 0 0 auto;
+        }
+
+        .voice-clone-trigger.primary {
+            background-color: #4a90e2;
+            color: #fff;
         }
 
         /* 侧边栏 - 收窄宽度，辅助布局 */
@@ -542,6 +579,10 @@
             line-height: 1.6;
         }
 
+        .voice-clone-card .voice-clone-trigger {
+            display: none;
+        }
+
         .report-title {
             font-size: 1.15rem;
             font-weight: 700;
@@ -636,11 +677,7 @@
 
         /* 底部版权 - 固定底部，小字标明 */
         .copyright {
-            position: absolute;
-            bottom: 0;
-            left: 0;
             width: 100%;
-            height: 40px;
             background-color: #fff;
             display: flex;
             align-items: center;
@@ -649,6 +686,7 @@
             color: #999;
             border-top: 1px solid #f0f7ff;
             z-index: 90;
+            padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
         }
 
         .modal-backdrop {
@@ -708,6 +746,40 @@
             padding: 1rem 1.2rem 1.4rem;
             overflow: auto;
             -webkit-overflow-scrolling: touch;
+        }
+
+        /* TODO: 语音克隆表单样式，保持移动端可读性 */
+        .voice-clone-form {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .voice-clone-form label {
+            font-size: 0.85rem;
+            color: #6b7c93;
+        }
+
+        .voice-clone-form input,
+        .voice-clone-form textarea {
+            border: 1px solid #d6e3f8;
+            border-radius: 10px;
+            padding: 0.55rem 0.7rem;
+            font-size: 0.9rem;
+        }
+
+        .voice-clone-status {
+            min-height: 1.2rem;
+            font-size: 0.85rem;
+            color: #6b7c93;
+        }
+
+        .voice-clone-status.success {
+            color: #2f8d46;
+        }
+
+        .voice-clone-status.error {
+            color: #d9534f;
         }
 
         .user-modal-profile {
@@ -801,8 +873,6 @@
             }
 
             .chat-window {
-                min-height: 350px;
-                max-height: 500px;
                 padding: 1rem 1.2rem;
             }
 
@@ -836,6 +906,22 @@
                 font-size: 0.8rem;
                 padding: 0 1rem;
                 text-align: center;
+            }
+        }
+
+        @media (max-width: 1023px) {
+            .composer {
+                flex-wrap: wrap;
+            }
+
+            .composer .voice-clone-trigger {
+                display: none;
+            }
+
+            .voice-clone-card .voice-clone-trigger {
+                display: inline-flex;
+                width: 100%;
+                justify-content: center;
             }
         }
 
@@ -912,46 +998,54 @@
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- 顶部导航栏 - 移除AI树洞文字 -->
-    <header class="header">
-        <div class="header-content">
-            <div class="header-text">
-                <h1>心灵避风港</h1>
-                <p>小盈陪你倾诉所有心事，做你最温暖的倾听者</p>
-            </div>
-            <div class="header-actions">
-                <button class="header-action-btn" id="mobile-menu-btn" type="button" aria-label="打开菜单">
-                    <i class="fas fa-bars"></i>
-                    菜单
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- 主容器 - 聊天框占主体 -->
-    <main class="main-container">
-        <!-- 聊天区域 - 主体占比 -->
-        <section class="chat-section">
-            <!-- 聊天窗口 - 显示双方头像 -->
-            <div class="chat-window" id="chat-window">
-                <div class="empty-tip" id="empty-tip">
-                    <i class="fas fa-comments"></i>
-                    你好呀～我是小盈 😊<br>
-                    有什么心事想和我说吗？我会认真倾听的
+    <!-- TODO: 固定布局容器，避免 iOS 键盘弹出时 footer 抖动 -->
+    <div class="app-shell" id="app">
+        <!-- 顶部导航栏 - 移除AI树洞文字 -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-text">
+                    <h1>心灵避风港</h1>
+                    <p>小盈陪你倾诉所有心事，做你最温暖的倾听者</p>
+                </div>
+                <div class="header-actions">
+                    <button class="header-action-btn" id="mobile-menu-btn" type="button" aria-label="打开菜单">
+                        <i class="fas fa-bars"></i>
+                        菜单
+                    </button>
                 </div>
             </div>
+        </header>
 
-            <!-- 输入框区域 -->
-            <div class="input-area">
-                <textarea id="msg-input" placeholder="输入想倾诉的内容，按回车发送..." rows="1"></textarea>
-                <button class="send-btn" id="send-btn" disabled>
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-            </div>
-        </section>
+        <!-- 主容器 - 聊天框占主体 -->
+        <main class="main-container">
+            <!-- 聊天区域 - 主体占比 -->
+            <section class="chat-section">
+                <!-- 聊天窗口 - 显示双方头像 -->
+                <div class="chat-window" id="chat-window">
+                    <div class="empty-tip" id="empty-tip">
+                        <i class="fas fa-comments"></i>
+                        你好呀～我是小盈 😊<br>
+                        有什么心事想和我说吗？我会认真倾听的
+                    </div>
+                </div>
 
-        <!-- 侧边栏：用户卡片 + 小盈形象 + 情绪分析报告（辅助布局） -->
-        <aside class="sidebar">
+                <!-- 输入框区域 -->
+                <div class="composer">
+                    <div class="input-area">
+                        <textarea id="msg-input" placeholder="输入想倾诉的内容，按回车发送..." rows="1"></textarea>
+                        <button class="send-btn" id="send-btn" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <button class="voice-clone-trigger primary" type="button" data-voice-clone-trigger>
+                        <i class="fas fa-microphone"></i>
+                        语音克隆
+                    </button>
+                </div>
+            </section>
+
+            <!-- 侧边栏：用户卡片 + 小盈形象 + 情绪分析报告（辅助布局） -->
+            <aside class="sidebar">
             <div class="drawer-header">
                 <button class="drawer-close" id="drawer-close-btn" type="button" aria-label="关闭菜单">
                     <i class="fas fa-arrow-left"></i>
@@ -1025,12 +1119,20 @@
                     语音克隆
                 </h3>
                 <p class="voice-clone-desc">
-                    TODO：将来支持上传音频/录音进行声音克隆。
+                    TODO：移动端入口保留此按钮，桌面端请使用底部输入区的快捷入口。
                 </p>
-                <button class="primary" id="voice-clone-btn" type="button">语音克隆</button>
+                <button class="voice-clone-trigger primary" type="button" data-voice-clone-trigger>
+                    语音克隆
+                </button>
             </div>
-        </aside>
-    </main>
+            </aside>
+        </main>
+
+        <!-- 底部版权 - 固定底部，小字标明 -->
+        <footer class="copyright">
+            版权所有-JSHT捷思慧图科技 翻版必究
+        </footer>
+    </div>
 
     <div class="modal-backdrop" id="user-modal" aria-hidden="true">
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
@@ -1111,23 +1213,30 @@
                 </button>
             </div>
             <div class="modal-body">
-                <p>TODO：将来上传音频/录音。</p>
-                <p>TODO：调用后端接口 /api/voice_clone (占位)。</p>
-                <button class="primary" id="voice-clone-action" type="button">开始克隆</button>
+                <!-- TODO: 上传参考音频，创建音色模型 -->
+                <div class="voice-clone-form">
+                    <label for="voice-clone-file">参考音频</label>
+                    <input type="file" id="voice-clone-file" accept="audio/*">
+
+                    <label for="voice-clone-name">名称</label>
+                    <input type="text" id="voice-clone-name" value="我的声音" maxlength="32">
+
+                    <label for="voice-clone-desc">描述（可选）</label>
+                    <textarea id="voice-clone-desc" rows="2" placeholder="如：情绪平稳、无背景音"></textarea>
+
+                    <div class="voice-clone-status" id="voice-clone-status" role="status" aria-live="polite"></div>
+                    <button class="primary" id="voice-clone-action" type="button">上传/创建</button>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="mobile-toast" id="mobile-toast" role="status" aria-live="polite"></div>
 
-    <!-- 底部版权 - 固定底部，小字标明 -->
-    <div class="copyright">
-        版权所有-JSHT捷思慧图科技 翻版必究
-    </div>
-
     <script>
         const STORAGE_USERNAME_KEY = "treehole_username";
         const STORAGE_USER_ID_KEY = "treehole_user_id";
+        const STORAGE_VOICE_AUDIO_ID = "voice_audio_id"; // TODO: PRO 专用语音克隆缓存 key
         const APP_PLAN = "pro"; // TODO: FREE/PLUS/PRO 页面拷贝时按版本调整
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
         let currentUserId = null;
@@ -1263,6 +1372,43 @@
         function showErrorModal(message) {
             // TODO: 统一错误提示入口（暂用 toast，避免把错误塞进聊天记录）
             showToast(message || "服务暂不可用");
+        }
+
+        async function handleVoiceCloneUpload() {
+            if (!voiceCloneFile || !voiceCloneAction) return;
+            const file = voiceCloneFile.files?.[0];
+            if (!file) {
+                setVoiceCloneStatus("请先选择音频文件", "error");
+                showToast("请先选择音频文件");
+                return;
+            }
+            const name = (voiceCloneName?.value || "").trim() || "我的声音";
+            const describe = (voiceCloneDesc?.value || "").trim();
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("name", name);
+            formData.append("describe", describe);
+
+            voiceCloneAction.disabled = true;
+            setVoiceCloneStatus("上传中，请稍候...");
+
+            try {
+                const data = await requestVoiceClone(formData);
+                if (data?.ok && data.data?.audioId) {
+                    const audioId = data.data.audioId;
+                    setVoiceCloneStatus(`上传成功：audioId=${audioId}`, "success");
+                    if (isProPlan) {
+                        safeLocalStorageSet(STORAGE_VOICE_AUDIO_ID, audioId);
+                    }
+                    showToast("语音克隆上传成功");
+                    return;
+                }
+                const errorMsg = data?.msg || "上传失败";
+                setVoiceCloneStatus(errorMsg, "error");
+                showErrorModal(errorMsg);
+            } finally {
+                voiceCloneAction.disabled = false;
+            }
         }
 
         function openDrawer() {
@@ -1403,13 +1549,20 @@
         }
 
         function requestVoiceClone(payload) {
-            // TODO: 预留后端接口封装 /api/voice_clone
-            return Promise.resolve({ ok: false, msg: "not_implemented" });
+            // TODO: 封装语音克隆上传请求，避免错误写入聊天记录
+            return fetchJson("/api/voice_clone/reference/upload", {
+                method: "POST",
+                body: payload
+            });
         }
 
-        function voiceClonePlaceholder() {
-            // TODO: 当前仅占位，不触发真实请求
-            showToast("功能开发中");
+        function setVoiceCloneStatus(message, type = "") {
+            if (!voiceCloneStatus) return;
+            voiceCloneStatus.textContent = message || "";
+            voiceCloneStatus.className = "voice-clone-status";
+            if (type) {
+                voiceCloneStatus.classList.add(type);
+            }
         }
         function buildEmotionHistory(roundId, currentInput) {
             const filtered = chatHistory.filter((item) => {
@@ -1545,9 +1698,13 @@
         const emotionTagsMobile = document.getElementById('emotion-tags-mobile');
         const emotionAnalysisMobile = document.getElementById('emotion-analysis-mobile');
         const emotionSuggestMobile = document.getElementById('emotion-suggest-mobile');
-        const voiceCloneBtn = document.getElementById('voice-clone-btn');
+        const voiceCloneTriggers = document.querySelectorAll('[data-voice-clone-trigger]');
         const voiceCloneModal = document.getElementById('voice-clone-modal');
         const voiceCloneAction = document.getElementById('voice-clone-action');
+        const voiceCloneFile = document.getElementById('voice-clone-file');
+        const voiceCloneName = document.getElementById('voice-clone-name');
+        const voiceCloneDesc = document.getElementById('voice-clone-desc');
+        const voiceCloneStatus = document.getElementById('voice-clone-status');
         const isFreePlan = APP_PLAN === "free";
         const isProPlan = APP_PLAN === "pro";
 
@@ -1858,15 +2015,18 @@
             });
         }
 
-        if (voiceCloneBtn) {
-            voiceCloneBtn.addEventListener('click', () => {
-                openModal(voiceCloneModal);
+        if (voiceCloneTriggers.length) {
+            voiceCloneTriggers.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    setVoiceCloneStatus("");
+                    openModal(voiceCloneModal);
+                });
             });
         }
 
         if (voiceCloneAction) {
             voiceCloneAction.addEventListener('click', () => {
-                voiceClonePlaceholder();
+                handleVoiceCloneUpload();
             });
         }
 

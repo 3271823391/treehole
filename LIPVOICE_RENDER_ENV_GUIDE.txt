@@ -1,0 +1,31 @@
+LIPVOICE Render 环境变量配置说明
+
+必需变量:
+1) LIPVOICE_SIGN
+   - 从 LipVoice 平台获取的 sign（仅后端使用）。
+
+可选变量:
+2) LIPVOICE_BASE_URL
+   - 默认值: https://openapi.lipvoice.cn
+   - 仅当你需要切换到其他环境时再配置。
+
+Render 控制台配置路径:
+Service -> Environment -> Add Environment Variable
+
+安全提醒:
+- 不要把 sign 写进前端或提交到仓库。
+- 只在 Render 后端服务的环境变量里配置。
+
+自测方式:
+1) 使用 curl 调用本地代理接口:
+   curl -X POST "http://localhost:8000/api/voice_clone/reference/upload" \
+     -H "Accept: application/json" \
+     -F "file=@/path/to/sample.wav" \
+     -F "name=我的声音" \
+     -F "describe=测试上传"
+2) 打开 pro 页面，上传音频，成功后应返回 audioId 并写入 localStorage.voice_audio_id。
+
+常见报错排查:
+- sign 错误: 返回 lipvoice_upload_failed，检查 LIPVOICE_SIGN 是否正确、是否有空格。
+- 超时: 网络不通或接口繁忙，稍后再试或检查 Render 网络。
+- 文件太大: 控制上传文件大小，建议使用短音频（例如 10-30 秒）。
