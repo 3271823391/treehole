@@ -1,8 +1,8 @@
 import os
 
 import requests
-from fastapi import APIRouter, File, Form, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Body, File, Form, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from data_store import load_user_data, save_user_data
 
@@ -92,3 +92,74 @@ async def upload_reference_audio(
             "voice_profile_id": voice_profile_id
         }
     }
+
+
+@router.post("/api/voice_clone/tts")
+async def voice_clone_tts(payload: dict = Body(...)):
+    """代理 LipVoice TTS 接口，使用 audioId 输出克隆音色。"""
+    sign = os.getenv("LIPVOICE_SIGN")
+    if not sign:
+        return JSONResponse(status_code=500, content={"ok": False, "msg": "lipvoice_sign_missing"})
+
+    user_id = (payload.get("user_id") or "").strip()
+    text = (payload.get("text") or "").strip()
+    if not user_id or not text:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_payload"})
+
+    user_info = load_user_data(user_id)
+    audio_id = (user_info.get("voice") or {}).get("audioId")
+    if not audio_id:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "voice_not_initialized"})
+
+    base_url = os.getenv("LIPVOICE_BASE_URL", "https://openapi.lipvoice.cn")
+    try:
+        # 根据 LipVoice TTS 文档，必须携带 audioId 才能使用克隆音色，否则会回落到默认音色。
+        response = requests.post(
+            f"{base_url}/api/third/tts",
+            headers={"sign": sign},
+            json={"text": text, "audioId": audio_id},
+            stream=True,
+            timeout=30
+        )
+    except requests.RequestException as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"ok": False, "msg": "lipvoice_tts_failed", "detail": str(exc)}
+        )
+    except Exception as exc:  # pragma: no cover - 兜底异常
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "msg": "lipvoice_tts_failed", "detail": str(exc)}
+        )
+
+    if response.status_code != 200:
+        detail = None
+        try:
+            detail = response.json()
+        except ValueError:
+            detail = response.text
+        return JSONResponse(
+            status_code=502,
+            content={"ok": False, "msg": "lipvoice_tts_failed", "detail": detail}
+        )
+
+    content_type = response.headers.get("content-type", "audio/mpeg")
+    if "application/json" in content_type:
+        try:
+            detail = response.json()
+        except ValueError:
+            detail = response.text
+        return JSONResponse(
+            status_code=502,
+            content={"ok": False, "msg": "lipvoice_tts_failed", "detail": detail}
+        )
+
+    def iter_audio():
+        try:
+            for chunk in response.iter_content(chunk_size=4096):
+                if chunk:
+                    yield chunk
+        finally:
+            response.close()
+
+    return StreamingResponse(iter_audio(), media_type=content_type)
