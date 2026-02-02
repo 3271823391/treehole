@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>心灵避风港 - 小盈陪你说心里话</title>
     <style>
         * {
@@ -707,8 +707,19 @@
             overflow: hidden;
         }
 
+        body.is-mobile.modal-open {
+            transform: none;
+            filter: none;
+        }
+
         /* 响应式适配 - 全尺寸兼容 */
         @media (max-width: 768px) {
+            input,
+            textarea,
+            select {
+                font-size: 16px !important;
+            }
+
             .main-container {
                 flex-direction: column;
                 margin: 0.8rem auto;
@@ -1043,6 +1054,17 @@
                     });
                 });
             }
+        }
+
+        function restoreIOSViewport() {
+            if (!isiOS) return;
+            requestAnimationFrame(() => {
+                window.scrollTo(0, window.scrollY || 0);
+                document.body.style.transform = 'translateZ(0)';
+                requestAnimationFrame(() => {
+                    document.body.style.transform = '';
+                });
+            });
         }
 
         function updateDeviceMode() {
@@ -1447,6 +1469,7 @@
 
         loginUsernameInput.addEventListener('blur', () => {
             applyUsernameChange({ loadRemote: true });
+            restoreIOSViewport();
         });
 
         if (mobileUsernameInput) {
@@ -1462,6 +1485,7 @@
 
             mobileUsernameInput.addEventListener('blur', () => {
                 applyUsernameChange({ loadRemote: true });
+                restoreIOSViewport();
             });
         }
 
