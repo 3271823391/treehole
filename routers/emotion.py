@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 ARK_API_KEY = os.getenv("ARK_API_KEY")
 ARK_URL = "https://ark.cn-beijing.volces.com/api/v3/responses"
 MODEL_ID = "deepseek-v3-2-251201"
+MAX_HISTORY_MESSAGES = 24
 
 # ===============================
 # 情绪状态存储（按 user_id）
@@ -68,6 +69,9 @@ def analyze_emotion(req: EmotionRequest, request: Request):
                 "detail": "history_must_be_list",
             },
         )
+
+    if len(history) > MAX_HISTORY_MESSAGES:
+        history = history[-MAX_HISTORY_MESSAGES:]
 
     logger.info(
         "Emotion request user_id=%s user_key=%s round_id=%s history_len=%s current_input=%s",
