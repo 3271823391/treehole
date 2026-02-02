@@ -456,6 +456,17 @@
             color: #3b6fb6;
         }
 
+        .voice-clone-card button.primary,
+        .modal-body button.primary {
+            background-color: #4a90e2;
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            padding: 0.6rem 1.4rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
         .user-card button:disabled {
             background-color: #cbd9f0;
             cursor: not-allowed;
@@ -513,6 +524,22 @@
             box-shadow: 0 0 20px rgba(74, 144, 226, 0.08);
             flex: 1;
             border: 1px solid rgba(240,247,255,0.8);
+        }
+
+        .voice-clone-card {
+            background-color: #fff;
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.08);
+            border: 1px solid rgba(240,247,255,0.8);
+            margin-top: 1rem;
+        }
+
+        .voice-clone-desc {
+            color: #5f6b7a;
+            font-size: 0.9rem;
+            margin: 0.8rem 0 1rem;
+            line-height: 1.6;
         }
 
         .report-title {
@@ -991,6 +1018,17 @@
                     <span id="emotion-suggest">保持这份平和的心情，大胆说出你的想法吧，我会一直在这里陪着你～</span>
                 </div>
             </div>
+
+            <div class="voice-clone-card">
+                <h3 class="report-title">
+                    <i class="fas fa-microphone"></i>
+                    语音克隆
+                </h3>
+                <p class="voice-clone-desc">
+                    TODO：将来支持上传音频/录音进行声音克隆。
+                </p>
+                <button class="primary" id="voice-clone-btn" type="button">语音克隆</button>
+            </div>
         </aside>
     </main>
 
@@ -1064,6 +1102,22 @@
         </div>
     </div>
 
+    <div class="modal-backdrop" id="voice-clone-modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="voice-clone-title">
+            <div class="modal-header">
+                <h3 id="voice-clone-title">语音克隆</h3>
+                <button class="modal-close" type="button" data-modal-close>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>TODO：将来上传音频/录音。</p>
+                <p>TODO：调用后端接口 /api/voice_clone (占位)。</p>
+                <button class="primary" id="voice-clone-action" type="button">开始克隆</button>
+            </div>
+        </div>
+    </div>
+
     <div class="mobile-toast" id="mobile-toast" role="status" aria-live="polite"></div>
 
     <!-- 底部版权 - 固定底部，小字标明 -->
@@ -1074,7 +1128,7 @@
     <script>
         const STORAGE_USERNAME_KEY = "treehole_username";
         const STORAGE_USER_ID_KEY = "treehole_user_id";
-        const APP_PLAN = "plus"; // TODO: FREE/PLUS/PRO 页面拷贝时按版本调整
+        const APP_PLAN = "pro"; // TODO: FREE/PLUS/PRO 页面拷贝时按版本调整
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
         let currentUserId = null;
         let anonymousUserId = null;
@@ -1347,6 +1401,16 @@
             }
             return "服务暂不可用";
         }
+
+        function requestVoiceClone(payload) {
+            // TODO: 预留后端接口封装 /api/voice_clone
+            return Promise.resolve({ ok: false, msg: "not_implemented" });
+        }
+
+        function voiceClonePlaceholder() {
+            // TODO: 当前仅占位，不触发真实请求
+            showToast("功能开发中");
+        }
         function buildEmotionHistory(roundId, currentInput) {
             const filtered = chatHistory.filter((item) => {
                 if (!item || typeof item !== "object") return false;
@@ -1481,6 +1545,9 @@
         const emotionTagsMobile = document.getElementById('emotion-tags-mobile');
         const emotionAnalysisMobile = document.getElementById('emotion-analysis-mobile');
         const emotionSuggestMobile = document.getElementById('emotion-suggest-mobile');
+        const voiceCloneBtn = document.getElementById('voice-clone-btn');
+        const voiceCloneModal = document.getElementById('voice-clone-modal');
+        const voiceCloneAction = document.getElementById('voice-clone-action');
         const isFreePlan = APP_PLAN === "free";
         const isProPlan = APP_PLAN === "pro";
 
@@ -1788,6 +1855,18 @@
         if (drawerCloseBtn) {
             drawerCloseBtn.addEventListener('click', () => {
                 closeDrawer();
+            });
+        }
+
+        if (voiceCloneBtn) {
+            voiceCloneBtn.addEventListener('click', () => {
+                openModal(voiceCloneModal);
+            });
+        }
+
+        if (voiceCloneAction) {
+            voiceCloneAction.addEventListener('click', () => {
+                voiceClonePlaceholder();
             });
         }
 

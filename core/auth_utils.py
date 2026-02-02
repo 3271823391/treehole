@@ -15,7 +15,11 @@ PIN_MIN_LEN = 4
 PIN_MAX_LEN = 6
 TOKEN_EXPIRE_SECONDS = 12 * 60 * 60
 PBKDF2_ITERATIONS = 120_000
-USER_ID_PATTERN = re.compile(r"^u_[0-9a-f]{40}$")
+USER_ID_SHA1_PATTERN = re.compile(r"^u_[0-9a-f]{40}$", re.IGNORECASE)
+USER_ID_UUID_PATTERN = re.compile(
+    r"^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
 
 
 def normalize_username(username: str) -> str:
@@ -31,7 +35,9 @@ def make_user_id(username: str) -> str:
 def is_valid_user_id(user_id: str) -> bool:
     if not isinstance(user_id, str):
         return False
-    return bool(USER_ID_PATTERN.match(user_id))
+    if not user_id:
+        return False
+    return bool(USER_ID_SHA1_PATTERN.match(user_id) or USER_ID_UUID_PATTERN.match(user_id))
 
 
 def validate_pin(pin: str) -> Tuple[bool, str]:

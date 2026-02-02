@@ -346,29 +346,34 @@ document.querySelectorAll('.action-btn').forEach(btn => {
 
     const href = this.getAttribute('href');
     let message = '';
-    let plan = 'free'; // 默认
+        let plan = 'free'; // 默认
+        let target = '/treehole_free';
 
         switch (href) {
             case '#basic':
                 message = '即将进入普通版轻语信箱～';
                 plan = 'free';
+                target = '/treehole_free';
                 break;
             case '#evolution':
                 message = '即将进入进化版轻语信箱～';
-                alert(message);
-                window.location.href = '/二级页面2第六版.html';
-                return;
+                plan = 'plus';
+                target = '/treehole_plus';
+                break;
             case '#allround':
                 message = '即将进入全能版轻语信箱～';
                 plan = 'pro';
+                target = '/treehole_pro';
                 break;
             case '#custom':
                 message = '即将进入定制咨询服务～';
                 plan = 'pro';
+                target = '/treehole_pro';
                 break;
             case '#start':
                 message = '欢迎进入轻语信箱～';
                 plan = 'free';
+                target = '/treehole_free';
                 break;
             default:
                 message = '正在进入轻语信箱...';
@@ -376,7 +381,7 @@ document.querySelectorAll('.action-btn').forEach(btn => {
 
     alert(message);
 
-    window.location.href = `/page?plan=${plan}`;
+    window.location.href = target;
   });
 });
 </script>

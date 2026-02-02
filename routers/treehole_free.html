@@ -1074,7 +1074,7 @@
     <script>
         const STORAGE_USERNAME_KEY = "treehole_username";
         const STORAGE_USER_ID_KEY = "treehole_user_id";
-        const APP_PLAN = "plus"; // TODO: FREE/PLUS/PRO 页面拷贝时按版本调整
+        const APP_PLAN = "free"; // TODO: FREE/PLUS/PRO 页面拷贝时按版本调整
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
         let currentUserId = null;
         let anonymousUserId = null;
@@ -1816,6 +1816,12 @@
         syncViewport();
         updateDeviceMode();
         setupTooltips();
+
+        if (isFreePlan) {
+            // TODO: FREE 版刷新即清空历史，只保留内存态
+            chatHistory.length = 0;
+            clearChatWindow();
+        }
 
         window.addEventListener('resize', syncViewport);
         window.addEventListener('orientationchange', syncViewport);

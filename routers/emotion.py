@@ -52,8 +52,10 @@ class EmotionRequest(BaseModel):
 @router.post("/emotion")
 def analyze_emotion(req: EmotionRequest, request: Request):
     user_id = req.user_id
-    if not user_id or not is_valid_user_id(user_id):
-        return JSONResponse(status_code=200, content={"ok": False, "msg": "invalid_user_id"})
+    if not user_id:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_user_id"})
+    if not is_valid_user_id(user_id):
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_user_id"})
     history = req.history if req.history is not None else []
     current_input = req.current_input or ""
     round_id = req.round_id if req.round_id is not None else int(time.time())

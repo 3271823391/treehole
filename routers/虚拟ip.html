@@ -241,5 +241,57 @@
     <!-- 底部版权注释 -->
     <div class="copyright">版权所有-JSHT捷思慧图科技公司</div>
 
+    <script>
+        const STORAGE_USER_ID_KEY = "treehole_user_id";
+        const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+        function isValidUserId(userId) {
+            return typeof userId === "string" && USER_ID_UUID_PATTERN.test(userId);
+        }
+
+        function createAnonymousUserId() {
+            if (crypto?.randomUUID) {
+                return `u_${crypto.randomUUID()}`;
+            }
+            // TODO: 老设备/iOS 无痕兜底
+            return `u_${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
+        }
+
+        function safeLocalStorageGet(key) {
+            try {
+                return localStorage.getItem(key);
+            } catch (e) {
+                // TODO: iOS Safari 无痕模式可能禁用 localStorage
+                return "";
+            }
+        }
+
+        function safeLocalStorageSet(key, value) {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        function initUserId() {
+            const stored = safeLocalStorageGet(STORAGE_USER_ID_KEY);
+            if (isValidUserId(stored)) {
+                return stored;
+            }
+            const created = createAnonymousUserId();
+            safeLocalStorageSet(STORAGE_USER_ID_KEY, created);
+            return created;
+        }
+
+        const userId = initUserId();
+        // TODO: 统一给 IP 入口补齐 user_id，确保后端初始化成功
+        document.querySelectorAll('.talk-btn').forEach((link) => {
+            const url = new URL(link.href, window.location.origin);
+            url.searchParams.set("user_id", userId);
+            link.href = url.toString();
+        });
+    </script>
+
 </body>
 </html>

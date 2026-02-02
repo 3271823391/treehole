@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 import os
-import uuid
 from data_store import load_user_data, save_user_data
+from core.auth_utils import is_valid_user_id, make_user_id
 router = APIRouter()
 
 @router.get("/", response_class=HTMLResponse)
@@ -38,15 +38,34 @@ async def chat_page(request: Request):
     html = html.replace("{{DEFAULT_PLAN}}", plan)
     return html
 
+@router.get("/treehole_free", response_class=HTMLResponse)
+async def treehole_free_page():
+    return render_html("treehole_free.html")
+
+@router.get("/treehole_plus", response_class=HTMLResponse)
+async def treehole_plus_page():
+    return render_html("treehole_plus.html")
+
+@router.get("/treehole_pro", response_class=HTMLResponse)
+async def treehole_pro_page():
+    return render_html("treehole_pro.html")
+
 def render_html(filename: str):
     base_dir = os.path.dirname(__file__)
     html_path = os.path.join(base_dir, filename)
     with open(html_path, "r", encoding="utf-8") as f:
         return f.read()
 
+def resolve_ip_user_id(request: Request) -> str:
+    user_id = request.query_params.get("user_id", "")
+    if is_valid_user_id(user_id):
+        return user_id
+    return make_user_id("web_user")
+
+
 @router.get("/ip/linyu", response_class=HTMLResponse)
-async def linyu_page():
-    user_id = "web_user"
+async def linyu_page(request: Request):
+    user_id = resolve_ip_user_id(request)
     user_info = load_user_data(user_id)
 
     user_info["ip_name"] = "linyu"   # ★ 必须
@@ -60,8 +79,8 @@ async def linyu_page():
 
 
 @router.get("/ip/suwan", response_class=HTMLResponse)
-async def suwan_page():
-    user_id = "web_user"
+async def suwan_page(request: Request):
+    user_id = resolve_ip_user_id(request)
     user_info = load_user_data(user_id)
 
     user_info["ip_name"] = "suwan"
@@ -74,8 +93,8 @@ async def suwan_page():
 
 
 @router.get("/ip/xiaxingmian", response_class=HTMLResponse)
-async def xiaxingmian_page():
-    user_id = "web_user"   # ★ 固定一个
+async def xiaxingmian_page(request: Request):
+    user_id = resolve_ip_user_id(request)
     user_info = load_user_data(user_id)
 
     user_info["ip_name"] = "xiaxingmian"
@@ -87,8 +106,8 @@ async def xiaxingmian_page():
     return HTMLResponse(open("routers/病娇校花.html", encoding="utf-8").read())
 
 @router.get("/ip/jiangche", response_class=HTMLResponse)
-async def jiangche_page():
-    user_id = "web_user"   # ★ 固定一个
+async def jiangche_page(request: Request):
+    user_id = resolve_ip_user_id(request)
     user_info = load_user_data(user_id)
 
     user_info["ip_name"] = "jiangche"
@@ -100,8 +119,8 @@ async def jiangche_page():
     return HTMLResponse(open("routers/白月光江澈.html", encoding="utf-8").read())
 
 @router.get("/ip/luchengyu", response_class=HTMLResponse)
-async def luchengyu_page():
-    user_id = "web_user"   # ★ 固定一个
+async def luchengyu_page(request: Request):
+    user_id = resolve_ip_user_id(request)
     user_info = load_user_data(user_id)
 
     user_info["ip_name"] = "luchengyu"
