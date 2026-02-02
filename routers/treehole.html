@@ -14,6 +14,7 @@
 
         :root {
             --app-height: 100%;
+            --vv-top: 0px;
         }
 
         body {
@@ -625,7 +626,9 @@
 
         .modal-backdrop {
             position: fixed;
-            inset: 0;
+            top: var(--vv-top);
+            left: 0;
+            right: 0;
             background: rgba(15, 25, 40, 0.5);
             display: none;
             align-items: center;
@@ -676,11 +679,8 @@
 
         .modal-body {
             padding: 1rem 1.2rem 1.4rem;
-            overflow-y: auto;
-        }
-
-        #user-modal .modal-body {
-            overflow: visible;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .user-modal-profile {
@@ -701,6 +701,9 @@
         }
 
         body.modal-open {
+            position: fixed;
+            left: 0;
+            right: 0;
             overflow: hidden;
         }
 
@@ -1006,10 +1009,12 @@
         const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-        function updateAppHeight() {
+        function syncViewport() {
             const viewport = window.visualViewport;
             const height = viewport ? viewport.height : window.innerHeight;
+            const offsetTop = viewport ? viewport.offsetTop : 0;
             document.documentElement.style.setProperty('--app-height', `${height}px`);
+            document.documentElement.style.setProperty('--vv-top', `${offsetTop}px`);
         }
 
         function lockBodyScroll() {
@@ -1017,6 +1022,8 @@
             document.body.style.position = 'fixed';
             document.body.style.top = `-${scrollLockY}px`;
             document.body.style.width = '100%';
+            document.body.style.left = '0';
+            document.body.style.right = '0';
             document.body.classList.add('modal-open');
         }
 
@@ -1025,6 +1032,8 @@
             document.body.style.position = '';
             document.body.style.top = '';
             document.body.style.width = '';
+            document.body.style.left = '';
+            document.body.style.right = '';
             window.scrollTo(0, scrollLockY);
             if (isiOS) {
                 requestAnimationFrame(() => {
@@ -1574,13 +1583,15 @@
             }
         });
 
-        updateAppHeight();
+        syncViewport();
         updateDeviceMode();
         setupTooltips();
 
-        window.addEventListener('resize', updateAppHeight);
+        window.addEventListener('resize', syncViewport);
+        window.addEventListener('orientationchange', syncViewport);
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', updateAppHeight);
+            window.visualViewport.addEventListener('resize', syncViewport);
+            window.visualViewport.addEventListener('scroll', syncViewport);
         }
 
         // 监听输入框变化，控制发送按钮状态+自适应高度

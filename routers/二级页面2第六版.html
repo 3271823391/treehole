@@ -31,6 +31,11 @@
     }
   </script>
   <style type="text/tailwindcss">
+    :root {
+      --app-height: 100%;
+      --vv-top: 0px;
+    }
+
     @layer utilities {
       .scrollbar-hide {
         -ms-overflow-style: none;
@@ -93,10 +98,10 @@
       /* 支付弹窗遮罩 - 修复backdrop-blur样式 */
       .pay-mask {
         position: fixed;
-        top: 0;
+        top: var(--vv-top);
         left: 0;
         right: 0;
-        bottom: 0;
+        height: var(--app-height);
         background: rgba(0,0,0,0.5);
         z-index: 50;
         display: flex;
@@ -108,10 +113,13 @@
       .pay-modal {
         width: 90%;
         max-width: 400px;
+        max-height: calc(var(--app-height) * 0.8);
         background: white;
         border-radius: 1rem;
         padding: 1.5rem;
         box-shadow: 0 4px 20px rgba(99, 102, 241, 0.1); /* 匹配原页面阴影强度 */
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
       }
       /* 套餐卡片hover效果 - 和原页面交互一致 */
       .package-card {
@@ -609,9 +617,63 @@
       sad: 10,
       angry: 10
     };
+    const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    let scrollLockY = 0;
+
+    function syncViewport() {
+      const viewport = window.visualViewport;
+      const height = viewport ? viewport.height : window.innerHeight;
+      const offsetTop = viewport ? viewport.offsetTop : 0;
+      document.documentElement.style.setProperty('--app-height', `${height}px`);
+      document.documentElement.style.setProperty('--vv-top', `${offsetTop}px`);
+    }
+
+    function lockBodyScroll() {
+      scrollLockY = window.scrollY || window.pageYOffset || 0;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollLockY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+    }
+
+    function unlockBodyScroll() {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      window.scrollTo(0, scrollLockY);
+      if (isiOS) {
+        requestAnimationFrame(() => {
+          document.body.style.transform = 'translateZ(0)';
+          requestAnimationFrame(() => {
+            document.body.style.transform = '';
+          });
+        });
+      }
+    }
+
+    function showPayModal() {
+      payMask.style.display = 'flex';
+      lockBodyScroll();
+    }
+
+    function hidePayModal() {
+      payMask.style.display = 'none';
+      unlockBodyScroll();
+    }
 
     // ========== 初始化页面 ==========
     window.onload = function() {
+      syncViewport();
+      window.addEventListener('resize', syncViewport);
+      window.addEventListener('orientationchange', syncViewport);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', syncViewport);
+        window.visualViewport.addEventListener('scroll', syncViewport);
+      }
       // 同步初始昵称和头像
       syncChatTargetInfo();
       // 同步语音模式状态
@@ -750,17 +812,17 @@
             submitPay.style.hover = '#F97316/90';
           }
           // 显示支付弹窗
-          payMask.style.display = 'flex';
+          showPayModal();
         });
       });
 
       // 关闭支付弹窗
       closePayModal.addEventListener('click', () => {
-        payMask.style.display = 'none';
+        hidePayModal();
       });
       // 点击遮罩关闭弹窗
       payMask.addEventListener('click', (e) => {
-        if (e.target === payMask) payMask.style.display = 'none';
+        if (e.target === payMask) hidePayModal();
       });
 
       // 支付方式选择切换
@@ -780,7 +842,7 @@
         // 体验套餐二次校验：已购买则直接关闭弹窗
         if (currentBuyPackage.limit && hasBoughtExperience) {
           alert('体验套餐每个用户仅可购买一次，你已购买过～');
-          payMask.style.display = 'none';
+          hidePayModal();
           return;
         }
         // 按钮loading状态
@@ -791,7 +853,7 @@
           const payResult = await submitPayRequest();
           if (payResult.success) {
             // 支付成功 - 关闭弹窗、更新剩余语音、提示用户
-            payMask.style.display = 'none';
+            hidePayModal();
             if (currentBuyPackage.type === 'unlimited') {
               setUnlimitedUntil(currentBuyPackage.durationDays);
             } else {
