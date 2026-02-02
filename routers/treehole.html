@@ -34,6 +34,19 @@
             z-index: 100;
         }
 
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .header-text {
+            text-align: center;
+        }
+
         .header h1 {
             font-size: 1.6rem;
             font-weight: 700;
@@ -44,6 +57,34 @@
             font-size: 0.9rem;
             opacity: 0.95;
             margin-top: 0.4rem;
+        }
+
+        .header-actions {
+            display: none;
+            gap: 0.6rem;
+            align-items: center;
+        }
+
+        .header-action-btn {
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 999px;
+            padding: 0.4rem 0.9rem;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .header-action-btn i {
+            font-size: 0.95rem;
+        }
+
+        .header-action-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         /* 主容器 - 重构布局，聊天框占主体 */
@@ -273,6 +314,7 @@
             display: flex;
             flex-direction: column;
             gap: 0.9rem;
+            overflow: visible;
         }
 
         .user-card-header {
@@ -339,7 +381,6 @@
             position: absolute;
             right: 0;
             top: 1.4rem;
-            width: 220px;
             padding: 0.6rem 0.7rem;
             border-radius: 10px;
             background: #2f3b52;
@@ -352,12 +393,22 @@
             pointer-events: none;
             transform: translateY(-6px);
             transition: opacity 0.2s ease, transform 0.2s ease;
-            z-index: 10;
+            z-index: 1200;
+            max-width: 90vw;
+            width: max-content;
+            white-space: normal;
+            word-break: break-word;
         }
 
         .info-tip:hover .tooltip,
         .info-tip:focus .tooltip,
         .info-tip:focus-within .tooltip {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        .info-tip.tooltip-open .tooltip {
             opacity: 1;
             pointer-events: auto;
             transform: translateY(0);
@@ -565,6 +616,86 @@
             z-index: 90;
         }
 
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 25, 40, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 1100;
+        }
+
+        .modal-backdrop.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #fff;
+            border-radius: 18px;
+            width: min(520px, 92vw);
+            max-height: 80vh;
+            box-shadow: 0 20px 40px rgba(15, 25, 40, 0.25);
+            display: flex;
+            flex-direction: column;
+            overflow: visible;
+        }
+
+        .modal-header {
+            padding: 1rem 1.2rem 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #eef3fb;
+        }
+
+        .modal-header h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #3b6fb6;
+        }
+
+        .modal-close {
+            border: none;
+            background: #e8f1ff;
+            color: #3b6fb6;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 1rem 1.2rem 1.4rem;
+            overflow-y: auto;
+        }
+
+        #user-modal .modal-body {
+            overflow: visible;
+        }
+
+        .user-modal-profile {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .user-modal-profile .lock-status {
+            margin-top: 0.2rem;
+        }
+
+        .emotion-modal-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
         /* 响应式适配 - 全尺寸兼容 */
         @media (max-width: 768px) {
             .main-container {
@@ -631,6 +762,38 @@
                 height: 36px;
             }
         }
+
+        body.is-mobile .header-content {
+            justify-content: space-between;
+        }
+
+        body.is-mobile .header-text {
+            text-align: left;
+        }
+
+        body.is-mobile .header-actions {
+            display: flex;
+        }
+
+        body.is-mobile .sidebar {
+            display: none;
+        }
+
+        body.is-mobile .info-tip:hover .tooltip {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        body.is-mobile .info-tip .tooltip {
+            left: 50%;
+            right: auto;
+            top: 1.8rem;
+            transform: translate(-50%, -6px);
+        }
+
+        body.is-mobile .info-tip.tooltip-open .tooltip {
+            transform: translate(-50%, 0);
+        }
     </style>
     <!-- 引入字体图标 -->
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -638,8 +801,22 @@
 <body>
     <!-- 顶部导航栏 - 移除AI树洞文字 -->
     <header class="header">
-        <h1>心灵避风港</h1>
-        <p>小盈陪你倾诉所有心事，做你最温暖的倾听者</p>
+        <div class="header-content">
+            <div class="header-text">
+                <h1>心灵避风港</h1>
+                <p>小盈陪你倾诉所有心事，做你最温暖的倾听者</p>
+            </div>
+            <div class="header-actions">
+                <button class="header-action-btn" id="mobile-user-btn" type="button">
+                    <i class="fas fa-user-circle"></i>
+                    身份
+                </button>
+                <button class="header-action-btn" id="mobile-emotion-btn" type="button">
+                    <i class="fas fa-chart-line"></i>
+                    情绪
+                </button>
+            </div>
+        </div>
     </header>
 
     <!-- 主容器 - 聊天框占主体 -->
@@ -686,16 +863,11 @@
                             <i class="fas fa-circle-info"></i>
                             <span class="tooltip">
                                 用户名将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
-                                请认真填写。更改用户名将会切换到另一份全新的对话记忆。
+                                修改用户名将切换到另一份新的对话记忆。
                             </span>
                         </button>
                     </div>
                     <input id="login-username" type="text" placeholder="请输入用户名">
-                </div>
-
-                <div class="form-row">
-                    <label for="display-username">显示名称</label>
-                    <input id="display-username" type="text" placeholder="可选">
                 </div>
 
                 <div class="user-card-actions">
@@ -734,6 +906,76 @@
         </aside>
     </main>
 
+    <div class="modal-backdrop" id="user-modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+            <div class="modal-header">
+                <h3 id="user-modal-title">用户身份</h3>
+                <button class="modal-close" type="button" data-modal-close>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="user-modal-profile">
+                    <div class="user-avatar-box" id="mobile-avatar-box">
+                        <img src="/static/avatars/default.svg" alt="用户头像" id="mobile-avatar-img">
+                    </div>
+                    <div>
+                        <div class="lock-status" id="mobile-lock-status">请输入用户名后即可保存资料</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="label-with-tip">
+                        <label for="mobile-username">用户名</label>
+                        <button type="button" class="info-tip" aria-label="用户名说明">
+                            <i class="fas fa-circle-info"></i>
+                            <span class="tooltip">
+                                用户名将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
+                                修改用户名将切换到另一份新的对话记忆。
+                            </span>
+                        </button>
+                    </div>
+                    <input id="mobile-username" type="text" placeholder="请输入用户名">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="emotion-modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="emotion-modal-title">
+            <div class="modal-header">
+                <h3 id="emotion-modal-title">情绪分析报告</h3>
+                <button class="modal-close" type="button" data-modal-close>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="emotion-modal-content">
+                    <div class="emotion-score">
+                        <div class="score-label">
+                            <span>情绪指数</span>
+                            <span><span id="emotion-score-num-mobile">60</span>/100</span>
+                        </div>
+                        <div class="score-bar">
+                            <div class="score-fill" id="score-fill-mobile"></div>
+                        </div>
+                    </div>
+                    <div class="emotion-tags" id="emotion-tags-mobile">
+                        <span class="emotion-tag">平静</span>
+                        <span class="emotion-tag">期待</span>
+                    </div>
+                    <div class="emotion-analysis">
+                        <span class="analysis-label">情绪分析：</span>
+                        <span id="emotion-analysis-mobile">当前未检测到明显的负面情绪，心态处于平和的状态，对交流抱有轻微期待。</span>
+                    </div>
+                    <div class="emotion-suggest">
+                        <span class="suggest-label">暖心建议：</span>
+                        <span id="emotion-suggest-mobile">保持这份平和的心情，大胆说出你的想法吧，我会一直在这里陪着你～</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 底部版权 - 固定底部，小字标明 -->
     <div class="copyright">
         版权所有-JSHT捷思慧图科技 翻版必究
@@ -751,6 +993,17 @@
         let lastEmotionRound = -1;
         const EMOTION_DEBOUNCE_MS = 450;
         const EMOTION_HISTORY_LIMIT = 24;
+        let isMobile = false;
+
+        function updateDeviceMode() {
+            isMobile = window.innerWidth < 768;
+            document.body.classList.toggle('is-mobile', isMobile);
+            if (!isMobile) {
+                closeAllTooltips();
+                closeModal(userModal);
+                closeModal(emotionModal);
+            }
+        }
 
         async function fetchJson(url, options = {}) {
             const res = await fetch(url, options);
@@ -784,12 +1037,11 @@
 
         let currentProfile = {
             username: "",
-            display_name: "",
             avatar_url: ""
         };
 
         function resolveTitleText() {
-            const titleText = (currentProfile.display_name || currentProfile.username || "").trim();
+            const titleText = (currentProfile.username || "").trim();
             userCardTitle.innerText = titleText || "用户名";
         }
 
@@ -797,6 +1049,9 @@
             const nextUrl = url || DEFAULT_AVATAR_URL;
             currentProfile.avatar_url = url || "";
             userAvatarImg.src = nextUrl;
+            if (mobileAvatarImg) {
+                mobileAvatarImg.src = nextUrl;
+            }
         }
 
         function getUserAvatarUrl() {
@@ -806,6 +1061,22 @@
         function updateProfileState(profile) {
             currentProfile = { ...currentProfile, ...profile };
             resolveTitleText();
+        }
+
+        function setLockStatus(message, color) {
+            lockStatus.innerText = message;
+            lockStatus.style.color = color;
+            if (mobileLockStatus) {
+                mobileLockStatus.innerText = message;
+                mobileLockStatus.style.color = color;
+            }
+        }
+
+        function syncUsernameInputs(value) {
+            loginUsernameInput.value = value;
+            if (mobileUsernameInput) {
+                mobileUsernameInput.value = value;
+            }
         }
 
         async function safeParseEmotionResponse(res) {
@@ -881,33 +1152,55 @@
                 if (!payload || !payload.ok || !payload.data) {
                     emotionAnalysis.innerText = "情绪分析暂不可用";
                     emotionSuggest.innerText = "当前情绪分析服务不可用，稍后再试。";
+                    if (emotionAnalysisMobile && emotionSuggestMobile) {
+                        emotionAnalysisMobile.innerText = "情绪分析暂不可用";
+                        emotionSuggestMobile.innerText = "当前情绪分析服务不可用，稍后再试。";
+                    }
                     return;
                 }
                 const data = payload.data;
-
-                // 情绪分数
-                emotionScoreNum.innerText = data.score;
-                scoreFill.style.width = data.score + "%";
-
-                // 情绪标签
-                emotionTags.innerHTML = "";
-                if (Array.isArray(data.tags)) {
-                    data.tags.forEach(tag => {
-                        const span = document.createElement("span");
-                        span.className = "emotion-tag";
-                        span.innerText = tag;
-                        emotionTags.appendChild(span);
-                    });
-                }
-
-                // 分析 & 建议
-                emotionAnalysis.innerText = data.analysis;
-                emotionSuggest.innerText = data.suggestion;
+                updateEmotionUI(data);
 
             } catch (e) {
                 console.error("情绪分析失败", e);
             } finally {
                 emotionLocked = false;
+            }
+        }
+
+        function updateEmotionUI(data) {
+            if (!data) return;
+            emotionScoreNum.innerText = data.score;
+            scoreFill.style.width = data.score + "%";
+            if (emotionScoreNumMobile && scoreFillMobile) {
+                emotionScoreNumMobile.innerText = data.score;
+                scoreFillMobile.style.width = data.score + "%";
+            }
+
+            emotionTags.innerHTML = "";
+            if (emotionTagsMobile) {
+                emotionTagsMobile.innerHTML = "";
+            }
+            if (Array.isArray(data.tags)) {
+                data.tags.forEach(tag => {
+                    const span = document.createElement("span");
+                    span.className = "emotion-tag";
+                    span.innerText = tag;
+                    emotionTags.appendChild(span);
+                    if (emotionTagsMobile) {
+                        const mobileSpan = document.createElement("span");
+                        mobileSpan.className = "emotion-tag";
+                        mobileSpan.innerText = tag;
+                        emotionTagsMobile.appendChild(mobileSpan);
+                    }
+                });
+            }
+
+            emotionAnalysis.innerText = data.analysis;
+            emotionSuggest.innerText = data.suggestion;
+            if (emotionAnalysisMobile && emotionSuggestMobile) {
+                emotionAnalysisMobile.innerText = data.analysis;
+                emotionSuggestMobile.innerText = data.suggestion;
             }
         }
 
@@ -922,13 +1215,25 @@
         const emotionAnalysis = document.getElementById('emotion-analysis');
         const emotionSuggest = document.getElementById('emotion-suggest');
         const loginUsernameInput = document.getElementById('login-username');
-        const displayUsernameInput = document.getElementById('display-username');
         const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
         const avatarInput = document.getElementById('avatar-input');
         const userAvatarBox = document.getElementById('user-avatar-box');
         const userAvatarImg = document.getElementById('user-avatar-img');
         const lockStatus = document.getElementById('lock-status');
         const userCardTitle = document.getElementById('user-card-title');
+        const mobileUserBtn = document.getElementById('mobile-user-btn');
+        const mobileEmotionBtn = document.getElementById('mobile-emotion-btn');
+        const userModal = document.getElementById('user-modal');
+        const emotionModal = document.getElementById('emotion-modal');
+        const mobileAvatarBox = document.getElementById('mobile-avatar-box');
+        const mobileAvatarImg = document.getElementById('mobile-avatar-img');
+        const mobileUsernameInput = document.getElementById('mobile-username');
+        const mobileLockStatus = document.getElementById('mobile-lock-status');
+        const emotionScoreNumMobile = document.getElementById('emotion-score-num-mobile');
+        const scoreFillMobile = document.getElementById('score-fill-mobile');
+        const emotionTagsMobile = document.getElementById('emotion-tags-mobile');
+        const emotionAnalysisMobile = document.getElementById('emotion-analysis-mobile');
+        const emotionSuggestMobile = document.getElementById('emotion-suggest-mobile');
 
         function clearChatWindow() {
             chatWindow.innerHTML = "";
@@ -965,10 +1270,12 @@
                 return false;
             }
             const profileData = data.profile || {};
-            displayUsernameInput.value = profileData.display_name || profileData.username || "";
+            const nextUsername = profileData.username || loginUsernameInput.value.trim();
+            if (nextUsername) {
+                syncUsernameInputs(nextUsername);
+            }
             updateProfileState({
-                username: profileData.username || loginUsernameInput.value.trim(),
-                display_name: profileData.display_name || "",
+                username: profileData.username || loginUsernameInput.value.trim()
             });
             updateAvatar(data.profile?.avatar_url);
             await loadHistory();
@@ -980,11 +1287,9 @@
             const username = loginUsernameInput.value.trim();
             if (!username) {
                 currentUserId = null;
-                displayUsernameInput.value = "";
                 updateAvatar("");
-                updateProfileState({ username: "", display_name: "" });
-                lockStatus.innerText = "请输入用户名后即可保存资料";
-                lockStatus.style.color = "#d9534f";
+                updateProfileState({ username: "" });
+                setLockStatus("请输入用户名后即可保存资料", "#d9534f");
                 sendBtn.disabled = true;
                 return;
             }
@@ -995,31 +1300,27 @@
             currentUserId = nextUserId;
             localStorage.setItem(STORAGE_USERNAME_KEY, username);
             updateProfileState({ username });
-            lockStatus.innerText = "用户名已就绪，资料将自动保存";
-            lockStatus.style.color = "#3b6fb6";
+            setLockStatus("用户名已就绪，资料将自动保存", "#3b6fb6");
             if (loadRemote) {
                 await loadProfile();
             }
+            await persistProfile();
             sendBtn.disabled = msgInput.value.trim() === "";
         }
 
-        async function persistProfile({ displayName, avatarUrl } = {}) {
+        async function persistProfile({ avatarUrl } = {}) {
             if (!currentUserId) {
-                lockStatus.innerText = "请先输入用户名";
-                lockStatus.style.color = "#d9534f";
+                setLockStatus("请先输入用户名", "#d9534f");
                 return false;
             }
             const username = loginUsernameInput.value.trim();
-            const nextDisplayName = displayName ?? displayUsernameInput.value.trim();
             if (!username) {
-                lockStatus.innerText = "用户名不能为空";
-                lockStatus.style.color = "#d9534f";
+                setLockStatus("用户名不能为空", "#d9534f");
                 return false;
             }
             const payload = {
                 user_id: currentUserId,
-                username,
-                display_name: nextDisplayName
+                username
             };
             if (avatarUrl !== undefined) {
                 payload.avatar_url = avatarUrl || "";
@@ -1031,15 +1332,12 @@
             });
             if (data?.ok) {
                 updateProfileState({
-                    username: data.profile?.username || username,
-                    display_name: data.profile?.display_name ?? nextDisplayName
+                    username: data.profile?.username || username
                 });
-                lockStatus.innerText = "资料已保存";
-                lockStatus.style.color = "#3b6fb6";
+                setLockStatus("资料已保存", "#3b6fb6");
                 return true;
             } else {
-                lockStatus.innerText = "资料保存失败";
-                lockStatus.style.color = "#d9534f";
+                setLockStatus("资料保存失败", "#d9534f");
                 return false;
             }
         }
@@ -1058,19 +1356,16 @@
                 updateAvatar(data.avatar_url);
                 const saved = await persistProfile({ avatarUrl: data.avatar_url });
                 if (saved) {
-                    lockStatus.innerText = "头像已更新";
-                    lockStatus.style.color = "#3b6fb6";
+                    setLockStatus("头像已更新", "#3b6fb6");
                 }
             } else {
-                lockStatus.innerText = "头像上传失败";
-                lockStatus.style.color = "#d9534f";
+                setLockStatus("头像上传失败", "#d9534f");
             }
         }
 
         function openAvatarPicker() {
             if (!currentUserId) {
-                lockStatus.innerText = "请先输入用户名";
-                lockStatus.style.color = "#d9534f";
+                setLockStatus("请先输入用户名", "#d9534f");
                 return;
             }
             avatarInput.click();
@@ -1078,6 +1373,9 @@
 
         uploadAvatarBtn.addEventListener('click', openAvatarPicker);
         userAvatarBox.addEventListener('click', openAvatarPicker);
+        if (mobileAvatarBox) {
+            mobileAvatarBox.addEventListener('click', openAvatarPicker);
+        }
         avatarInput.addEventListener('change', (e) => {
             const file = e.target.files?.[0];
             if (file) {
@@ -1088,6 +1386,7 @@
 
         let usernameDebounceTimer = null;
         loginUsernameInput.addEventListener('input', () => {
+            syncUsernameInputs(loginUsernameInput.value);
             if (usernameDebounceTimer) {
                 clearTimeout(usernameDebounceTimer);
             }
@@ -1100,25 +1399,139 @@
             applyUsernameChange({ loadRemote: true });
         });
 
-        let profileSaveTimer = null;
-        displayUsernameInput.addEventListener('input', () => {
-            if (profileSaveTimer) {
-                clearTimeout(profileSaveTimer);
-            }
-            profileSaveTimer = setTimeout(() => {
-                persistProfile();
-            }, 400);
-        });
+        if (mobileUsernameInput) {
+            mobileUsernameInput.addEventListener('input', () => {
+                syncUsernameInputs(mobileUsernameInput.value);
+                if (usernameDebounceTimer) {
+                    clearTimeout(usernameDebounceTimer);
+                }
+                usernameDebounceTimer = setTimeout(() => {
+                    applyUsernameChange({ loadRemote: true });
+                }, 250);
+            });
 
-        displayUsernameInput.addEventListener('blur', () => {
-            persistProfile();
-        });
+            mobileUsernameInput.addEventListener('blur', () => {
+                applyUsernameChange({ loadRemote: true });
+            });
+        }
 
         const lastUsername = localStorage.getItem(STORAGE_USERNAME_KEY);
         if (lastUsername) {
-            loginUsernameInput.value = lastUsername;
+            syncUsernameInputs(lastUsername);
             applyUsernameChange({ loadRemote: true });
         }
+
+        function openModal(modal) {
+            if (!modal) return;
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('modal-open');
+        }
+
+        function closeModal(modal) {
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+            if (!document.querySelector('.modal-backdrop.active')) {
+                document.body.classList.remove('modal-open');
+            }
+        }
+
+        function closeAllTooltips() {
+            document.querySelectorAll('.info-tip.tooltip-open').forEach((btn) => {
+                btn.classList.remove('tooltip-open');
+                const tooltip = btn.querySelector('.tooltip');
+                if (tooltip) {
+                    tooltip.style.left = '';
+                    tooltip.style.right = '';
+                    tooltip.style.transform = '';
+                }
+            });
+        }
+
+        function positionTooltip(button) {
+            const tooltip = button.querySelector('.tooltip');
+            if (!tooltip) return;
+            tooltip.style.maxWidth = '90vw';
+            tooltip.style.left = '';
+            tooltip.style.right = '';
+            tooltip.style.transform = '';
+            requestAnimationFrame(() => {
+                const rect = tooltip.getBoundingClientRect();
+                if (rect.left < 8) {
+                    tooltip.style.left = '0';
+                    tooltip.style.right = 'auto';
+                    tooltip.style.transform = 'translateY(0)';
+                } else if (rect.right > window.innerWidth - 8) {
+                    tooltip.style.left = 'auto';
+                    tooltip.style.right = '0';
+                    tooltip.style.transform = 'translateY(0)';
+                }
+            });
+        }
+
+        function setupTooltips() {
+            document.querySelectorAll('.info-tip').forEach((btn) => {
+                btn.addEventListener('click', (event) => {
+                    if (!isMobile) return;
+                    event.stopPropagation();
+                    const isOpen = btn.classList.contains('tooltip-open');
+                    closeAllTooltips();
+                    if (!isOpen) {
+                        btn.classList.add('tooltip-open');
+                        positionTooltip(btn);
+                    }
+                });
+            });
+
+            document.addEventListener('click', () => {
+                if (isMobile) {
+                    closeAllTooltips();
+                }
+            });
+        }
+
+        if (mobileUserBtn) {
+            mobileUserBtn.addEventListener('click', () => {
+                if (!isMobile) return;
+                closeModal(emotionModal);
+                openModal(userModal);
+            });
+        }
+
+        if (mobileEmotionBtn) {
+            mobileEmotionBtn.addEventListener('click', () => {
+                if (!isMobile) return;
+                closeModal(userModal);
+                openModal(emotionModal);
+            });
+        }
+
+        document.querySelectorAll('[data-modal-close]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                closeModal(userModal);
+                closeModal(emotionModal);
+            });
+        });
+
+        document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
+            backdrop.addEventListener('click', (event) => {
+                if (event.target === backdrop) {
+                    closeModal(backdrop);
+                }
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            const wasMobile = isMobile;
+            updateDeviceMode();
+            if (wasMobile !== isMobile) {
+                closeAllTooltips();
+            }
+        });
+
+        updateDeviceMode();
+        setupTooltips();
 
         // 监听输入框变化，控制发送按钮状态+自适应高度
         msgInput.addEventListener('input', () => {
@@ -1142,8 +1555,7 @@
 
         async function sendMessage() {
         if (!currentUserId) {
-            lockStatus.innerText = "请先输入用户名";
-            lockStatus.style.color = "#d9534f";
+            setLockStatus("请先输入用户名", "#d9534f");
             return;
         }
         const content = msgInput.value.trim();
