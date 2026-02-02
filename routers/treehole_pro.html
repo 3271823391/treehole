@@ -31,7 +31,7 @@
         }
 
         /* 固定布局容器：避免键盘弹出导致 footer 跳动 */
-        .app-shell {
+        #appShell {
             position: fixed;
             inset: 0;
             display: flex;
@@ -115,10 +115,11 @@
         }
 
         /* TODO: 主内容滚动容器，避免 footer 跟随滚动 */
-        .content-scroll {
+        #mainScroll {
+            flex: 1;
             overflow: auto;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: calc(var(--footer-h) + env(safe-area-inset-bottom));
+            padding-bottom: calc(var(--footer-h, 56px) + env(safe-area-inset-bottom));
         }
 
         /* 聊天区域 - 提升占比，主体视觉 */
@@ -1072,7 +1073,7 @@
 </head>
 <body>
     <!-- TODO: 固定布局容器，避免 iOS 键盘弹出时 footer 抖动 -->
-    <div class="app-shell" id="app">
+    <div id="appShell">
         <!-- 顶部导航栏 - 移除AI树洞文字 -->
         <header class="header">
             <div class="header-content">
@@ -1089,8 +1090,9 @@
             </div>
         </header>
 
+        <div id="mainScroll" class="scroll-area">
         <!-- 主容器 - 聊天框占主体 -->
-        <main class="main-container content-scroll">
+        <main class="main-container">
             <!-- 聊天区域 - 主体占比 -->
             <section class="chat-section">
                 <!-- 聊天窗口 - 显示双方头像 -->
@@ -1210,12 +1212,13 @@
             </div>
             </aside>
         </main>
-
-        <!-- 底部版权 - 固定底部，小字标明 -->
-        <footer class="copyright" id="copyrightBar">
-            版权所有-JSHT捷思慧图科技 翻版必究
-        </footer>
+        </div>
     </div>
+
+    <!-- 底部版权 - 固定底部，小字标明 -->
+    <footer class="copyright" id="copyrightBar">
+        版权所有-JSHT捷思慧图科技 翻版必究
+    </footer>
 
     <div class="modal-backdrop" id="user-modal" aria-hidden="true">
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
@@ -1340,10 +1343,14 @@
         let isMobile = false;
         let scrollLockY = 0;
         let voiceOutputEnabled = false;
-        let voiceUnlockHinted = false;
-        let speechQueue = [];
-        let speechBuffer = "";
-        let speechActive = false;
+        let ttsQueue = [];
+        let ttsBuffer = "";
+        let ttsActive = false;
+        let ttsAudio = null;
+        let ttsAbortController = null;
+        let ttsToken = 0;
+        let ttsUnlocked = false;
+        let ttsUnlockHinted = false;
         const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -1403,7 +1410,7 @@
         function measureFooter() {
             const footer = document.getElementById('copyrightBar');
             if (!footer) return;
-            const height = footer.getBoundingClientRect().height || 0;
+            const height = Math.ceil(footer.getBoundingClientRect().height || 0);
             document.documentElement.style.setProperty('--footer-h', `${height}px`);
         }
 
@@ -1728,64 +1735,157 @@
                 voiceOutputToggle.setAttribute('aria-checked', voiceOutputEnabled ? 'true' : 'false');
             }
             if (!voiceOutputEnabled) {
-                resetSpeechQueue();
+                resetTtsQueue();
             }
             showToast(voiceOutputEnabled ? "语音输出已开启" : "语音输出已关闭");
         }
 
-        function resetSpeechQueue() {
-            speechQueue = [];
-            speechBuffer = "";
-            speechActive = false;
-            if (window.speechSynthesis) {
-                window.speechSynthesis.cancel();
+        function resetTtsQueue() {
+            ttsToken += 1;
+            ttsQueue = [];
+            ttsBuffer = "";
+            ttsActive = false;
+            if (ttsAbortController) {
+                ttsAbortController.abort();
+                ttsAbortController = null;
+            }
+            if (ttsAudio) {
+                ttsAudio.pause();
+                ttsAudio.removeAttribute('src');
+                ttsAudio.load();
+            }
+            if (voiceStopBtn) {
+                voiceStopBtn.disabled = true;
             }
         }
 
-        function unlockSpeechForIOS() {
-            if (!voiceOutputEnabled || !window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.resume();
+        function ensureTtsAudio() {
+            if (ttsAudio) return;
+            ttsAudio = new Audio();
+            ttsAudio.preload = "auto";
+            ttsAudio.setAttribute("playsinline", "");
+            ttsAudio.setAttribute("webkit-playsinline", "");
         }
 
-        function enqueueSpeechSegments(segments) {
-            if (!voiceOutputEnabled || !window.speechSynthesis) return;
+        function unlockTtsForIOS() {
+            if (!voiceOutputEnabled || ttsUnlocked) return;
+            ensureTtsAudio();
+            if (!ttsAudio) return;
+            // TODO: iOS Safari 需要用户手势解锁音频播放
+            const silentWav = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
+            ttsAudio.muted = true;
+            ttsAudio.src = silentWav;
+            const playPromise = ttsAudio.play();
+            if (playPromise && typeof playPromise.then === "function") {
+                playPromise.then(() => {
+                    ttsAudio.pause();
+                    ttsAudio.currentTime = 0;
+                    ttsAudio.muted = false;
+                    ttsUnlocked = true;
+                }).catch(() => {
+                    ttsAudio.muted = false;
+                });
+            } else {
+                ttsAudio.muted = false;
+                ttsUnlocked = true;
+            }
+        }
+
+        async function requestVoiceCloneTts(text) {
+            if (!isValidUserId(currentUserId)) {
+                throw new Error("user_id_invalid");
+            }
+            ttsAbortController = new AbortController();
+            const res = await fetch("/api/voice_clone/tts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: currentUserId,
+                    text: text
+                }),
+                signal: ttsAbortController.signal
+            });
+            if (!res.ok) {
+                const msg = await parseErrorMessage(res);
+                throw new Error(msg || "语音合成失败");
+            }
+            return res;
+        }
+
+        function enqueueTtsSegments(segments) {
+            if (!voiceOutputEnabled) return;
             if (!Array.isArray(segments) || segments.length === 0) return;
-            speechQueue.push(...segments);
-            if (!speechActive) {
-                playNextSpeech();
+            ttsQueue.push(...segments);
+            if (!ttsActive) {
+                playNextTts();
             }
         }
 
-        function playNextSpeech() {
-            if (!voiceOutputEnabled || !window.speechSynthesis) return;
-            const nextText = speechQueue.shift();
+        async function playNextTts() {
+            if (!voiceOutputEnabled) return;
+            const token = ttsToken;
+            const nextText = ttsQueue.shift();
             if (!nextText) {
-                speechActive = false;
+                ttsActive = false;
                 if (voiceStopBtn) {
                     voiceStopBtn.disabled = true;
                 }
                 return;
             }
-            const utterance = new SpeechSynthesisUtterance(nextText);
-            speechActive = true;
+            ttsActive = true;
             if (voiceStopBtn) {
                 voiceStopBtn.disabled = false;
             }
-            utterance.onend = () => {
-                playNextSpeech();
-            };
-            utterance.onerror = () => {
-                speechActive = false;
-                if (!voiceUnlockHinted) {
-                    voiceUnlockHinted = true;
-                    showToast("请先点击一次页面以启用语音播放");
+            try {
+                const res = await requestVoiceCloneTts(nextText);
+                if (token !== ttsToken) return;
+                const blob = await res.blob();
+                if (token !== ttsToken) return;
+                ensureTtsAudio();
+                const url = URL.createObjectURL(blob);
+                try {
+                    ttsAudio.src = url;
+                    const playPromise = ttsAudio.play();
+                    if (playPromise && typeof playPromise.then === "function") {
+                        await playPromise;
+                    }
+                    await new Promise((resolve, reject) => {
+                        const onEnd = () => {
+                            cleanup();
+                            resolve();
+                        };
+                        const onError = () => {
+                            cleanup();
+                            reject(new Error("audio_error"));
+                        };
+                        const cleanup = () => {
+                            ttsAudio.removeEventListener("ended", onEnd);
+                            ttsAudio.removeEventListener("error", onError);
+                        };
+                        ttsAudio.addEventListener("ended", onEnd);
+                        ttsAudio.addEventListener("error", onError);
+                    });
+                } finally {
+                    URL.revokeObjectURL(url);
                 }
-            };
-            window.speechSynthesis.speak(utterance);
+            } catch (err) {
+                if (!ttsUnlockHinted) {
+                    ttsUnlockHinted = true;
+                    showToast("请先点击发送按钮以启用语音播放");
+                }
+                console.warn("语音合成失败", err);
+            } finally {
+                if (token !== ttsToken) return;
+                ttsActive = false;
+                if (ttsQueue.length) {
+                    playNextTts();
+                } else if (voiceStopBtn) {
+                    voiceStopBtn.disabled = true;
+                }
+            }
         }
 
-        function splitSpeechBuffer(text) {
+        function splitTtsBuffer(text) {
             const pattern = /.*?(?:……|[。！？；\n]+)/g;
             const segments = [];
             let match;
@@ -1799,13 +1899,12 @@
             return { segments, rest };
         }
 
-        function appendSpeechBuffer(chunkText) {
+        function appendTtsBuffer(chunkText) {
             if (!voiceOutputEnabled) return;
-            speechBuffer += chunkText;
-            const { segments, rest } = splitSpeechBuffer(speechBuffer);
-            speechBuffer = rest;
-            // TODO: 若未来需要克隆音色，可在此改为调用 /api/tts/stream
-            enqueueSpeechSegments(segments);
+            ttsBuffer += chunkText;
+            const { segments, rest } = splitTtsBuffer(ttsBuffer);
+            ttsBuffer = rest;
+            enqueueTtsSegments(segments);
         }
         function buildEmotionHistory(roundId, currentInput) {
             const filtered = chatHistory.filter((item) => {
@@ -2292,7 +2391,7 @@
 
         if (voiceStopBtn) {
             voiceStopBtn.addEventListener('click', () => {
-                resetSpeechQueue();
+                resetTtsQueue();
                 showToast("已停止播报");
             });
         }
@@ -2325,6 +2424,7 @@
         setupTooltips();
         initVoiceOutputToggle();
 
+        window.addEventListener('load', measureFooter);
         window.addEventListener('resize', syncViewport);
         window.addEventListener('orientationchange', syncViewport);
         window.addEventListener('resize', measureFooter);
@@ -2365,8 +2465,8 @@
         if (!content) return;
 
         if (voiceOutputEnabled) {
-            unlockSpeechForIOS();
-            resetSpeechQueue();
+            unlockTtsForIOS();
+            resetTtsQueue();
         }
 
         // ✅【新增：开启新一轮对话】
@@ -2440,13 +2540,13 @@
                 if (done) break;
                 const chunkText = decoder.decode(value);
                 aiMsg.innerText += chunkText;
-                // TODO: 流式文本分句播报（Web Speech API 版本）
-                appendSpeechBuffer(chunkText);
+                // TODO: 流式文本分句播报（LipVoice 克隆 TTS 版本）
+                appendTtsBuffer(chunkText);
                 chatWindow.scrollTop = chatWindow.scrollHeight;
             }
-            if (voiceOutputEnabled && speechBuffer.trim()) {
-                enqueueSpeechSegments([speechBuffer.trim()]);
-                speechBuffer = "";
+            if (voiceOutputEnabled && ttsBuffer.trim()) {
+                enqueueTtsSegments([ttsBuffer.trim()]);
+                ttsBuffer = "";
             }
             chatHistory.push({
                 role: "assistant",
