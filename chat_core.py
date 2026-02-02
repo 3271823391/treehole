@@ -161,8 +161,9 @@ def post_process(user_id, user_info, user_input, reply):
             },
             timeout=10
         )
-        emotion = r.json()
-        user_info["last_emotion"] = emotion
+        payload = r.json()
+        if isinstance(payload, dict) and payload.get("ok"):
+            user_info["last_emotion"] = payload.get("data")
     except Exception:
         pass
 

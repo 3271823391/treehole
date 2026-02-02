@@ -572,6 +572,27 @@
         // ✅【新增：情绪分析轮次控制】
         let currentRound = 0;
         let lastEmotionRound = -1;
+        async function safeParseEmotionResponse(res) {
+            const contentType = res.headers.get("content-type") || "";
+            const cloned = res.clone();
+            if (!res.ok) {
+                const text = await cloned.text();
+                console.warn("情绪分析响应非 200", res.status, text);
+                return null;
+            }
+            if (!contentType.includes("application/json")) {
+                const text = await cloned.text();
+                console.warn("情绪分析响应非 JSON", text);
+                return null;
+            }
+            try {
+                return await res.json();
+            } catch (e) {
+                const text = await cloned.text();
+                console.warn("情绪分析 JSON 解析失败", e, text);
+                return null;
+            }
+        }
         async function updateEmotionOnce(content) {
             // ✅ 同一轮对话只允许分析一次
             if (emotionLocked || lastEmotionRound === currentRound) return;
@@ -593,7 +614,13 @@
 
                 });
 
-                const data = await res.json();
+                const payload = await safeParseEmotionResponse(res);
+                if (!payload || !payload.ok || !payload.data) {
+                    emotionAnalysis.innerText = "情绪分析暂不可用";
+                    emotionSuggest.innerText = "当前情绪分析服务不可用，稍后再试。";
+                    return;
+                }
+                const data = payload.data;
 
                 // 情绪分数
                 emotionScoreNum.innerText = data.score;
