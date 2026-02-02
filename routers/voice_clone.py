@@ -4,6 +4,8 @@ import requests
 from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import JSONResponse
 
+from data_store import load_user_data, save_user_data
+
 router = APIRouter()
 
 
@@ -11,7 +13,9 @@ router = APIRouter()
 async def upload_reference_audio(
     file: UploadFile = File(...),
     name: str = Form(...),
-    describe: str = Form("")
+    describe: str = Form(""),
+    voice_profile_id: str = Form(...),
+    user_id: str = Form("")
 ):
     """代理 LipVoice 参考音频上传接口。"""
     sign = os.getenv("LIPVOICE_SIGN")
@@ -71,11 +75,20 @@ async def upload_reference_audio(
             content={"ok": False, "msg": "lipvoice_upload_failed", "detail": "missing_audio_id"}
         )
 
+    if user_id:
+        user_info = load_user_data(user_id)
+        user_info["voice"] = {
+            "profile_id": voice_profile_id,
+            "audioId": audio_id
+        }
+        save_user_data(user_id, user_info)
+
     return {
         "ok": True,
         "data": {
             "audioId": audio_id,
             "name": name,
-            "describe": describe or ""
+            "describe": describe or "",
+            "voice_profile_id": voice_profile_id
         }
     }
