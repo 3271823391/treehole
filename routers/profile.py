@@ -1,22 +1,20 @@
 import os
 import time
 
-from fastapi import APIRouter, Request, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from PIL import Image
 
-from core.auth_utils import verify_token_from_request
+from core.auth_utils import is_valid_user_id
 from data_store import load_user_data, save_user_data
 
 router = APIRouter()
 
 
 @router.get("/profile")
-def get_profile(request: Request):
-    user_id, error = verify_token_from_request(request)
-    if error:
-        return error
-
+def get_profile(user_id: str = ""):
+    if not is_valid_user_id(user_id):
+        return JSONResponse(status_code=200, content={"ok": False, "msg": "invalid_user_id"})
     user_info = load_user_data(user_id)
     profile = user_info.setdefault("profile", {})
     return {
@@ -30,12 +28,13 @@ def get_profile(request: Request):
 
 
 @router.post("/profile")
-def update_profile(request: Request, payload: dict):
-    user_id, error = verify_token_from_request(request)
-    if error:
-        return error
+def update_profile(payload: dict):
+    payload = payload or {}
+    user_id = (payload.get("user_id") or "").strip()
+    if not is_valid_user_id(user_id):
+        return JSONResponse(status_code=200, content={"ok": False, "msg": "invalid_user_id"})
 
-    username = (payload or {}).get("username", "").strip()
+    username = (payload.get("display_name") or payload.get("username") or "").strip()
     if not username:
         return JSONResponse(status_code=200, content={"ok": False, "msg": "username_required"})
 
@@ -48,16 +47,11 @@ def update_profile(request: Request, payload: dict):
 
 @router.post("/avatar_upload")
 def avatar_upload(
-    request: Request,
     file: UploadFile = File(...),
     user_id: str = Form(...),
 ):
-    token_user_id, error = verify_token_from_request(request)
-    if error:
-        return error
-
-    if token_user_id != user_id:
-        return JSONResponse(status_code=401, content={"ok": False, "msg": "unauthorized"})
+    if not is_valid_user_id(user_id):
+        return JSONResponse(status_code=200, content={"ok": False, "msg": "invalid_user_id"})
 
     if not file.content_type or not file.content_type.startswith("image/"):
         return JSONResponse(status_code=200, content={"ok": False, "msg": "invalid_image"})

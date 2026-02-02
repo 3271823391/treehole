@@ -3,17 +3,14 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from data_store import load_user_data, save_user_data
 from chat_core import stream_chat_with_deepseek
-from core.auth_utils import verify_token_from_request
+from core.auth_utils import is_valid_user_id
 
 router = APIRouter()
 
 @router.get("/greeting")
 def greeting(user_id: str, request: Request):
-    token_user_id, error = verify_token_from_request(request)
-    if error:
-        return error
-    if token_user_id != user_id:
-        return JSONResponse(status_code=401, content={"ok": False, "msg": "unauthorized"})
+    if not is_valid_user_id(user_id):
+        return JSONResponse(status_code=200, content={"ok": False, "msg": "invalid_user_id"})
 
     user_info = load_user_data(user_id)
 
@@ -38,13 +35,9 @@ class ChatStreamRequest(BaseModel):
 
 @router.post("/chat_stream")
 async def chat_stream(req: ChatStreamRequest, request: Request):
-    token_user_id, error = verify_token_from_request(request)
-    if error:
-        return error
-
     user_id = req.user_id.strip()
-    if token_user_id != user_id:
-        return JSONResponse(status_code=401, content={"ok": False, "msg": "unauthorized"})
+    if not is_valid_user_id(user_id):
+        return JSONResponse(status_code=200, content={"ok": False, "msg": "invalid_user_id"})
 
     user_input = req.user_input.strip()
 
@@ -58,11 +51,8 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
 
 @router.get("/load_history")
 def load_history(request: Request, user_id: str):
-    token_user_id, error = verify_token_from_request(request)
-    if error:
-        return error
-    if token_user_id != user_id:
-        return JSONResponse(status_code=401, content={"ok": False, "msg": "unauthorized"})
+    if not is_valid_user_id(user_id):
+        return JSONResponse(status_code=200, content={"ok": False, "msg": "invalid_user_id"})
 
     user_info = load_user_data(user_id)
     return {"ok": True, "history": user_info.get("history", [])}
