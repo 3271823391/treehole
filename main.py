@@ -1,12 +1,14 @@
 from config import HOST, PORT
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from routers import page,chat,emotion
+from routers import auth, chat, emotion, page, profile
 import os
 app = FastAPI(title="DeepSeek虚拟树洞（精致版）")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
+AVATAR_DIR = os.path.join(STATIC_DIR, "avatars")
+os.makedirs(AVATAR_DIR, exist_ok=True)
 
 print("STATIC DIR EXISTS:", os.path.exists(STATIC_DIR))
 print("STATIC ABS PATH:", STATIC_DIR)
@@ -17,6 +19,8 @@ app.mount(
     name="static"
 )
 app.include_router(emotion.router)
+app.include_router(auth.router)
+app.include_router(profile.router)
 app.include_router(page.router)
 app.include_router(chat.router)
 

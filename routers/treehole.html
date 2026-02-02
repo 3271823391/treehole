@@ -257,6 +257,103 @@
             gap: 1.2rem;
         }
 
+        .user-card {
+            background-color: #fff;
+            border-radius: 16px;
+            padding: 1.4rem;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+        }
+
+        .user-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .user-card-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #3b6fb6;
+        }
+
+        .user-avatar-box {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #e1ecff;
+            flex-shrink: 0;
+            cursor: pointer;
+            background-color: #f0f7ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .user-avatar-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-card .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .user-card label {
+            font-size: 0.82rem;
+            color: #6b7c93;
+        }
+
+        .user-card input {
+            border: 1px solid #d6e3f8;
+            border-radius: 10px;
+            padding: 0.55rem 0.7rem;
+            font-size: 0.9rem;
+        }
+
+        .user-card input:disabled {
+            background-color: #f5f7fb;
+            color: #9aa9bf;
+        }
+
+        .user-card-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .user-card button {
+            border: none;
+            border-radius: 10px;
+            padding: 0.55rem 0.8rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            background-color: #4a90e2;
+            color: #fff;
+            transition: background-color 0.2s ease;
+        }
+
+        .user-card button.secondary {
+            background-color: #e8f1ff;
+            color: #3b6fb6;
+        }
+
+        .user-card button:disabled {
+            background-color: #cbd9f0;
+            cursor: not-allowed;
+        }
+
+        .lock-status {
+            font-size: 0.82rem;
+            color: #d9534f;
+        }
+
         /* 小盈形象卡片 - 优化渐变和阴影 */
         .ai-card {
             background: linear-gradient(135deg, #e8f4ff, #d0e1ff);
@@ -514,8 +611,47 @@
             </div>
         </section>
 
-        <!-- 侧边栏：小盈形象 + 情绪分析报告（辅助布局） -->
+        <!-- 侧边栏：用户卡片 + 小盈形象 + 情绪分析报告（辅助布局） -->
         <aside class="sidebar">
+            <div class="user-card">
+                <div class="user-card-header">
+                    <div class="user-avatar-box" id="user-avatar-box">
+                        <img src="/static/avatars/default.svg" alt="用户头像" id="user-avatar-img">
+                    </div>
+                    <div>
+                        <div class="user-card-title">用户中心</div>
+                        <div class="lock-status" id="lock-status">请先输入用户名与 PIN 解锁</div>
+                    </div>
+                </div>
+
+                <input type="file" id="avatar-input" accept="image/*" hidden>
+
+                <div class="form-row">
+                    <label for="login-username">用户名</label>
+                    <input id="login-username" type="text" placeholder="请输入用户名">
+                </div>
+
+                <div class="form-row">
+                    <label for="pin-input">PIN（4-6位数字）</label>
+                    <input id="pin-input" type="password" inputmode="numeric" maxlength="6" placeholder="输入PIN">
+                </div>
+
+                <div class="user-card-actions">
+                    <button id="unlock-btn">进入/解锁</button>
+                    <button id="init-btn" class="secondary" style="display:none;">首次设置</button>
+                </div>
+
+                <div class="form-row">
+                    <label for="display-username">显示名称</label>
+                    <input id="display-username" type="text" placeholder="解锁后可编辑" disabled>
+                </div>
+
+                <div class="user-card-actions">
+                    <button id="save-profile-btn" class="secondary" disabled>保存名称</button>
+                    <button id="upload-avatar-btn" class="secondary" disabled>上传头像</button>
+                </div>
+            </div>
+
             <!-- 小盈形象卡片 -->
             <div class="ai-card">
                 <div class="ai-card-avatar">
@@ -562,11 +698,11 @@
     </div>
 
     <script>
-        let userId = localStorage.getItem("treehole_user_id");
-            if (!userId) {
-                userId = crypto.randomUUID();
-                localStorage.setItem("treehole_user_id", userId);
-            }
+        const STORAGE_USERNAME_KEY = "treehole_username";
+        const STORAGE_TOKEN_KEY = "treehole_token";
+        let currentUserId = null;
+        let authToken = sessionStorage.getItem(STORAGE_TOKEN_KEY) || "";
+        let isUnlocked = false;
         const chatHistory = [];
         let emotionLocked = false;
         let emotionDebounceTimer = null;
@@ -575,6 +711,52 @@
         let lastEmotionRound = -1;
         const EMOTION_DEBOUNCE_MS = 450;
         const EMOTION_HISTORY_LIMIT = 24;
+
+        async function fetchJson(url, options = {}) {
+            const res = await fetch(url, options);
+            const contentType = res.headers.get("content-type") || "";
+            if (!contentType.includes("application/json")) {
+                const text = await res.text();
+                return { ok: false, msg: "服务暂不可用", status: res.status, raw: text };
+            }
+            try {
+                const data = await res.json();
+                return data;
+            } catch (e) {
+                return { ok: false, msg: "服务暂不可用" };
+            }
+        }
+
+        function getAuthHeaders() {
+            if (!authToken) return {};
+            return { Authorization: `Bearer ${authToken}` };
+        }
+
+        function setUnlockedState(unlocked) {
+            isUnlocked = unlocked;
+            msgInput.disabled = !unlocked;
+            sendBtn.disabled = !unlocked || msgInput.value.trim() === "";
+            displayUsernameInput.disabled = !unlocked;
+            saveProfileBtn.disabled = !unlocked;
+            uploadAvatarBtn.disabled = !unlocked;
+            if (unlocked) {
+                lockStatus.innerText = "已解锁，可开始聊天";
+                lockStatus.style.color = "#3b6fb6";
+                initBtn.style.display = "none";
+            } else {
+                lockStatus.innerText = "请先输入用户名与 PIN 解锁";
+                lockStatus.style.color = "#d9534f";
+            }
+        }
+
+        function updateAvatar(url) {
+            if (url) {
+                userAvatarImg.src = url;
+            } else {
+                userAvatarImg.src = "/static/avatars/default.svg";
+            }
+        }
+
         async function safeParseEmotionResponse(res) {
             const contentType = res.headers.get("content-type") || "";
             const cloned = res.clone();
@@ -624,6 +806,7 @@
         async function updateEmotionOnce(content) {
             // ✅ 同一轮对话只允许分析一次
             if (emotionLocked || lastEmotionRound === currentRound) return;
+            if (!isUnlocked || !currentUserId) return;
 
             emotionLocked = true;
             lastEmotionRound = currentRound;
@@ -633,9 +816,9 @@
             try {
                 const res = await fetch("/emotion", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                     body: JSON.stringify({
-                        user_id: userId,
+                        user_id: currentUserId,
                         history,
                         current_input: content,
                         round_id: currentRound
@@ -687,11 +870,204 @@
         const emotionTags = document.getElementById('emotion-tags');
         const emotionAnalysis = document.getElementById('emotion-analysis');
         const emotionSuggest = document.getElementById('emotion-suggest');
+        const loginUsernameInput = document.getElementById('login-username');
+        const pinInput = document.getElementById('pin-input');
+        const unlockBtn = document.getElementById('unlock-btn');
+        const initBtn = document.getElementById('init-btn');
+        const displayUsernameInput = document.getElementById('display-username');
+        const saveProfileBtn = document.getElementById('save-profile-btn');
+        const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
+        const avatarInput = document.getElementById('avatar-input');
+        const userAvatarBox = document.getElementById('user-avatar-box');
+        const userAvatarImg = document.getElementById('user-avatar-img');
+        const lockStatus = document.getElementById('lock-status');
+
+        function clearChatWindow() {
+            chatWindow.innerHTML = "";
+            emptyTip.style.display = 'block';
+        }
+
+        function renderHistory(history) {
+            clearChatWindow();
+            if (!Array.isArray(history) || history.length === 0) {
+                return;
+            }
+            emptyTip.style.display = 'none';
+            history.forEach((item) => {
+                if (!item || !item.role || !item.content) return;
+                addMessage(item.content, item.role === "user" ? "user" : "ai");
+            });
+        }
+
+        async function loadHistory() {
+            if (!currentUserId) return;
+            const data = await fetchJson(`/load_history?user_id=${encodeURIComponent(currentUserId)}`, {
+                headers: { ...getAuthHeaders() }
+            });
+            if (!data || !data.ok) {
+                return;
+            }
+            chatHistory.length = 0;
+            data.history.forEach((item) => chatHistory.push(item));
+            renderHistory(data.history);
+        }
+
+        async function loadProfile() {
+            const data = await fetchJson("/profile", {
+                headers: { ...getAuthHeaders() }
+            });
+            if (!data || !data.ok) {
+                return false;
+            }
+            currentUserId = data.user_id;
+            displayUsernameInput.value = data.profile?.username || "";
+            updateAvatar(data.profile?.avatar_url);
+            setUnlockedState(true);
+            await loadHistory();
+            return true;
+        }
+
+        async function handleVerify() {
+            const username = loginUsernameInput.value.trim();
+            const pin = pinInput.value.trim();
+            if (!username) {
+                lockStatus.innerText = "请输入用户名";
+                lockStatus.style.color = "#d9534f";
+                return;
+            }
+            const data = await fetchJson("/auth/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, pin })
+            });
+            if (!data || !data.ok) {
+                if (data?.need_init) {
+                    lockStatus.innerText = "该用户名未设置 PIN，请先初始化";
+                    lockStatus.style.color = "#d9534f";
+                    initBtn.style.display = "inline-flex";
+                } else if (data?.locked) {
+                    lockStatus.innerText = `已锁定，请 ${data.seconds_left}s 后再试`;
+                    lockStatus.style.color = "#d9534f";
+                } else {
+                    lockStatus.innerText = "PIN 错误或验证失败";
+                    lockStatus.style.color = "#d9534f";
+                }
+                return;
+            }
+
+            authToken = data.token;
+            sessionStorage.setItem(STORAGE_TOKEN_KEY, authToken);
+            localStorage.setItem(STORAGE_USERNAME_KEY, username);
+            currentUserId = data.user_id;
+            displayUsernameInput.value = data.profile?.username || username;
+            updateAvatar(data.profile?.avatar_url);
+            setUnlockedState(true);
+            await loadHistory();
+        }
+
+        async function handleInit() {
+            const username = loginUsernameInput.value.trim();
+            const pin = pinInput.value.trim();
+            if (!username || !pin) {
+                lockStatus.innerText = "请输入用户名与 PIN";
+                lockStatus.style.color = "#d9534f";
+                return;
+            }
+            const data = await fetchJson("/auth/init", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, pin })
+            });
+            if (!data || !data.ok) {
+                lockStatus.innerText = "初始化失败，请检查 PIN";
+                lockStatus.style.color = "#d9534f";
+                return;
+            }
+            await handleVerify();
+        }
+
+        async function saveProfile() {
+            const username = displayUsernameInput.value.trim();
+            if (!username) {
+                lockStatus.innerText = "显示名称不能为空";
+                lockStatus.style.color = "#d9534f";
+                return;
+            }
+            const data = await fetchJson("/profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+                body: JSON.stringify({ username })
+            });
+            if (data?.ok) {
+                lockStatus.innerText = "名称已更新";
+                lockStatus.style.color = "#3b6fb6";
+            } else {
+                lockStatus.innerText = "名称保存失败";
+                lockStatus.style.color = "#d9534f";
+            }
+        }
+
+        async function uploadAvatar(file) {
+            if (!file || !currentUserId) return;
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("user_id", currentUserId);
+
+            const data = await fetchJson("/avatar_upload", {
+                method: "POST",
+                headers: { ...getAuthHeaders() },
+                body: formData
+            });
+            if (data?.ok) {
+                updateAvatar(data.avatar_url);
+                lockStatus.innerText = "头像已更新";
+                lockStatus.style.color = "#3b6fb6";
+            } else {
+                lockStatus.innerText = "头像上传失败";
+                lockStatus.style.color = "#d9534f";
+            }
+        }
+
+        unlockBtn.addEventListener('click', handleVerify);
+        initBtn.addEventListener('click', handleInit);
+        saveProfileBtn.addEventListener('click', saveProfile);
+        uploadAvatarBtn.addEventListener('click', () => avatarInput.click());
+        userAvatarBox.addEventListener('click', () => {
+            if (!isUnlocked) return;
+            avatarInput.click();
+        });
+        avatarInput.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+                uploadAvatar(file);
+            }
+        });
+
+        const lastUsername = localStorage.getItem(STORAGE_USERNAME_KEY);
+        if (lastUsername) {
+            loginUsernameInput.value = lastUsername;
+        }
+
+        if (authToken) {
+            loadProfile().then((ok) => {
+                if (!ok) {
+                    sessionStorage.removeItem(STORAGE_TOKEN_KEY);
+                    authToken = "";
+                    setUnlockedState(false);
+                }
+            }).catch(() => {
+                sessionStorage.removeItem(STORAGE_TOKEN_KEY);
+                authToken = "";
+                setUnlockedState(false);
+            });
+        } else {
+            setUnlockedState(false);
+        }
 
         // 监听输入框变化，控制发送按钮状态+自适应高度
         msgInput.addEventListener('input', () => {
             const content = msgInput.value.trim();
-            sendBtn.disabled = content === '';
+            sendBtn.disabled = !isUnlocked || content === '';
             // 自适应输入框高度
             msgInput.style.height = 'auto';
             msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
@@ -709,6 +1085,11 @@
         sendBtn.addEventListener('click', sendMessage);
 
         async function sendMessage() {
+        if (!isUnlocked || !currentUserId) {
+            lockStatus.innerText = "请先解锁账号";
+            lockStatus.style.color = "#d9534f";
+            return;
+        }
         const content = msgInput.value.trim();
         if (!content) return;
 
@@ -751,15 +1132,22 @@
         try {
             const resp = await fetch("/chat_stream", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify({
-                    user_id: userId,   // ← 必须有
+                    user_id: currentUserId,   // ← 必须有
                     history: chatHistory,
                     user_input: content,
                     round_id: currentRound
                 })
 
             });
+            const contentType = resp.headers.get("content-type") || "";
+            if (!resp.ok || contentType.includes("application/json")) {
+                const payload = await safeParseEmotionResponse(resp);
+                removeLoading();
+                aiMsg.innerText = payload?.msg || "服务暂不可用";
+                return;
+            }
             removeLoading();
 
             const reader = resp.body.getReader();
