@@ -1645,7 +1645,10 @@
                 }
             }
             try {
-                await res.text();
+                const text = await res.text();
+                if (text) {
+                    return text.length > 160 ? `${text.slice(0, 160)}...` : text;
+                }
             } catch (e) {
                 // ignore
             }

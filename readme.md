@@ -46,17 +46,15 @@ AI 树洞是一个面向心理倾诉与情绪陪伴场景的轻量型对话应�
 ## Pro：语音克隆使用方式
 
 1. 打开 Pro 页面右侧卡片或移动端底部入口，进入「语音克隆」面板。
-2. 填写 `voice_profile_id`（**3~32 位字母/数字/下划线**），作为自定义语音的唯一标识，并持久化到 `localStorage`。
-3. 上传参考音频后，后端会返回第三方 `audioId`，同时将其绑定到 `user_id`（保存到 `user_data.json`）：
+2. 选择参考音频并填写名称/描述，上传成功后，后端会返回第三方 `audioId`，同时将其绑定到 `user_id`（保存到 `user_data.json`）：
    ```json
    {
-     "voice": {
-       "profile_id": "your_profile_id",
-       "audioId": "returned_audio_id"
+     "voice_clone": {
+        "audioId": "returned_audio_id"
      }
    }
    ```
-4. 语音输出会读取这份映射作为克隆音色来源，因此未绑定 `audioId` 时无法合成克隆音色。
+3. 语音输出会读取这份映射作为克隆音色来源，因此未绑定 `audioId` 时无法合成克隆音色。
 
 ## Pro：语音输出（LipVoice 克隆 TTS）
 
@@ -78,9 +76,28 @@ Render 环境变量示例（后端使用）：
 ```bash
 LIPVOICE_SIGN=你的签名                          # 必填
 LIPVOICE_BASE_URL=https://openapi.lipvoice.cn  # 可选，默认使用官方地址
+LIPVOICE_TTS_PATH=/api/third/tts               # 可选，TTS 路径（上游可变时覆盖）
+LIPVOICE_TTS_AUDIOID_FIELD=audioId             # 可选，TTS payload 中 audioId 字段名
+LIPVOICE_TTS_TEXT_FIELD=text                   # 可选，TTS payload 中 text 字段名
 ```
 
 > 安全提醒：`LIPVOICE_SIGN` 只能配置在服务端环境变量中，绝不能出现在前端。
+
+## 语音克隆链路自测（无浏览器/无 Docker）
+
+1. 安装最小依赖：
+
+```bash
+pip install -r requirements-e2e.txt
+```
+
+2. 一键自测（会启动 mock LipVoice，再用 TestClient 走完整链路）：
+
+```bash
+python scripts/selftest_voice_clone.py
+```
+
+成功时会输出：`selftest_voice_clone_ok`。
 
 ## 常见故障排查
 
@@ -92,6 +109,10 @@ LIPVOICE_BASE_URL=https://openapi.lipvoice.cn  # 可选，默认使用官方地�
    - 确认语音输出开关已开启。  
    - iOS Safari 需要用户手势解锁（点击发送按钮）。  
    - 确认系统未静音、音量正常、浏览器允许播放声音。  
+3. **/api/voice_clone/tts 返回 502？**  
+   - 检查后端日志是否打印了上游 URL / payload / status_code / content-type / body_preview。  
+   - 对照日志确认 `LIPVOICE_TTS_PATH` 与字段名是否与上游一致。  
+   - 若上游返回非 audio/*，会被当作失败返回 JSON 便于定位。  
 3. **footer 仍会随滚动移动？**  
    - 确认版权条不在任何滚动容器内（必须在 `#appShell` 外）。  
    - 检查父级是否有 `transform`，会改变 `position: fixed` 的定位参考。  
