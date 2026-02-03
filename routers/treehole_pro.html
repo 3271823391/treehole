@@ -1308,9 +1308,6 @@
                     <label for="voice-clone-name">名称</label>
                     <input type="text" id="voice-clone-name" value="我的声音" maxlength="32">
 
-                    <label for="voice-profile-id">语音 ID（voice_profile_id）</label>
-                    <input type="text" id="voice-profile-id" placeholder="3~32 位字母/数字/下划线" maxlength="32">
-
                     <label for="voice-clone-desc">描述（可选）</label>
                     <textarea id="voice-clone-desc" rows="2" placeholder="如：情绪平稳、无背景音"></textarea>
 
@@ -1328,7 +1325,6 @@
         const STORAGE_USERNAME_KEY = "treehole_username";
         const STORAGE_USER_ID_KEY = "treehole_user_id";
         const STORAGE_VOICE_AUDIO_ID = "voice_audio_id"; // TODO: PRO 专用语音克隆缓存 key
-        const STORAGE_VOICE_PROFILE_ID = "voice_profile_id"; // TODO: PRO 语音克隆 ID
         const STORAGE_VOICE_OUTPUT = "voice_output_enabled"; // TODO: PRO 语音输出开关
         const APP_PLAN = "pro"; // TODO: FREE/PLUS/PRO 页面拷贝时按版本调整
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
@@ -1476,45 +1472,11 @@
             showToast(message || "服务暂不可用");
         }
 
-        function getVoiceProfileId() {
-            return (voiceProfileIdInput?.value || "").trim();
-        }
-
-        function isValidVoiceProfileId(value) {
-            return /^[a-zA-Z0-9_]{3,32}$/.test(value);
-        }
-
-        function syncVoiceProfileIdInput() {
-            if (!voiceProfileIdInput) return;
-            const storedId = safeLocalStorageGet(STORAGE_VOICE_PROFILE_ID);
-            if (storedId) {
-                voiceProfileIdInput.value = storedId;
-            }
-        }
-
-        function updateVoiceProfileIdState() {
-            if (!voiceProfileIdInput || !voiceCloneAction) return false;
-            const profileId = getVoiceProfileId();
-            if (!profileId) {
-                setVoiceCloneStatus("请填写语音 ID（3~32 位字母/数字/下划线）", "error");
-                voiceCloneAction.disabled = true;
-                return false;
-            }
-            if (!isValidVoiceProfileId(profileId)) {
-                setVoiceCloneStatus("语音 ID 格式不合法，仅支持字母/数字/下划线（3~32 位）", "error");
-                voiceCloneAction.disabled = true;
-                return false;
-            }
-            setVoiceCloneStatus("");
-            voiceCloneAction.disabled = false;
-            safeLocalStorageSet(STORAGE_VOICE_PROFILE_ID, profileId);
-            return true;
-        }
-
         async function handleVoiceCloneUpload() {
             if (!voiceCloneFile || !voiceCloneAction) return;
-            if (!updateVoiceProfileIdState()) {
-                showToast("请先填写合法的语音 ID");
+            if (!isValidUserId(currentUserId)) {
+                setVoiceCloneStatus("请先输入用户名并完成用户绑定", "error");
+                showToast("请先输入用户名并完成用户绑定");
                 return;
             }
             const file = voiceCloneFile.files?.[0];
@@ -1523,17 +1485,13 @@
                 showToast("请先选择音频文件");
                 return;
             }
-            const voiceProfileId = getVoiceProfileId();
-            const name = voiceProfileId || (voiceCloneName?.value || "").trim() || "我的声音";
+            const name = (voiceCloneName?.value || "").trim() || "我的声音";
             const describe = (voiceCloneDesc?.value || "").trim();
             const formData = new FormData();
             formData.append("file", file);
             formData.append("name", name);
             formData.append("describe", describe);
-            formData.append("voice_profile_id", voiceProfileId);
-            if (currentUserId) {
-                formData.append("user_id", currentUserId);
-            }
+            formData.append("user_id", currentUserId);
 
             voiceCloneAction.disabled = true;
             setVoiceCloneStatus("上传中，请稍候...");
@@ -1546,7 +1504,6 @@
                     if (isProPlan) {
                         safeLocalStorageSet(STORAGE_VOICE_AUDIO_ID, audioId);
                     }
-                    safeLocalStorageSet(STORAGE_VOICE_PROFILE_ID, voiceProfileId);
                     showToast("语音克隆上传成功");
                     return;
                 }
@@ -2041,7 +1998,6 @@
         const voiceCloneAction = document.getElementById('voice-clone-action');
         const voiceCloneFile = document.getElementById('voice-clone-file');
         const voiceCloneName = document.getElementById('voice-clone-name');
-        const voiceProfileIdInput = document.getElementById('voice-profile-id');
         const voiceCloneDesc = document.getElementById('voice-clone-desc');
         const voiceCloneStatus = document.getElementById('voice-clone-status');
         const voiceOutputToggle = document.getElementById('voice-output-toggle');
@@ -2360,8 +2316,6 @@
             voiceCloneTriggers.forEach((btn) => {
                 btn.addEventListener('click', () => {
                     setVoiceCloneStatus("");
-                    syncVoiceProfileIdInput();
-                    updateVoiceProfileIdState();
                     openModal(voiceCloneModal);
                 });
             });
@@ -2370,12 +2324,6 @@
         if (voiceCloneAction) {
             voiceCloneAction.addEventListener('click', () => {
                 handleVoiceCloneUpload();
-            });
-        }
-
-        if (voiceProfileIdInput) {
-            voiceProfileIdInput.addEventListener('input', () => {
-                updateVoiceProfileIdState();
             });
         }
 
