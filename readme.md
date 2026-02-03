@@ -76,9 +76,6 @@ Render 环境变量示例（后端使用）：
 ```bash
 LIPVOICE_SIGN=你的签名                          # 必填
 LIPVOICE_BASE_URL=https://openapi.lipvoice.cn  # 可选，默认使用官方地址
-LIPVOICE_TTS_PATH=/api/third/tts               # 可选，TTS 路径（上游可变时覆盖）
-LIPVOICE_TTS_AUDIOID_FIELD=audioId             # 可选，TTS payload 中 audioId 字段名
-LIPVOICE_TTS_TEXT_FIELD=text                   # 可选，TTS payload 中 text 字段名
 TTS_FORCE_SAMPLE=1                             # 可选，强制返回本地 sample 音频（用于前端链路自证）
 DEBUG=1                                        # 可选，开启调试接口 /api/voice_clone/debug_get_audio_id
 E2E_TEST_MODE=1                                # 可选，供脚本/测试环境判定
@@ -101,6 +98,46 @@ python scripts/selftest_voice_clone.py
 ```
 
 成功时会输出：`selftest_voice_clone_ok`。
+
+## LipVoice 异步 TTS 自测（推荐）
+
+### 安装依赖
+
+```bash
+pip install -r requirements-tts-selfcheck.txt
+```
+
+### 模式 1：验证前端播放链路（TTS_FORCE_SAMPLE）
+
+```bash
+uvicorn main:app --reload
+TTS_FORCE_SAMPLE=1 DEBUG=1 python scripts/tts_selfcheck.py --base-url http://127.0.0.1:8000 --user-id <你的user_id>
+```
+
+期望输出（示例）：
+
+```
+[tts] status=200
+[tts] content-type=audio/wav
+[tts] content-length=xxxx
+[tts] first-16-bytes-hex=...
+tts_selfcheck_ok
+```
+
+### 模式 2：真实 LipVoice 异步 TTS
+
+```bash
+uvicorn main:app --reload
+TTS_FORCE_SAMPLE=0 DEBUG=1 LIPVOICE_BASE_URL=https://openapi.lipvoice.cn LIPVOICE_SIGN=<真实sign> \
+  python scripts/tts_selfcheck.py --base-url http://127.0.0.1:8000 --user-id <你的user_id>
+```
+
+失败排查（按脚本分类输出）：
+
+- `sign_missing`：未设置 `LIPVOICE_SIGN`。
+- `missing_audio_id`：用户未绑定 audioId（需先上传参考音频或检查 user_data.json）。
+- `poll_timeout`：上游生成超时，查看后端日志确认上游状态与任务耗时。
+- `create_failed` / `poll_failed` / `fetch_failed`：检查后端日志中的上游 status_code/content-type/body_preview。
 
 ## 语音克隆自检（浏览器 + 后端日志）
 
@@ -135,8 +172,8 @@ python run.py
    - iOS Safari 需要用户手势解锁（点击发送按钮）。  
    - 确认系统未静音、音量正常、浏览器允许播放声音。  
 3. **/api/voice_clone/tts 返回 502？**  
-   - 检查后端日志是否打印了上游 URL / payload / status_code / content-type / body_preview。  
-   - 对照日志确认 `LIPVOICE_TTS_PATH` 与字段名是否与上游一致。  
+   - 检查后端日志是否打印了上游 status_code / content-type / body_preview。  
+   - 确认 `LIPVOICE_BASE_URL` 与 `LIPVOICE_SIGN` 是否正确。  
    - 若上游返回非 audio/*，会被当作失败返回 JSON 便于定位。  
 3. **footer 仍会随滚动移动？**  
    - 确认版权条不在任何滚动容器内（必须在 `#appShell` 外）。  

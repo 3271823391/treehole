@@ -1655,6 +1655,33 @@
             return "服务暂不可用";
         }
 
+        async function parseErrorPayload(res) {
+            const contentType = res.headers.get("content-type") || "";
+            if (contentType.includes("application/json")) {
+                try {
+                    const data = await res.json();
+                    return {
+                        msg: data?.msg || "服务暂不可用",
+                        detail: data?.detail
+                    };
+                } catch (e) {
+                    return { msg: "服务暂不可用", detail: null };
+                }
+            }
+            try {
+                const text = await res.text();
+                if (text) {
+                    return {
+                        msg: text.length > 160 ? `${text.slice(0, 160)}...` : text,
+                        detail: null
+                    };
+                }
+            } catch (e) {
+                // ignore
+            }
+            return { msg: "服务暂不可用", detail: null };
+        }
+
         function requestVoiceClone(payload) {
             // TODO: 封装语音克隆上传请求，避免错误写入聊天记录
             return fetchJson("/api/voice_clone/reference/upload", {
@@ -1766,8 +1793,16 @@
             }
             const contentType = res.headers.get("content-type") || "";
             if (!contentType.startsWith("audio/")) {
-                const msg = await parseErrorMessage(res);
-                throw new Error(msg || "语音合成失败");
+                const { msg, detail } = await parseErrorPayload(res);
+                showToast(msg || "语音合成失败");
+                if (detail) {
+                    console.warn("语音合成返回非音频", detail);
+                } else {
+                    console.warn("语音合成返回非音频");
+                }
+                const err = new Error(msg || "语音合成失败");
+                err.name = "TtsNonAudioError";
+                throw err;
             }
             return res;
         }
@@ -1836,6 +1871,8 @@
                         ttsUnlockHinted = true;
                         showToast("请先点击发送按钮以启用语音播放");
                     }
+                } else if (errorName === "TtsNonAudioError") {
+                    // 已在请求阶段提示 toast
                 } else {
                     showToast(errorMessage);
                 }
