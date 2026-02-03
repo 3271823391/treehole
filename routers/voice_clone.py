@@ -122,8 +122,11 @@ async def voice_clone_tts(payload: dict = Body(...)):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "voice_not_initialized"})
 
     base_url = os.getenv("LIPVOICE_BASE_URL", "https://openapi.lipvoice.cn")
-    url = f"{base_url}/api/third/tts"
-    tts_payload = {"text": text, "audioId": audio_id}
+    tts_path = os.getenv("LIPVOICE_TTS_PATH", "/api/third/tts")
+    audio_id_field = os.getenv("LIPVOICE_TTS_AUDIOID_FIELD", "audioId")
+    text_field = os.getenv("LIPVOICE_TTS_TEXT_FIELD", "text")
+    url = f"{base_url}{tts_path}"
+    tts_payload = {text_field: text, audio_id_field: audio_id}
     # 记录第三方调用信息（不包含 sign），便于定位 502/默认音色问题。
     logger.info("LipVoice TTS request url=%s payload=%s", url, tts_payload)
     try:
@@ -135,38 +138,81 @@ async def voice_clone_tts(payload: dict = Body(...)):
                 json=tts_payload
             )
     except httpx.RequestError as exc:
+        logger.warning(
+            "LipVoice TTS request error url=%s payload=%s error=%s",
+            url,
+            tts_payload,
+            exc
+        )
         return JSONResponse(
             status_code=502,
             content={"ok": False, "msg": "lipvoice_tts_failed", "detail": str(exc)}
         )
     except Exception as exc:  # pragma: no cover - 兜底异常
+        logger.exception(
+            "LipVoice TTS unexpected error url=%s payload=%s",
+            url,
+            tts_payload
+        )
         return JSONResponse(
             status_code=500,
             content={"ok": False, "msg": "lipvoice_tts_failed", "detail": str(exc)}
         )
 
-    content_type = response.headers.get("content-type", "audio/mpeg")
-    body_preview = _truncate_body(response.text if "text" in content_type or "json" in content_type else response.content[:500].decode(errors="replace"))
-    logger.info("LipVoice TTS response status=%s body=%s", response.status_code, body_preview)
+    content_type = response.headers.get("content-type", "")
+    logger.info(
+        "LipVoice TTS response status=%s content_type=%s",
+        response.status_code,
+        content_type or "unknown"
+    )
 
     if response.status_code != 200:
+        body_preview = _truncate_body(
+            response.text
+            if "text" in content_type or "json" in content_type
+            else response.content[:500].decode(errors="replace")
+        )
+        logger.warning(
+            "LipVoice TTS failed url=%s status=%s content_type=%s body_preview=%s",
+            url,
+            response.status_code,
+            content_type or "unknown",
+            body_preview
+        )
         detail = {
             "status_code": response.status_code,
-            "body": body_preview
+            "content_type": content_type or "unknown",
+            "body_preview": body_preview
         }
         return JSONResponse(
             status_code=502,
             content={"ok": False, "msg": "lipvoice_tts_failed", "detail": detail}
         )
 
-    if "application/json" in content_type or content_type.startswith("text/"):
+    if not content_type.startswith("audio/"):
+        body_preview = _truncate_body(
+            response.text
+            if "text" in content_type or "json" in content_type
+            else response.content[:500].decode(errors="replace")
+        )
+        logger.warning(
+            "LipVoice TTS invalid content url=%s status=%s content_type=%s body_preview=%s",
+            url,
+            response.status_code,
+            content_type or "unknown",
+            body_preview
+        )
         detail = {
             "status_code": response.status_code,
-            "body": body_preview
+            "content_type": content_type or "unknown",
+            "body_preview": body_preview
         }
         return JSONResponse(
             status_code=502,
             content={"ok": False, "msg": "lipvoice_tts_failed", "detail": detail}
         )
 
-    return Response(content=response.content, media_type=content_type)
+    return Response(
+        content=response.content,
+        media_type=content_type or "audio/mpeg"
+    )

@@ -53,7 +53,7 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
     save_user_data(user_id, user_info)
     if os.getenv("E2E_TEST_MODE") == "1":
         def e2e_stream():
-            message = "这是 E2E 测试模式的固定回复，用于验证语音克隆链路。"
+            message = "你好。测试回复。"
             for ch in message:
                 yield ch
                 time.sleep(0.01)
