@@ -5,7 +5,7 @@ import time
 import base64
 
 import httpx
-from fastapi import APIRouter, Body, File, Form, UploadFile
+from fastapi import APIRouter, Body, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 
 from data_store import load_user_data, save_user_data
@@ -144,11 +144,10 @@ async def lipvoice_create_task(text: str, audio_id: str, style: str | None = Non
     base_url = os.getenv("LIPVOICE_BASE_URL", "https://openapi.lipvoice.cn")
     url = f"{base_url}/api/third/tts/create"
     payload = {
-        "text": text,
+        "content": text,
         "audioId": audio_id
     }
-    if style:
-        payload["style"] = style
+    payload["style"] = style or "2"
     if ext:
         payload["ext"] = ext
     if genre:
@@ -194,14 +193,12 @@ async def lipvoice_create_task(text: str, audio_id: str, style: str | None = Non
     return task_id
 
 
-async def lipvoice_poll_result(task_id: str, timeout_s: float = 20, interval: float = 0.8) -> str:
+async def lipvoice_poll_result(task_id: str, max_attempts: int = 20, interval: float = 1.0) -> str:
     sign = os.getenv("LIPVOICE_SIGN")
     base_url = os.getenv("LIPVOICE_BASE_URL", "https://openapi.lipvoice.cn")
     url = f"{base_url}/api/third/tts/result"
     start = time.monotonic()
-    attempt = 0
-    while True:
-        attempt += 1
+    for attempt in range(1, max_attempts + 1):
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.get(url, headers={"sign": sign}, params={"taskId": task_id})
@@ -242,17 +239,20 @@ async def lipvoice_poll_result(task_id: str, timeout_s: float = 20, interval: fl
             logger.warning("LipVoice TTS poll failed status detail=%s", detail)
             raise LipVoiceTtsError(detail)
 
-        if time.monotonic() - start >= timeout_s:
+        if attempt >= max_attempts:
             detail = {
                 "stage": "poll",
                 "reason": "poll_timeout",
-                "timeout_s": timeout_s,
+                "max_attempts": max_attempts,
                 "last_payload": payload_json
             }
             logger.warning("LipVoice TTS poll timeout detail=%s", detail)
             raise LipVoiceTtsError(detail)
 
         await asyncio.sleep(interval)
+    detail = {"stage": "poll", "reason": "poll_timeout", "max_attempts": max_attempts}
+    logger.warning("LipVoice TTS poll timeout detail=%s", detail)
+    raise LipVoiceTtsError(detail)
 
 
 async def lipvoice_fetch_audio(voice_url: str) -> tuple[bytes, str]:
@@ -270,7 +270,68 @@ async def lipvoice_fetch_audio(voice_url: str) -> tuple[bytes, str]:
         logger.warning("LipVoice TTS fetch invalid audio detail=%s", detail)
         raise LipVoiceTtsError(detail)
 
+    logger.info(
+        "LipVoice TTS fetch success content_type=%s content_length=%s",
+        content_type,
+        response.headers.get("content-length") or len(response.content)
+    )
     return response.content, content_type
+
+
+_MOCK_TTS_TASKS: dict[str, float] = {}
+
+
+@router.post("/api/third/tts/create")
+async def mock_lipvoice_tts_create(payload: dict = Body(...), request: Request = None):
+    if os.getenv("LIPVOICE_MOCK") != "1":
+        return JSONResponse(status_code=404, content={"ok": False, "msg": "mock_disabled"})
+
+    content = (payload.get("content") or "").strip()
+    audio_id = (payload.get("audioId") or "").strip()
+    style = payload.get("style")
+    if not content or not audio_id:
+        return JSONResponse(status_code=400, content={"code": 1, "msg": "invalid_payload"})
+
+    task_id = f"mock-{int(time.time() * 1000)}"
+    _MOCK_TTS_TASKS[task_id] = time.monotonic()
+    logger.info(
+        "Mock LipVoice create audioId=%s style=%s taskId=%s",
+        audio_id,
+        style,
+        task_id
+    )
+    return {"code": 0, "data": {"taskId": task_id}}
+
+
+@router.get("/api/third/tts/result")
+async def mock_lipvoice_tts_result(taskId: str, request: Request = None):
+    if os.getenv("LIPVOICE_MOCK") != "1":
+        return JSONResponse(status_code=404, content={"ok": False, "msg": "mock_disabled"})
+
+    start_time = _MOCK_TTS_TASKS.get(taskId)
+    if not start_time:
+        return {"code": 0, "data": {"status": 3}}
+
+    elapsed = time.monotonic() - start_time
+    if elapsed < 2:
+        return {"code": 0, "data": {"status": 1}}
+
+    base_url = os.getenv("LIPVOICE_BASE_URL") or str(request.base_url).rstrip("/")
+    voice_url = f"{base_url}/api/third/tts/voice/{taskId}"
+    return {"code": 0, "data": {"status": 2, "voiceUrl": voice_url}}
+
+
+@router.get("/api/third/tts/voice/{task_id}")
+async def mock_lipvoice_tts_voice(task_id: str, request: Request):
+    if os.getenv("LIPVOICE_MOCK") != "1":
+        return JSONResponse(status_code=404, content={"ok": False, "msg": "mock_disabled"})
+
+    sign = request.headers.get("sign") or request.query_params.get("sign")
+    if not sign:
+        return JSONResponse(status_code=401, content={"ok": False, "msg": "missing_sign"})
+
+    audio_bytes = _decode_base64_audio(SAMPLE_WAV_BASE64) * 4
+    return Response(content=audio_bytes, media_type="audio/wav")
 
 
 @router.post("/api/voice_clone/reference/upload")
@@ -376,7 +437,7 @@ async def voice_clone_tts(payload: dict = Body(...)):
     audio_id = voice_clone_info.get("audioId")
     if not audio_id:
         logger.warning("LipVoice TTS missing audioId user_id=%s", user_id)
-        return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_audio_id"})
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "voice_not_initialized"})
 
     if os.getenv("TTS_FORCE_SAMPLE") == "1":
         logger.info("TTS_FORCE_SAMPLE enabled, serving sample wav.")
@@ -388,8 +449,11 @@ async def voice_clone_tts(payload: dict = Body(...)):
         return JSONResponse(status_code=500, content={"ok": False, "msg": "lipvoice_sign_missing"})
 
     try:
-        task_id = await lipvoice_create_task(text=text, audio_id=audio_id)
-        voice_url = await lipvoice_poll_result(task_id=task_id)
+        logger.info("LipVoice TTS request user_id=%s audioId=%s", user_id, audio_id)
+        task_id = await lipvoice_create_task(text=text, audio_id=audio_id, style="2")
+        logger.info("LipVoice TTS created taskId=%s user_id=%s audioId=%s", task_id, user_id, audio_id)
+        voice_url = await lipvoice_poll_result(task_id=task_id, max_attempts=20, interval=1.0)
+        logger.info("LipVoice TTS got voiceUrl=%s taskId=%s", voice_url, task_id)
         audio_bytes, content_type = await lipvoice_fetch_audio(voice_url=voice_url)
     except LipVoiceTtsError as exc:
         detail = exc.detail
