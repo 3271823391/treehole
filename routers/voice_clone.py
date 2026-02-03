@@ -3,6 +3,7 @@ import logging
 import os
 import time
 import base64
+import binascii
 
 import httpx
 from fastapi import APIRouter, Body, File, Form, Request, UploadFile
@@ -137,6 +138,116 @@ def _build_upstream_detail(response: httpx.Response) -> dict:
     }
 
 
+def _normalize_base64_text(value: str) -> str:
+    cleaned = value.strip()
+    if "base64," in cleaned:
+        cleaned = cleaned.split("base64,", 1)[-1]
+    return "".join(cleaned.split())
+
+
+def _looks_like_base64(value: str) -> bool:
+    cleaned = _normalize_base64_text(value)
+    if len(cleaned) < 16:
+        return False
+    allowed = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+    return all(char in allowed for char in cleaned)
+
+
+def _find_base64_candidate(payload: object) -> str | None:
+    candidate_keys = {"audio", "audiobase64", "base64", "content", "voice", "file", "body", "data"}
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            if isinstance(key, str) and key.lower() in candidate_keys and isinstance(value, str):
+                if _looks_like_base64(value):
+                    return value
+            nested = _find_base64_candidate(value)
+            if nested:
+                return nested
+    elif isinstance(payload, list):
+        for item in payload:
+            nested = _find_base64_candidate(item)
+            if nested:
+                return nested
+    elif isinstance(payload, str):
+        if _looks_like_base64(payload):
+            return payload
+    return None
+
+
+def _extract_media_type(payload: object) -> str | None:
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            if isinstance(key, str) and key.lower() in {
+                "contenttype",
+                "content_type",
+                "mediatype",
+                "media_type",
+                "mimetype",
+                "mime"
+            }:
+                if isinstance(value, str) and value:
+                    return value
+            nested = _extract_media_type(value)
+            if nested:
+                return nested
+    elif isinstance(payload, list):
+        for item in payload:
+            nested = _extract_media_type(item)
+            if nested:
+                return nested
+    return None
+
+
+def _extract_audio_bytes_from_response(response: httpx.Response) -> tuple[bytes, str, str]:
+    content_type = response.headers.get("content-type", "") or ""
+    if content_type.startswith("audio/"):
+        return response.content, content_type, "audio/raw"
+
+    if "json" in content_type:
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            detail = {"stage": "fetch", "reason": "invalid_audio_payload", **_build_upstream_detail(response)}
+            raise LipVoiceTtsError(detail) from exc
+
+        base64_text = _find_base64_candidate(payload)
+        if not base64_text:
+            detail = {"stage": "fetch", "reason": "json_missing_base64", **_build_upstream_detail(response)}
+            raise LipVoiceTtsError(detail)
+
+        normalized = _normalize_base64_text(base64_text)
+        try:
+            audio_bytes = _decode_base64_audio(normalized)
+        except (binascii.Error, ValueError) as exc:
+            detail = {
+                "stage": "fetch",
+                "reason": "decode_error",
+                **_build_upstream_detail(response),
+                "error": str(exc)
+            }
+            raise LipVoiceTtsError(detail) from exc
+
+        media_type = _extract_media_type(payload) or "audio/wav"
+        return audio_bytes, media_type, "base64/json"
+
+    text_payload = response.content.decode("utf-8", errors="ignore").strip()
+    if not _looks_like_base64(text_payload):
+        detail = {"stage": "fetch", "reason": "invalid_audio_payload", **_build_upstream_detail(response)}
+        raise LipVoiceTtsError(detail)
+    normalized = _normalize_base64_text(text_payload)
+    try:
+        audio_bytes = _decode_base64_audio(normalized)
+    except (binascii.Error, ValueError) as exc:
+        detail = {
+            "stage": "fetch",
+            "reason": "decode_error",
+            **_build_upstream_detail(response),
+            "error": str(exc)
+        }
+        raise LipVoiceTtsError(detail) from exc
+    return audio_bytes, "audio/wav", "base64/text"
+
+
 async def lipvoice_create_task(text: str, audio_id: str, style: str | None = None,
                                ext: str | None = None, genre: str | None = None,
                                speed: str | None = None) -> str:
@@ -264,18 +375,35 @@ async def lipvoice_fetch_audio(voice_url: str) -> tuple[bytes, str]:
     except httpx.RequestError as exc:
         raise LipVoiceTtsError({"stage": "fetch", "reason": "request_error", "error": str(exc)}) from exc
 
-    content_type = response.headers.get("content-type", "")
-    if response.status_code != 200 or not content_type.startswith("audio/"):
+    if response.status_code != 200:
         detail = {"stage": "fetch", **_build_upstream_detail(response)}
         logger.warning("LipVoice TTS fetch invalid audio detail=%s", detail)
         raise LipVoiceTtsError(detail)
 
+    try:
+        audio_bytes, media_type, mode = _extract_audio_bytes_from_response(response)
+    except LipVoiceTtsError as exc:
+        detail = exc.detail
+        logger.warning("LipVoice TTS fetch invalid audio detail=%s", detail)
+        raise
+    except Exception as exc:  # pragma: no cover - 兜底异常
+        detail = {
+            "stage": "fetch",
+            "reason": "invalid_audio_payload",
+            **_build_upstream_detail(response),
+            "error": str(exc)
+        }
+        logger.warning("LipVoice TTS fetch invalid audio detail=%s", detail)
+        raise LipVoiceTtsError(detail) from exc
+
     logger.info(
-        "LipVoice TTS fetch success content_type=%s content_length=%s",
-        content_type,
-        response.headers.get("content-length") or len(response.content)
+        "LipVoice TTS fetch success mode=%s media_type=%s len=%s upstream_content_type=%s",
+        mode,
+        media_type,
+        len(audio_bytes),
+        response.headers.get("content-type", "") or "unknown"
     )
-    return response.content, content_type
+    return audio_bytes, media_type
 
 
 _MOCK_TTS_TASKS: dict[str, float] = {}
