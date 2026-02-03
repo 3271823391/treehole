@@ -1,3 +1,6 @@
+import os
+import time
+
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
@@ -48,6 +51,14 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
 
     user_info = load_user_data(user_id)
     save_user_data(user_id, user_info)
+    if os.getenv("E2E_TEST_MODE") == "1":
+        def e2e_stream():
+            message = "这是 E2E 测试模式的固定回复，用于验证语音克隆链路。"
+            for ch in message:
+                yield ch
+                time.sleep(0.01)
+        return StreamingResponse(e2e_stream(), media_type="text/plain")
+
     if not user_info.get("system_prompt"):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_system_prompt"})
 

@@ -115,9 +115,10 @@ async def voice_clone_tts(payload: dict = Body(...)):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_payload"})
 
     user_info = load_user_data(user_id)
-    voice_clone_info = user_info.get("voice_clone") or user_info.get("voice") or {}
+    voice_clone_info = user_info.get("voice_clone") or {}
     audio_id = voice_clone_info.get("audioId")
     if not audio_id:
+        logger.warning("LipVoice TTS missing audioId user_id=%s", user_id)
         return JSONResponse(status_code=400, content={"ok": False, "msg": "voice_not_initialized"})
 
     base_url = os.getenv("LIPVOICE_BASE_URL", "https://openapi.lipvoice.cn")
@@ -158,7 +159,7 @@ async def voice_clone_tts(payload: dict = Body(...)):
             content={"ok": False, "msg": "lipvoice_tts_failed", "detail": detail}
         )
 
-    if "application/json" in content_type:
+    if "application/json" in content_type or content_type.startswith("text/"):
         detail = {
             "status_code": response.status_code,
             "body": body_preview

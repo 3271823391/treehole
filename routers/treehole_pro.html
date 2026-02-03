@@ -1761,6 +1761,11 @@
                 const msg = await parseErrorMessage(res);
                 throw new Error(msg || "语音合成失败");
             }
+            const contentType = res.headers.get("content-type") || "";
+            if (!contentType.startsWith("audio/")) {
+                const msg = await parseErrorMessage(res);
+                throw new Error(msg || "语音合成失败");
+            }
             return res;
         }
 
@@ -1821,9 +1826,15 @@
                     URL.revokeObjectURL(url);
                 }
             } catch (err) {
-                if (!ttsUnlockHinted) {
-                    ttsUnlockHinted = true;
-                    showToast("请先点击发送按钮以启用语音播放");
+                const errorName = err?.name || "";
+                const errorMessage = err?.message || "语音合成失败";
+                if (errorName === "NotAllowedError") {
+                    if (!ttsUnlockHinted) {
+                        ttsUnlockHinted = true;
+                        showToast("请先点击发送按钮以启用语音播放");
+                    }
+                } else {
+                    showToast(errorMessage);
                 }
                 console.warn("语音合成失败", err);
             } finally {
