@@ -230,20 +230,12 @@ def _extract_audio_bytes_from_response(response: httpx.Response) -> tuple[bytes,
         media_type = _extract_media_type(payload) or "audio/wav"
         return audio_bytes, media_type, "base64/json"
 
-    text_payload = response.content.decode("utf-8", errors="ignore").strip()
-    if not _looks_like_base64(text_payload):
-        detail = {"stage": "fetch", "reason": "invalid_audio_payload", **_build_upstream_detail(response)}
-        raise LipVoiceTtsError(detail)
-    normalized = _normalize_base64_text(text_payload)
+    text_payload = response.content.decode("utf-8", errors="ignore")
+    normalized = "".join(text_payload.split())
     try:
         audio_bytes = _decode_base64_audio(normalized)
     except (binascii.Error, ValueError) as exc:
-        detail = {
-            "stage": "fetch",
-            "reason": "decode_error",
-            **_build_upstream_detail(response),
-            "error": str(exc)
-        }
+        detail = {"stage": "fetch", "reason": "invalid_audio_payload", **_build_upstream_detail(response)}
         raise LipVoiceTtsError(detail) from exc
     return audio_bytes, "audio/wav", "base64/text"
 
