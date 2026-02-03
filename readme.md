@@ -61,8 +61,9 @@ AI 树洞是一个面向心理倾诉与情绪陪伴场景的轻量型对话应�
 - 位置：Pro 页面右侧菜单（移动端抽屉）里的「语音输出」滑块。
 - 技术原理：
   1) AI 流式文本输出时按句子切分（。！？；… 或换行）。
-  2) 每形成一句调用 `/api/voice_clone/tts` 生成克隆音频。
-  3) 前端通过 `<audio>` 播放音频流，队列串行播放避免叠音。
+  2) 每形成一句先调用 `/api/voice_clone/tts/create` 创建任务。
+  3) 前端每秒轮询 `/api/voice_clone/tts/result` 获取状态与 `voiceUrl`。
+  4) 状态完成后再调用 `/api/voice_clone/tts/audio` 拉取音频并播放。
 - 特点：直接播放音频流，不生成文件也不触发下载；会使用上传后保存的 `audioId` 音色。
 - iOS Safari 无声排查：
   - 首次播放需要用户手势解锁（发送按钮点击会自动尝试解锁）。
@@ -76,7 +77,6 @@ Render 环境变量示例（后端使用）：
 ```bash
 LIPVOICE_SIGN=你的签名                          # 必填
 LIPVOICE_BASE_URL=https://openapi.lipvoice.cn  # 可选，默认使用官方地址
-TTS_FORCE_SAMPLE=1                             # 可选，强制返回本地 sample 音频（用于前端链路自证）
 DEBUG=1                                        # 可选，开启调试接口 /api/voice_clone/debug_get_audio_id
 E2E_TEST_MODE=1                                # 可选，供脚本/测试环境判定
 ```
@@ -107,28 +107,11 @@ python scripts/selftest_voice_clone.py
 pip install -r requirements-tts-selfcheck.txt
 ```
 
-### 模式 1：验证前端播放链路（TTS_FORCE_SAMPLE）
+### 真实 LipVoice 异步 TTS
 
 ```bash
 uvicorn main:app --reload
-TTS_FORCE_SAMPLE=1 DEBUG=1 python scripts/tts_selfcheck.py --base-url http://127.0.0.1:8000 --user-id <你的user_id>
-```
-
-期望输出（示例）：
-
-```
-[tts] status=200
-[tts] content-type=audio/wav
-[tts] content-length=xxxx
-[tts] first-16-bytes-hex=...
-tts_selfcheck_ok
-```
-
-### 模式 2：真实 LipVoice 异步 TTS
-
-```bash
-uvicorn main:app --reload
-TTS_FORCE_SAMPLE=0 DEBUG=1 LIPVOICE_BASE_URL=https://openapi.lipvoice.cn LIPVOICE_SIGN=<真实sign> \
+DEBUG=1 LIPVOICE_BASE_URL=https://openapi.lipvoice.cn LIPVOICE_SIGN=<真实sign> \
   python scripts/tts_selfcheck.py --base-url http://127.0.0.1:8000 --user-id <你的user_id>
 ```
 
@@ -137,7 +120,7 @@ TTS_FORCE_SAMPLE=0 DEBUG=1 LIPVOICE_BASE_URL=https://openapi.lipvoice.cn LIPVOIC
 - `sign_missing`：未设置 `LIPVOICE_SIGN`。
 - `missing_audio_id`：用户未绑定 audioId（需先上传参考音频或检查 user_data.json）。
 - `poll_timeout`：上游生成超时，查看后端日志确认上游状态与任务耗时。
-- `create_failed` / `poll_failed` / `fetch_failed`：检查后端日志中的上游 status_code/content-type/body_preview。
+- `create_failed` / `result_failed` / `fetch_failed`：检查后端日志中的上游 status_code/content-type/body_preview。
 
 ## 语音克隆自检（浏览器 + 后端日志）
 
@@ -145,33 +128,31 @@ TTS_FORCE_SAMPLE=0 DEBUG=1 LIPVOICE_BASE_URL=https://openapi.lipvoice.cn LIPVOIC
 
 - `LIPVOICE_BASE_URL`：LipVoice 上游地址（默认 `https://openapi.lipvoice.cn`）。
 - `LIPVOICE_SIGN`：LipVoice 签名（必须，服务端环境变量）。
-- `TTS_FORCE_SAMPLE=1`：强制返回本地 sample 音频，用于证明前端 `<audio>` 链路正常。
 - `DEBUG=1`：启用调试接口 `/api/voice_clone/debug_get_audio_id`，用于核对 audioId 是否写入。
 
 ### 最短自检路径
 
 1) 启动服务：
 
-```bash
-python run.py
-```
+   ```bash
+   python run.py
+   ```
 
 2) 浏览器手动验证：
    - 打开 `/treehole_pro`，输入用户名并上传参考音频。
-   - 打开 DevTools Network，确认 `/api/voice_clone/tts` 响应 `content-type=audio/*` 且 body 非空。
-   - 若需要快速证明前端播放链路，设置 `TTS_FORCE_SAMPLE=1` 后刷新页面再触发语音输出。
+   - 打开 DevTools Network，确认依次请求 `/api/voice_clone/tts/create`、`/api/voice_clone/tts/result`、`/api/voice_clone/tts/audio` 且音频响应正常。
 
 ## 常见故障排查
 
 1. **仍是机械音（或默认音色）？**  
-   - 检查是否调用 `/api/voice_clone/tts`（浏览器 Network 面板应看到请求）。  
+   - 检查是否调用 `/api/voice_clone/tts/create`（浏览器 Network 面板应看到请求）。  
    - 确认 `user_data.json` 中当前用户已保存 `voice.audioId`。  
    - 确认 Network 请求 payload 含 `audioId`，后端日志中也能看到（否则会回落默认音色）。
 2. **语音输出无声？**  
    - 确认语音输出开关已开启。  
    - iOS Safari 需要用户手势解锁（点击发送按钮）。  
    - 确认系统未静音、音量正常、浏览器允许播放声音。  
-3. **/api/voice_clone/tts 返回 502？**  
+3. **/api/voice_clone/tts/result 或 /api/voice_clone/tts/audio 返回 502？**  
    - 检查后端日志是否打印了上游 status_code / content-type / body_preview。  
    - 确认 `LIPVOICE_BASE_URL` 与 `LIPVOICE_SIGN` 是否正确。  
    - 若上游返回非 audio/*，会被当作失败返回 JSON 便于定位。  

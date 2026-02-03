@@ -40,7 +40,7 @@ def run():
         page.wait_for_selector("#voice-clone-status.success", timeout=10000)
 
         def is_tts_audio(res):
-            if not res.url.endswith("/api/voice_clone/tts"):
+            if not res.url.startswith(f"{base_url}/api/voice_clone/tts/audio"):
                 return False
             content_type = res.headers.get("content-type", "")
             return res.status == 200 and content_type.startswith("audio/")
