@@ -79,6 +79,9 @@ LIPVOICE_BASE_URL=https://openapi.lipvoice.cn  # 可选，默认使用官方地�
 LIPVOICE_TTS_PATH=/api/third/tts               # 可选，TTS 路径（上游可变时覆盖）
 LIPVOICE_TTS_AUDIOID_FIELD=audioId             # 可选，TTS payload 中 audioId 字段名
 LIPVOICE_TTS_TEXT_FIELD=text                   # 可选，TTS payload 中 text 字段名
+TTS_FORCE_SAMPLE=1                             # 可选，强制返回本地 sample 音频（用于前端链路自证）
+DEBUG=1                                        # 可选，开启调试接口 /api/voice_clone/debug_get_audio_id
+E2E_TEST_MODE=1                                # 可选，供脚本/测试环境判定
 ```
 
 > 安全提醒：`LIPVOICE_SIGN` 只能配置在服务端环境变量中，绝不能出现在前端。
@@ -98,6 +101,28 @@ python scripts/selftest_voice_clone.py
 ```
 
 成功时会输出：`selftest_voice_clone_ok`。
+
+## 语音克隆自检（浏览器 + 后端日志）
+
+### 环境变量说明
+
+- `LIPVOICE_BASE_URL`：LipVoice 上游地址（默认 `https://openapi.lipvoice.cn`）。
+- `LIPVOICE_SIGN`：LipVoice 签名（必须，服务端环境变量）。
+- `TTS_FORCE_SAMPLE=1`：强制返回本地 sample 音频，用于证明前端 `<audio>` 链路正常。
+- `DEBUG=1`：启用调试接口 `/api/voice_clone/debug_get_audio_id`，用于核对 audioId 是否写入。
+
+### 最短自检路径
+
+1) 启动服务：
+
+```bash
+python run.py
+```
+
+2) 浏览器手动验证：
+   - 打开 `/treehole_pro`，输入用户名并上传参考音频。
+   - 打开 DevTools Network，确认 `/api/voice_clone/tts` 响应 `content-type=audio/*` 且 body 非空。
+   - 若需要快速证明前端播放链路，设置 `TTS_FORCE_SAMPLE=1` 后刷新页面再触发语音输出。
 
 ## 常见故障排查
 
