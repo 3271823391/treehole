@@ -1773,12 +1773,16 @@
             }
         }
 
-        async function requestVoiceCloneTts(text) {
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function requestVoiceCloneTts(text, token) {
             if (!isValidUserId(currentUserId)) {
                 throw new Error("user_id_invalid");
             }
             ttsAbortController = new AbortController();
-            const res = await fetch("/api/voice_clone/tts", {
+            const createRes = await fetch("/api/voice_clone/tts/create", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -1787,13 +1791,72 @@
                 }),
                 signal: ttsAbortController.signal
             });
-            if (!res.ok) {
-                const msg = await parseErrorMessage(res);
+            if (token !== ttsToken) {
+                const cancelError = new Error("tts_cancelled");
+                cancelError.name = "AbortError";
+                throw cancelError;
+            }
+            if (!createRes.ok) {
+                const msg = await parseErrorMessage(createRes);
                 throw new Error(msg || "语音合成失败");
             }
-            const contentType = res.headers.get("content-type") || "";
-            if (!contentType.startsWith("audio/")) {
-                const { msg, detail } = await parseErrorPayload(res);
+
+            const createPayload = await createRes.json();
+            if (!createPayload.ok || !createPayload.taskId) {
+                throw new Error(createPayload.msg || "语音合成失败");
+            }
+
+            const taskId = createPayload.taskId;
+            const timeoutMs = 60000;
+            const start = Date.now();
+            let voiceUrl = "";
+            while (Date.now() - start < timeoutMs) {
+                if (token !== ttsToken) {
+                    const cancelError = new Error("tts_cancelled");
+                    cancelError.name = "AbortError";
+                    throw cancelError;
+                }
+                await sleep(1000);
+                const resultRes = await fetch(`/api/voice_clone/tts/result?user_id=${encodeURIComponent(currentUserId)}&taskId=${encodeURIComponent(taskId)}`, {
+                    method: "GET",
+                    signal: ttsAbortController.signal
+                });
+                if (!resultRes.ok) {
+                    const msg = await parseErrorMessage(resultRes);
+                    throw new Error(msg || "语音合成失败");
+                }
+                const resultPayload = await resultRes.json();
+                if (!resultPayload.ok) {
+                    throw new Error(resultPayload.msg || "语音合成失败");
+                }
+                const status = resultPayload.status;
+                if (status === 1) {
+                    continue;
+                }
+                if (status === 2 && resultPayload.voiceUrl) {
+                    voiceUrl = resultPayload.voiceUrl;
+                    break;
+                }
+                if (status === 3) {
+                    throw new Error("语音合成失败");
+                }
+            }
+
+            if (!voiceUrl) {
+                throw new Error("生成较慢，可稍后重试");
+            }
+
+            const audioRes = await fetch(`/api/voice_clone/tts/audio?voiceUrl=${encodeURIComponent(voiceUrl)}`, {
+                method: "GET",
+                signal: ttsAbortController.signal
+            });
+            if (!audioRes.ok) {
+                const msg = await parseErrorMessage(audioRes);
+                throw new Error(msg || "语音合成失败");
+            }
+            const contentType = audioRes.headers.get("content-type") || "";
+            if (!contentType.startsWith("audio/") && contentType !== "application/octet-stream") {
+                const { msg, detail } = await parseErrorPayload(audioRes);
                 showToast(msg || "语音合成失败");
                 if (detail) {
                     console.warn("语音合成返回非音频", detail);
@@ -1804,7 +1867,7 @@
                 err.name = "TtsNonAudioError";
                 throw err;
             }
-            return res;
+            return audioRes;
         }
 
         function enqueueTtsSegments(segments) {
@@ -1832,7 +1895,7 @@
                 voiceStopBtn.disabled = false;
             }
             try {
-                const res = await requestVoiceCloneTts(nextText);
+                const res = await requestVoiceCloneTts(nextText, token);
                 if (token !== ttsToken) return;
                 const blob = await res.blob();
                 if (token !== ttsToken) return;
@@ -1871,6 +1934,8 @@
                         ttsUnlockHinted = true;
                         showToast("请先点击发送按钮以启用语音播放");
                     }
+                } else if (errorName === "AbortError") {
+                    // 用户停止或切换时主动取消请求
                 } else if (errorName === "TtsNonAudioError") {
                     // 已在请求阶段提示 toast
                 } else {

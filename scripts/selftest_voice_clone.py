@@ -73,13 +73,49 @@ def main() -> int:
             print("user_data_not_updated", user_info)
             return 1
 
-        tts_resp = client.post(
-            "/api/voice_clone/tts",
+        tts_create = client.post(
+            "/api/voice_clone/tts/create",
             json={"user_id": user_id, "text": "测试语音"},
         )
-        content_type = tts_resp.headers.get("content-type", "")
-        if tts_resp.status_code != 200 or "audio/" not in content_type:
-            print("tts_failed", tts_resp.status_code, content_type, tts_resp.text)
+        if tts_create.status_code != 200:
+            print("tts_create_failed", tts_create.status_code, tts_create.text)
+            return 1
+        tts_create_payload = tts_create.json()
+        if not tts_create_payload.get("ok") or not tts_create_payload.get("taskId"):
+            print("tts_create_invalid", tts_create_payload)
+            return 1
+
+        task_id = tts_create_payload["taskId"]
+        voice_url = ""
+        for _ in range(10):
+            tts_result = client.get(
+                "/api/voice_clone/tts/result",
+                params={"user_id": user_id, "taskId": task_id},
+            )
+            if tts_result.status_code != 200:
+                print("tts_result_failed", tts_result.status_code, tts_result.text)
+                return 1
+            tts_result_payload = tts_result.json()
+            if not tts_result_payload.get("ok"):
+                print("tts_result_invalid", tts_result_payload)
+                return 1
+            status = tts_result_payload.get("status")
+            if status == 2 and tts_result_payload.get("voiceUrl"):
+                voice_url = tts_result_payload["voiceUrl"]
+                break
+            if status == 3:
+                print("tts_result_failed_status", tts_result_payload)
+                return 1
+            time.sleep(0.5)
+
+        if not voice_url:
+            print("tts_result_timeout", task_id)
+            return 1
+
+        tts_audio = client.get("/api/voice_clone/tts/audio", params={"voiceUrl": voice_url})
+        content_type = tts_audio.headers.get("content-type", "")
+        if tts_audio.status_code != 200 or "audio/" not in content_type:
+            print("tts_audio_failed", tts_audio.status_code, content_type, tts_audio.text)
             return 1
 
         print("selftest_voice_clone_ok")
