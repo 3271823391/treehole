@@ -25,7 +25,6 @@ async def upload_reference_audio(
     file: UploadFile = File(...),
     name: str = Form(...),
     describe: str = Form(""),
-    voice_profile_id: str = Form(...),
     user_id: str = Form(...)
 ):
     """代理 LipVoice 参考音频上传接口。"""
@@ -88,8 +87,7 @@ async def upload_reference_audio(
         )
 
     user_info = load_user_data(user_id)
-    user_info["voice"] = {
-        "profile_id": voice_profile_id,
+    user_info["voice_clone"] = {
         "audioId": audio_id
     }
     save_user_data(user_id, user_info)
@@ -99,8 +97,7 @@ async def upload_reference_audio(
         "data": {
             "audioId": audio_id,
             "name": name,
-            "describe": describe or "",
-            "voice_profile_id": voice_profile_id
+            "describe": describe or ""
         }
     }
 
@@ -118,7 +115,8 @@ async def voice_clone_tts(payload: dict = Body(...)):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_payload"})
 
     user_info = load_user_data(user_id)
-    audio_id = (user_info.get("voice") or {}).get("audioId")
+    voice_clone_info = user_info.get("voice_clone") or user_info.get("voice") or {}
+    audio_id = voice_clone_info.get("audioId")
     if not audio_id:
         return JSONResponse(status_code=400, content={"ok": False, "msg": "voice_not_initialized"})
 
