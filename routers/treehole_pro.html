@@ -1407,8 +1407,8 @@
                         </div>
                         <div class="voice-emotion-item">
                             <span>惊讶</span>
-                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="surprise">
-                            <span class="voice-emotion-value" data-voice-emotion-value="surprise">0</span>
+                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="surprised">
+                            <span class="voice-emotion-value" data-voice-emotion-value="surprised">0</span>
                         </div>
                         <div class="voice-emotion-item">
                             <span>平静</span>
@@ -1610,6 +1610,7 @@
             formData.append("name", name);
             formData.append("describe", describe);
             formData.append("user_id", currentUserId);
+            formData.append("emotion_params", JSON.stringify(buildVoiceCloneEmotionParams()));
 
             voiceCloneAction.disabled = true;
             setVoiceCloneStatus("上传中，请稍候...");
@@ -2011,7 +2012,7 @@
                 fear: 0,
                 disgust: 0,
                 depressed: 0,
-                surprise: 0,
+                surprised: 0,
                 calm: 0
             };
         }
@@ -2056,6 +2057,10 @@
             try {
                 const parsed = JSON.parse(raw);
                 if (parsed && typeof parsed === "object") {
+                    if (parsed.surprise !== undefined && parsed.surprised === undefined) {
+                        parsed.surprised = parsed.surprise;
+                        delete parsed.surprise;
+                    }
                     applyEmotionState(parsed);
                     return;
                 }
@@ -2063,6 +2068,15 @@
                 // ignore parse error
             }
             applyEmotionState(createDefaultEmotionState());
+        }
+
+        function buildVoiceCloneEmotionParams() {
+            const params = {};
+            const baseState = createDefaultEmotionState();
+            Object.keys(baseState).forEach((key) => {
+                params[key] = clampEmotionValue(Number(voiceEmotionState[key] ?? 0));
+            });
+            return params;
         }
 
         function buildVoiceEmotionExt() {

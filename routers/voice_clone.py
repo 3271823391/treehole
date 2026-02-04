@@ -292,11 +292,89 @@ _EMOTION_KEY_ALIASES = {
     "depression": "depressed",
     "忧郁": "depressed",
     "surprise": "surprise",
+    "surprised": "surprise",
     "惊讶": "surprise",
     "calm": "calm",
     "平静": "calm",
     "quiet": "calm"
 }
+
+_VOICE_CLONE_EMOTION_KEYS = (
+    "happy",
+    "angry",
+    "sad",
+    "fear",
+    "disgust",
+    "depressed",
+    "surprised",
+    "calm"
+)
+
+_VOICE_CLONE_STYLE_MAP = {
+    "happy": "3",
+    "angry": "6",
+    "sad": "5",
+    "fear": "7",
+    "disgust": "6",
+    "depressed": "5",
+    "surprised": "4",
+    "calm": "2"
+}
+
+_VOICE_CLONE_SPEED_MAP = {
+    "happy": "1.1",
+    "angry": "1.1",
+    "surprised": "1.1",
+    "sad": "0.9",
+    "depressed": "0.9",
+    "fear": "0.9",
+    "disgust": "0.95",
+    "calm": "0.95"
+}
+
+
+def parse_voice_clone_emotion_params(raw: str | None) -> dict:
+    if not raw:
+        return {}
+    try:
+        payload = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    if "surprise" in payload and "surprised" not in payload:
+        payload["surprised"] = payload.get("surprise")
+    parsed: dict[str, float] = {}
+    for key in _VOICE_CLONE_EMOTION_KEYS:
+        if key not in payload:
+            continue
+        try:
+            value = float(payload[key])
+        except (TypeError, ValueError):
+            continue
+        value = max(0.0, min(1.0, value))
+        parsed[key] = value
+    return parsed
+
+
+def resolve_voice_clone_emotion_profile(
+    emotion_params: dict | None,
+    style_override: str | None = None,
+    speed_override: str | None = None
+) -> tuple[str, str | None, str | None, float]:
+    dominant_emotion: str | None = None
+    intensity = 0.0
+    if isinstance(emotion_params, dict):
+        for key in _VOICE_CLONE_EMOTION_KEYS:
+            value = emotion_params.get(key)
+            if isinstance(value, (int, float)) and value > intensity:
+                intensity = float(value)
+                dominant_emotion = key
+    style = style_override or _VOICE_CLONE_STYLE_MAP.get(dominant_emotion) or "2"
+    speed = speed_override
+    if not speed and dominant_emotion and intensity >= 0.7:
+        speed = _VOICE_CLONE_SPEED_MAP.get(dominant_emotion)
+    return style, speed, dominant_emotion, intensity
 
 
 def normalize_emotion_ext(ext: dict | None) -> dict:
@@ -530,7 +608,8 @@ async def upload_reference_audio(
     file: UploadFile = File(...),
     name: str = Form(...),
     describe: str = Form(""),
-    user_id: str = Form(...)
+    user_id: str = Form(...),
+    emotion_params: str = Form("")
 ):
     """代理 LipVoice 参考音频上传接口。"""
     sign = os.getenv("LIPVOICE_SIGN")
@@ -591,24 +670,28 @@ async def upload_reference_audio(
             content={"ok": False, "msg": "lipvoice_upload_failed", "detail": "missing_audio_id"}
         )
 
+    parsed_emotion_params = parse_voice_clone_emotion_params(emotion_params)
     user_info = load_user_data(user_id)
     user_info["voice_clone"] = {
-        "audioId": audio_id
+        "audioId": audio_id,
+        "emotion_params": parsed_emotion_params
     }
     save_user_data(user_id, user_info)
     confirm_info = load_user_data(user_id)
     confirm_audio_id = (confirm_info.get("voice_clone") or {}).get("audioId")
     logger.info(
-        "LipVoice upload saved user_id=%s audioId=%s confirmed_audioId=%s",
+        "LipVoice upload saved user_id=%s audioId=%s confirmed_audioId=%s emotion_params=%s",
         user_id,
         audio_id,
-        confirm_audio_id
+        confirm_audio_id,
+        parsed_emotion_params
     )
 
     return {
         "ok": True,
         "data": {
             "audioId": audio_id,
+            "emotion_params": parsed_emotion_params,
             "name": name,
             "describe": describe or ""
         }
@@ -630,6 +713,7 @@ async def voice_clone_tts(payload: dict = Body(...)):
     user_info = load_user_data(user_id)
     voice_clone_info = user_info.get("voice_clone") or {}
     audio_id = voice_clone_info.get("audioId")
+    emotion_params = voice_clone_info.get("emotion_params") or {}
     if not audio_id:
         logger.warning("LipVoice TTS missing audioId user_id=%s", user_id)
         return JSONResponse(status_code=400, content={"ok": False, "msg": "voice_not_initialized"})
@@ -639,8 +723,23 @@ async def voice_clone_tts(payload: dict = Body(...)):
         return JSONResponse(status_code=500, content={"ok": False, "msg": "lipvoice_sign_missing"})
 
     try:
-        logger.info("LipVoice TTS legacy create user_id=%s audioId=%s", user_id, audio_id)
-        task_id, status = await lipvoice_create_task(text=text, audio_id=audio_id, style="2", ext=ext or None)
+        style, speed, dominant_emotion, intensity = resolve_voice_clone_emotion_profile(emotion_params)
+        logger.info(
+            "LipVoice TTS legacy create user_id=%s audioId=%s dominant_emotion=%s intensity=%.2f style=%s speed=%s",
+            user_id,
+            audio_id,
+            dominant_emotion,
+            intensity,
+            style,
+            speed
+        )
+        task_id, status = await lipvoice_create_task(
+            text=text,
+            audio_id=audio_id,
+            style=style,
+            speed=speed,
+            ext=ext or None
+        )
         logger.info("LipVoice TTS legacy created taskId=%s user_id=%s audioId=%s", task_id, user_id, audio_id)
     except LipVoiceTtsError as exc:
         detail = exc.detail
@@ -676,6 +775,7 @@ async def voice_clone_tts_create(payload: dict = Body(...)):
     user_info = load_user_data(user_id)
     voice_clone_info = user_info.get("voice_clone") or {}
     audio_id = voice_clone_info.get("audioId")
+    emotion_params = voice_clone_info.get("emotion_params") or {}
     if not audio_id:
         logger.warning("LipVoice TTS create missing audioId user_id=%s", user_id)
         return JSONResponse(status_code=400, content={"ok": False, "msg": "voice_not_initialized"})
@@ -685,13 +785,27 @@ async def voice_clone_tts_create(payload: dict = Body(...)):
         return JSONResponse(status_code=500, content={"ok": False, "msg": "lipvoice_sign_missing"})
 
     try:
+        resolved_style, resolved_speed, dominant_emotion, intensity = resolve_voice_clone_emotion_profile(
+            emotion_params,
+            style_override=style,
+            speed_override=speed
+        )
+        logger.info(
+            "LipVoice TTS create user_id=%s audioId=%s dominant_emotion=%s intensity=%.2f style=%s speed=%s",
+            user_id,
+            audio_id,
+            dominant_emotion,
+            intensity,
+            resolved_style,
+            resolved_speed
+        )
         task_id, status = await lipvoice_create_task(
             text=text,
             audio_id=audio_id,
-            style=style,
+            style=resolved_style,
             ext=ext or None,
             genre=genre,
-            speed=speed
+            speed=resolved_speed
         )
     except LipVoiceTtsError as exc:
         detail = exc.detail
@@ -756,5 +870,6 @@ async def debug_get_audio_id(user_id: str):
     return {
         "ok": True,
         "audioId": audio_id,
+        "emotion_params": voice_clone_info.get("emotion_params") or {},
         "has_voice_clone": bool(voice_clone_info)
     }
