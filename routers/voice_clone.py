@@ -382,18 +382,6 @@ def normalize_tts_ext(ext: dict | None) -> dict:
     if not isinstance(ext, dict):
         ext = {}
     normalized: dict[str, float] = {}
-    speed = ext.get("speed", 1.0)
-    pitch = ext.get("pitch", 1.0)
-    volume = ext.get("volume", 1.0)
-    for label, raw_value in (("speed", speed), ("pitch", pitch), ("volume", volume)):
-        try:
-            value = float(raw_value)
-        except (TypeError, ValueError):
-            value = 1.0
-        if not math.isfinite(value):
-            value = 1.0
-        normalized[label] = value
-
     for raw_key, raw_value in ext.items():
         if raw_value is None:
             continue
@@ -413,6 +401,62 @@ def normalize_tts_ext(ext: dict | None) -> dict:
             continue
         normalized[key] = value
     return normalized
+
+
+def build_lipvoice_create_payload(
+    text: str,
+    audio_id: str,
+    style: str | int | None = None,
+    speed: str | float | int | None = None,
+    genre: str | None = None,
+    ext: dict | None = None
+) -> dict:
+    payload = {
+        "content": str(text),
+        "audioId": str(audio_id)
+    }
+    style_type = os.getenv("LIPVOICE_STYLE_TYPE", "string").strip().lower()
+    try:
+        style_value = int(style)
+    except (TypeError, ValueError):
+        style_value = 2
+    if style_value not in (1, 2):
+        style_value = 2
+    if style_type == "int":
+        payload["style"] = style_value
+    else:
+        payload["style"] = str(style_value)
+
+    if speed is not None:
+        try:
+            speed_value = float(speed)
+        except (TypeError, ValueError):
+            speed_value = None
+        if speed_value is not None and math.isfinite(speed_value):
+            payload["speed"] = speed_value
+
+    if genre:
+        payload["genre"] = genre
+
+    sanitized_ext: dict[str, float] = {}
+    if isinstance(ext, dict):
+        for key in _VOICE_CLONE_EMOTION_KEYS:
+            if key not in ext:
+                continue
+            raw_value = ext.get(key)
+            try:
+                value = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(value):
+                continue
+            value = max(0.0, min(1.0, value))
+            if value <= 0:
+                continue
+            sanitized_ext[key] = value
+    if sanitized_ext:
+        payload["ext"] = sanitized_ext
+    return payload
 
 
 def sanitize_tts_payload(
@@ -475,28 +519,22 @@ async def lipvoice_create_task(
     sign = os.getenv("LIPVOICE_SIGN")
     base_url = os.getenv("LIPVOICE_BASE_URL", "https://openapi.lipvoice.cn")
     url = f"{base_url}/api/third/tts/create"
-    payload = {
-        "content": text,
-        "audioId": audio_id
-    }
-    try:
-        style_value = int(style)
-    except (TypeError, ValueError):
-        style_value = 2
-    if style_value not in (1, 2):
-        style_value = 2
-    payload["style"] = style_value
-    if ext and isinstance(ext, dict) and len(ext) > 0:
-        payload["ext"] = ext
-    if genre:
-        payload["genre"] = genre
-    if speed:
-        try:
-            speed_value = float(speed)
-        except (TypeError, ValueError):
-            speed_value = None
-        if speed_value is not None and math.isfinite(speed_value):
-            payload["speed"] = speed_value
+    payload = build_lipvoice_create_payload(
+        text=text,
+        audio_id=audio_id,
+        style=style,
+        speed=speed,
+        genre=genre,
+        ext=ext
+    )
+    logger.warning(
+        "LipVoice DEBUG payload_types style=%r(%s) speed=%r(%s) ext_keys=%s",
+        payload.get("style"),
+        type(payload.get("style")).__name__,
+        payload.get("speed"),
+        type(payload.get("speed")).__name__ if "speed" in payload else "None",
+        list((payload.get("ext") or {}).keys())
+    )
     logger.debug(
         "LipVoice TTS create upstream payload=%s",
         json.dumps(payload, ensure_ascii=False)
@@ -822,7 +860,8 @@ async def voice_clone_tts(payload: dict = Body(...)):
             audio_id=audio_id,
             style=style,
             speed=speed,
-            ext=ext or None
+            ext=ext or None,
+            genre=None
         )
         logger.info("LipVoice TTS legacy created taskId=%s user_id=%s audioId=%s", task_id, user_id, audio_id)
     except LipVoiceTtsError as exc:
@@ -873,30 +912,23 @@ async def voice_clone_tts_create(payload: dict = Body(...)):
             style_override=style,
             speed_override=speed
         )
-        sanitized = sanitize_tts_payload(
-            text=text,
-            ext=raw_ext,
-            style=resolved_style,
-            speed=resolved_speed,
-            genre=genre,
-            audio_id=audio_id
-        )
+        ext = normalize_tts_ext(raw_ext)
         logger.info(
             "LipVoice TTS create user_id=%s audioId=%s dominant_emotion=%s intensity=%.2f style=%s speed=%s",
             user_id,
             audio_id,
             dominant_emotion,
             intensity,
-            sanitized["style"],
-            sanitized["speed"]
+            resolved_style,
+            resolved_speed
         )
         task_id, status = await lipvoice_create_task(
             text=text,
             audio_id=audio_id,
-            style=sanitized["style"],
-            ext=sanitized["ext"] or None,
+            style=resolved_style,
+            ext=ext or None,
             genre=genre,
-            speed=sanitized["speed"]
+            speed=resolved_speed
         )
     except LipVoiceTtsError as exc:
         detail = exc.detail
