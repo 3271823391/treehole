@@ -292,9 +292,9 @@ _EMOTION_KEY_ALIASES = {
     "depressed": "depressed",
     "depression": "depressed",
     "忧郁": "depressed",
-    "surprise": "surprise",
-    "surprised": "surprise",
-    "惊讶": "surprise",
+    "surprise": "surprised",
+    "surprised": "surprised",
+    "惊讶": "surprised",
     "calm": "calm",
     "平静": "calm",
     "quiet": "calm"
@@ -312,15 +312,17 @@ _VOICE_CLONE_EMOTION_KEYS = (
 )
 
 _VOICE_CLONE_STYLE_MAP = {
-    "happy": "3",
-    "angry": "6",
-    "sad": "5",
-    "fear": "7",
-    "disgust": "6",
-    "depressed": "5",
-    "surprised": "4",
+    "happy": "2",
+    "angry": "2",
+    "sad": "2",
+    "fear": "2",
+    "disgust": "2",
+    "depressed": "2",
+    "surprised": "2",
     "calm": "2"
 }
+
+_VOICE_CLONE_EXT_PASSTHROUGH_KEYS = {"pitch", "volume"}
 
 _VOICE_CLONE_SPEED_MAP = {
     "happy": "1.1",
@@ -386,7 +388,7 @@ def normalize_tts_ext(ext: dict | None) -> dict:
         if raw_value is None:
             continue
         key = _EMOTION_KEY_ALIASES.get(str(raw_key).strip().lower())
-        if not key:
+        if not key or key not in _VOICE_CLONE_EMOTION_KEYS:
             continue
         try:
             value = float(raw_value)
@@ -401,6 +403,36 @@ def normalize_tts_ext(ext: dict | None) -> dict:
             continue
         normalized[key] = value
     return normalized
+
+
+def _has_emotion_ext_input(raw_ext: dict) -> bool:
+    for raw_key in raw_ext.keys():
+        mapped = _EMOTION_KEY_ALIASES.get(str(raw_key).strip().lower())
+        if mapped in _VOICE_CLONE_EMOTION_KEYS:
+            return True
+    return False
+
+
+def _extract_tts_ext_passthrough(raw_ext: dict) -> tuple[dict[str, float], list[str]]:
+    passthrough: dict[str, float] = {}
+    unsupported: list[str] = []
+    for key, value in raw_ext.items():
+        normalized_key = str(key).strip().lower()
+        if normalized_key not in _VOICE_CLONE_EXT_PASSTHROUGH_KEYS:
+            continue
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(numeric_value):
+            continue
+        passthrough[normalized_key] = numeric_value
+    for key in raw_ext.keys():
+        normalized_key = str(key).strip().lower()
+        if normalized_key in _VOICE_CLONE_EXT_PASSTHROUGH_KEYS:
+            if normalized_key not in passthrough:
+                unsupported.append(normalized_key)
+    return passthrough, unsupported
 
 
 def build_lipvoice_create_payload(
@@ -452,6 +484,17 @@ def build_lipvoice_create_payload(
                 continue
             value = max(0.0, min(1.0, value))
             if value <= 0:
+                continue
+            sanitized_ext[key] = value
+        for key in _VOICE_CLONE_EXT_PASSTHROUGH_KEYS:
+            if key not in ext:
+                continue
+            raw_value = ext.get(key)
+            try:
+                value = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(value):
                 continue
             sanitized_ext[key] = value
     if sanitized_ext:
@@ -527,6 +570,13 @@ async def lipvoice_create_task(
         genre=genre,
         ext=ext
     )
+    logger.info(
+        "LipVoice TTS resolved_style=%s payload_style=%s payload_speed=%s payload_ext_keys=%s",
+        style,
+        payload.get("style"),
+        payload.get("speed"),
+        list((payload.get("ext") or {}).keys())
+    )
     logger.warning(
         "LipVoice DEBUG payload_types style=%r(%s) speed=%r(%s) ext_keys=%s",
         payload.get("style"),
@@ -548,8 +598,9 @@ async def lipvoice_create_task(
         bool(sign)
     )
     logger.info(
-        "LipVoice create ext=%s",
-        json.dumps(payload.get("ext"), ensure_ascii=False)[:300]
+        "LipVoice create ext=%s payload_speed=%s",
+        json.dumps(payload.get("ext"), ensure_ascii=False)[:300],
+        payload.get("speed")
     )
     try:
         async with httpx.AsyncClient(timeout=30) as client:
@@ -829,6 +880,16 @@ async def voice_clone_tts(payload: dict = Body(...)):
     if not isinstance(raw_ext, dict):
         raw_ext = {}
     ext = normalize_tts_ext(raw_ext)
+    ext_passthrough, unsupported_ext = _extract_tts_ext_passthrough(raw_ext)
+    ext_speed = raw_ext.get("speed")
+    if ext_speed is not None:
+        try:
+            ext_speed = float(ext_speed)
+            if not math.isfinite(ext_speed):
+                ext_speed = None
+        except (TypeError, ValueError):
+            ext_speed = None
+    ext_for_payload = {**ext, **ext_passthrough}
     if not user_id or not text:
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_payload"})
 
@@ -845,7 +906,15 @@ async def voice_clone_tts(payload: dict = Body(...)):
         return JSONResponse(status_code=500, content={"ok": False, "msg": "lipvoice_sign_missing"})
 
     try:
-        style, speed, dominant_emotion, intensity = resolve_voice_clone_emotion_profile(emotion_params)
+        style, speed, dominant_emotion, intensity = resolve_voice_clone_emotion_profile(
+            emotion_params,
+            speed_override=ext_speed
+        )
+        if raw_ext and not ext and _has_emotion_ext_input(raw_ext):
+            logger.warning(
+                "LipVoice TTS legacy ext filtered empty raw_ext=%s",
+                json.dumps(raw_ext, ensure_ascii=False)
+            )
         logger.info(
             "LipVoice TTS legacy create user_id=%s audioId=%s dominant_emotion=%s intensity=%.2f style=%s speed=%s",
             user_id,
@@ -855,12 +924,19 @@ async def voice_clone_tts(payload: dict = Body(...)):
             style,
             speed
         )
+        logger.info(
+            "LipVoice TTS legacy ext_raw=%s ext_emotion=%s ext_passthrough=%s unsupported_ext=%s",
+            json.dumps(raw_ext, ensure_ascii=False),
+            json.dumps(ext, ensure_ascii=False),
+            json.dumps(ext_passthrough, ensure_ascii=False),
+            unsupported_ext
+        )
         task_id, status = await lipvoice_create_task(
             text=text,
             audio_id=audio_id,
             style=style,
             speed=speed,
-            ext=ext or None,
+            ext=ext_for_payload or None,
             genre=None
         )
         logger.info("LipVoice TTS legacy created taskId=%s user_id=%s audioId=%s", task_id, user_id, audio_id)
@@ -906,13 +982,29 @@ async def voice_clone_tts_create(payload: dict = Body(...)):
     if not sign:
         return JSONResponse(status_code=500, content={"ok": False, "msg": "lipvoice_sign_missing"})
 
+    unsupported_ext: list[str] = []
     try:
+        ext_speed = raw_ext.get("speed")
+        if ext_speed is not None:
+            try:
+                ext_speed = float(ext_speed)
+                if not math.isfinite(ext_speed):
+                    ext_speed = None
+            except (TypeError, ValueError):
+                ext_speed = None
+        ext_passthrough, unsupported_ext = _extract_tts_ext_passthrough(raw_ext)
         resolved_style, resolved_speed, dominant_emotion, intensity = resolve_voice_clone_emotion_profile(
             emotion_params,
             style_override=style,
-            speed_override=speed
+            speed_override=speed if speed is not None else ext_speed
         )
         ext = normalize_tts_ext(raw_ext)
+        if raw_ext and not ext and _has_emotion_ext_input(raw_ext):
+            logger.warning(
+                "LipVoice TTS create ext filtered empty raw_ext=%s",
+                json.dumps(raw_ext, ensure_ascii=False)
+            )
+        ext_for_payload = {**ext, **ext_passthrough}
         logger.info(
             "LipVoice TTS create user_id=%s audioId=%s dominant_emotion=%s intensity=%.2f style=%s speed=%s",
             user_id,
@@ -922,11 +1014,18 @@ async def voice_clone_tts_create(payload: dict = Body(...)):
             resolved_style,
             resolved_speed
         )
+        logger.info(
+            "LipVoice TTS create ext_raw=%s ext_emotion=%s ext_passthrough=%s unsupported_ext=%s",
+            json.dumps(raw_ext, ensure_ascii=False),
+            json.dumps(ext, ensure_ascii=False),
+            json.dumps(ext_passthrough, ensure_ascii=False),
+            unsupported_ext
+        )
         task_id, status = await lipvoice_create_task(
             text=text,
             audio_id=audio_id,
             style=resolved_style,
-            ext=ext or None,
+            ext=ext_for_payload or None,
             genre=genre,
             speed=resolved_speed
         )
@@ -944,7 +1043,10 @@ async def voice_clone_tts_create(payload: dict = Body(...)):
     }
     save_user_data(user_id, user_info)
 
-    return {"ok": True, "taskId": task_id, "status": status}
+    response = {"ok": True, "taskId": task_id, "status": status}
+    if unsupported_ext:
+        response["unsupported_ext"] = unsupported_ext
+    return response
 
 
 @router.get("/api/voice_clone/tts/result")
