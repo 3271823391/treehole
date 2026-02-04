@@ -2600,9 +2600,11 @@
         const content = msgInput.value.trim();
         if (!content) return;
 
+        let ttsRequestToken = null;
         if (voiceOutputEnabled) {
             unlockTtsForIOS();
             resetTtsQueue();
+            ttsRequestToken = ttsToken;
         }
 
         // ✅【新增：开启新一轮对话】
@@ -2671,18 +2673,83 @@
             const reader = resp.body.getReader();
             const decoder = new TextDecoder("utf-8");
 
+            let fullAssistantText = "";
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
                 const chunkText = decoder.decode(value);
                 aiMsg.innerText += chunkText;
-                // TODO: 流式文本分句播报（LipVoice 克隆 TTS 版本）
-                appendTtsBuffer(chunkText);
+                fullAssistantText += chunkText;
                 chatWindow.scrollTop = chatWindow.scrollHeight;
             }
-            if (voiceOutputEnabled && ttsBuffer.trim()) {
-                enqueueTtsSegments([ttsBuffer.trim()]);
-                ttsBuffer = "";
+            if (voiceOutputEnabled && fullAssistantText.trim()) {
+                try {
+                    ttsActive = true;
+                    if (voiceStopBtn) {
+                        voiceStopBtn.disabled = false;
+                    }
+                    const res = await requestVoiceCloneTts(fullAssistantText, ttsRequestToken);
+                    if (ttsRequestToken !== ttsToken) return;
+                    const blob = await res.blob();
+                    if (ttsRequestToken !== ttsToken) return;
+                    ensureTtsAudio();
+                    const url = URL.createObjectURL(blob);
+                    try {
+                        ttsAudio.src = url;
+                        let cleanup = () => {};
+                        const playEnded = new Promise((resolve, reject) => {
+                            const onEnd = () => {
+                                cleanup();
+                                resolve();
+                            };
+                            const onError = () => {
+                                cleanup();
+                                reject(new Error("audio_error"));
+                            };
+                            cleanup = () => {
+                                ttsAudio.removeEventListener("ended", onEnd);
+                                ttsAudio.removeEventListener("error", onError);
+                            };
+                            ttsAudio.addEventListener("ended", onEnd);
+                            ttsAudio.addEventListener("error", onError);
+                        });
+                        const playPromise = ttsAudio.play();
+                        if (playPromise && typeof playPromise.then === "function") {
+                            try {
+                                await playPromise;
+                            } catch (playError) {
+                                cleanup();
+                                throw playError;
+                            }
+                        }
+                        await playEnded;
+                    } finally {
+                        URL.revokeObjectURL(url);
+                    }
+                } catch (err) {
+                    const errorName = err?.name || "";
+                    const errorMessage = err?.message || "语音合成失败";
+                    if (errorName === "NotAllowedError") {
+                        if (!ttsUnlockHinted) {
+                            ttsUnlockHinted = true;
+                            showToast("请先点击发送按钮以启用语音播放");
+                        }
+                    } else if (errorName === "AbortError") {
+                        // 用户停止或切换时主动取消请求
+                    } else if (errorName === "TtsNonAudioError") {
+                        // 已在请求阶段提示 toast
+                    } else {
+                        showToast(errorMessage);
+                    }
+                    console.warn("语音合成失败", err);
+                } finally {
+                    if (ttsRequestToken === ttsToken) {
+                        ttsActive = false;
+                        if (voiceStopBtn) {
+                            voiceStopBtn.disabled = true;
+                        }
+                    }
+                }
             }
             chatHistory.push({
                 role: "assistant",
