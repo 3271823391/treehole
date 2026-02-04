@@ -687,7 +687,6 @@
         /* 底部版权 - 固定底部，小字标明 */
         #copyrightBar {
             width: 100%;
-            background-color: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1903,6 +1902,8 @@
                 throw new Error("user_id_invalid");
             }
             const ext = buildVoiceEmotionExt();
+            const extPayload = Object.keys(ext).length ? ext : {};
+            console.log("[TTS ext]", extPayload, JSON.stringify(extPayload));
             const controller = new AbortController();
             ttsAbortControllers.add(controller);
             try {
@@ -1912,7 +1913,7 @@
                     body: JSON.stringify({
                         user_id: currentUserId,
                         text: text,
-                        ext: ext
+                        ext: extPayload
                     }),
                     signal: controller.signal
                 });
@@ -2064,8 +2065,22 @@
         }
 
         function buildVoiceEmotionExt() {
+            let sourceState = voiceEmotionState;
+            if (!sourceState || typeof sourceState !== "object" || !Object.keys(sourceState).length) {
+                const raw = safeLocalStorageGet(STORAGE_VOICE_EMOTION_EXT);
+                if (raw) {
+                    try {
+                        const parsed = JSON.parse(raw);
+                        if (parsed && typeof parsed === "object") {
+                            sourceState = parsed;
+                        }
+                    } catch (err) {
+                        // ignore parse error
+                    }
+                }
+            }
             const ext = {};
-            Object.entries(voiceEmotionState).forEach(([key, value]) => {
+            Object.entries(sourceState || {}).forEach(([key, value]) => {
                 if (typeof value === "number" && value > 0) {
                     ext[key] = value;
                 }

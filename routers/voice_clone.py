@@ -3,6 +3,7 @@ import os
 import time
 import base64
 import binascii
+import json
 from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
 
 import httpx
@@ -276,16 +277,24 @@ def _append_sign_param(url: str, sign: str | None) -> str:
 
 _EMOTION_KEY_ALIASES = {
     "happy": "happy",
+    "开心": "happy",
     "angry": "angry",
     "anger": "angry",
+    "愤怒": "angry",
     "sad": "sad",
     "sadness": "sad",
+    "悲伤": "sad",
     "fear": "fear",
+    "恐惧": "fear",
     "disgust": "disgust",
+    "厌恶": "disgust",
     "depressed": "depressed",
     "depression": "depressed",
+    "忧郁": "depressed",
     "surprise": "surprise",
+    "惊讶": "surprise",
     "calm": "calm",
+    "平静": "calm",
     "quiet": "calm"
 }
 
@@ -340,6 +349,10 @@ async def lipvoice_create_task(
         url,
         list(payload.keys()),
         bool(sign)
+    )
+    logger.info(
+        "LipVoice create ext=%s",
+        json.dumps(payload.get("ext"), ensure_ascii=False)[:300]
     )
     try:
         async with httpx.AsyncClient(timeout=30) as client:
@@ -605,7 +618,10 @@ async def voice_clone_tts(payload: dict = Body(...)):
     """兼容旧版同步接口，返回任务信息以避免阻塞。"""
     user_id = (payload.get("user_id") or "").strip()
     text = (payload.get("text") or "").strip()
-    ext = normalize_emotion_ext(payload.get("ext"))
+    raw_ext = payload.get("ext") or {}
+    if not isinstance(raw_ext, dict):
+        raw_ext = {}
+    ext = normalize_emotion_ext(raw_ext)
     if not user_id or not text:
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_payload"})
 
@@ -646,7 +662,10 @@ async def voice_clone_tts_create(payload: dict = Body(...)):
     user_id = (payload.get("user_id") or "").strip()
     text = (payload.get("text") or "").strip()
     style = payload.get("style")
-    ext = normalize_emotion_ext(payload.get("ext"))
+    raw_ext = payload.get("ext") or {}
+    if not isinstance(raw_ext, dict):
+        raw_ext = {}
+    ext = normalize_emotion_ext(raw_ext)
     genre = payload.get("genre")
     speed = payload.get("speed")
     if not user_id or not text:
