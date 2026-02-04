@@ -274,11 +274,48 @@ def _append_sign_param(url: str, sign: str | None) -> str:
     return urlunparse(parsed._replace(query=new_query))
 
 
+_EMOTION_KEY_ALIASES = {
+    "happy": "happy",
+    "angry": "angry",
+    "anger": "angry",
+    "sad": "sad",
+    "sadness": "sad",
+    "fear": "fear",
+    "disgust": "disgust",
+    "depressed": "depressed",
+    "depression": "depressed",
+    "surprise": "surprise",
+    "calm": "calm",
+    "quiet": "calm"
+}
+
+
+def normalize_emotion_ext(ext: dict | None) -> dict:
+    if not isinstance(ext, dict):
+        return {}
+    normalized: dict[str, float] = {}
+    for raw_key, raw_value in ext.items():
+        if raw_value is None:
+            continue
+        key = _EMOTION_KEY_ALIASES.get(str(raw_key).strip().lower())
+        if not key:
+            continue
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            continue
+        value = max(0.0, min(1.0, value))
+        if value <= 0:
+            continue
+        normalized[key] = value
+    return normalized
+
+
 async def lipvoice_create_task(
     text: str,
     audio_id: str,
     style: str | None = None,
-    ext: str | None = None,
+    ext: dict | None = None,
     genre: str | None = None,
     speed: str | None = None
 ) -> tuple[str, int]:
@@ -568,6 +605,7 @@ async def voice_clone_tts(payload: dict = Body(...)):
     """兼容旧版同步接口，返回任务信息以避免阻塞。"""
     user_id = (payload.get("user_id") or "").strip()
     text = (payload.get("text") or "").strip()
+    ext = normalize_emotion_ext(payload.get("ext"))
     if not user_id or not text:
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_payload"})
 
@@ -584,7 +622,7 @@ async def voice_clone_tts(payload: dict = Body(...)):
 
     try:
         logger.info("LipVoice TTS legacy create user_id=%s audioId=%s", user_id, audio_id)
-        task_id, status = await lipvoice_create_task(text=text, audio_id=audio_id, style="2")
+        task_id, status = await lipvoice_create_task(text=text, audio_id=audio_id, style="2", ext=ext or None)
         logger.info("LipVoice TTS legacy created taskId=%s user_id=%s audioId=%s", task_id, user_id, audio_id)
     except LipVoiceTtsError as exc:
         detail = exc.detail
@@ -608,7 +646,7 @@ async def voice_clone_tts_create(payload: dict = Body(...)):
     user_id = (payload.get("user_id") or "").strip()
     text = (payload.get("text") or "").strip()
     style = payload.get("style")
-    ext = payload.get("ext")
+    ext = normalize_emotion_ext(payload.get("ext"))
     genre = payload.get("genre")
     speed = payload.get("speed")
     if not user_id or not text:
@@ -630,7 +668,7 @@ async def voice_clone_tts_create(payload: dict = Body(...)):
             text=text,
             audio_id=audio_id,
             style=style,
-            ext=ext,
+            ext=ext or None,
             genre=genre,
             speed=speed
         )
