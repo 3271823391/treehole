@@ -2124,9 +2124,15 @@
             const speedValue = Number(base.speed);
             const pitchValue = Number(base.pitch);
             const volumeValue = Number(base.volume);
-            ext.speed = Number.isFinite(speedValue) ? speedValue : 1.0;
-            ext.pitch = Number.isFinite(pitchValue) ? pitchValue : 1.0;
-            ext.volume = Number.isFinite(volumeValue) ? volumeValue : 1.0;
+            if (Number.isFinite(speedValue) && Math.abs(speedValue - 1) > 0.001) {
+                ext.speed = speedValue;
+            }
+            if (Number.isFinite(pitchValue) && Math.abs(pitchValue - 1) > 0.001) {
+                ext.pitch = pitchValue;
+            }
+            if (Number.isFinite(volumeValue) && Math.abs(volumeValue - 1) > 0.001) {
+                ext.volume = volumeValue;
+            }
             emotionKeys.forEach((key) => {
                 const numericValue = Number(base[key]);
                 if (!Number.isFinite(numericValue)) {
