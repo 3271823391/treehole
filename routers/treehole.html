@@ -1383,7 +1383,7 @@
             const history = buildEmotionHistory(currentRound, content);
 
             try {
-                const res = await fetch("/emotion", {
+                const res = await fetch("/api/emotion", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
