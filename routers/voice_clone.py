@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 import time
 import base64
@@ -377,10 +378,22 @@ def resolve_voice_clone_emotion_profile(
     return style, speed, dominant_emotion, intensity
 
 
-def normalize_emotion_ext(ext: dict | None) -> dict:
+def normalize_tts_ext(ext: dict | None) -> dict:
     if not isinstance(ext, dict):
-        return {}
+        ext = {}
     normalized: dict[str, float] = {}
+    speed = ext.get("speed", 1.0)
+    pitch = ext.get("pitch", 1.0)
+    volume = ext.get("volume", 1.0)
+    for label, raw_value in (("speed", speed), ("pitch", pitch), ("volume", volume)):
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            value = 1.0
+        if not math.isfinite(value):
+            value = 1.0
+        normalized[label] = value
+
     for raw_key, raw_value in ext.items():
         if raw_value is None:
             continue
@@ -390,6 +403,8 @@ def normalize_emotion_ext(ext: dict | None) -> dict:
         try:
             value = float(raw_value)
         except (TypeError, ValueError):
+            continue
+        if not math.isfinite(value):
             continue
         if value > 1 and value <= 100:
             value = value / 100
@@ -421,7 +436,12 @@ async def lipvoice_create_task(
     if genre:
         payload["genre"] = genre
     if speed:
-        payload["speed"] = speed
+        try:
+            speed_value = float(speed)
+        except (TypeError, ValueError):
+            speed_value = None
+        if speed_value is not None and math.isfinite(speed_value):
+            payload["speed"] = speed_value
     logger.info(
         "LipVoice TTS create request audioId=%s text_len=%s url=%s payload_keys=%s sign_present=%s",
         audio_id,
@@ -706,7 +726,7 @@ async def voice_clone_tts(payload: dict = Body(...)):
     raw_ext = payload.get("ext") or {}
     if not isinstance(raw_ext, dict):
         raw_ext = {}
-    ext = normalize_emotion_ext(raw_ext)
+    ext = normalize_tts_ext(raw_ext)
     if not user_id or not text:
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_payload"})
 
@@ -766,7 +786,7 @@ async def voice_clone_tts_create(payload: dict = Body(...)):
     raw_ext = payload.get("ext") or {}
     if not isinstance(raw_ext, dict):
         raw_ext = {}
-    ext = normalize_emotion_ext(raw_ext)
+    ext = normalize_tts_ext(raw_ext)
     genre = payload.get("genre")
     speed = payload.get("speed")
     if not user_id or not text:
