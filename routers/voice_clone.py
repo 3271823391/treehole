@@ -313,6 +313,8 @@ def normalize_emotion_ext(ext: dict | None) -> dict:
             value = float(raw_value)
         except (TypeError, ValueError):
             continue
+        if value > 1 and value <= 100:
+            value = value / 100
         value = max(0.0, min(1.0, value))
         if value <= 0:
             continue
@@ -336,7 +338,7 @@ async def lipvoice_create_task(
         "audioId": audio_id
     }
     payload["style"] = style or "2"
-    if ext:
+    if ext and isinstance(ext, dict) and len(ext) > 0:
         payload["ext"] = ext
     if genre:
         payload["genre"] = genre

@@ -1430,6 +1430,7 @@
         const STORAGE_VOICE_AUDIO_ID = "voice_audio_id"; // TODO: PRO 专用语音克隆缓存 key
         const STORAGE_VOICE_OUTPUT = "voice_output_enabled"; // TODO: PRO 语音输出开关
         const STORAGE_VOICE_EMOTION_EXT = "voice_emotion_ext";
+        const STORAGE_LIPVOICE_TTS_EXT = "lipvoice_tts_ext";
         const APP_PLAN = "pro"; // TODO: FREE/PLUS/PRO 页面拷贝时按版本调整
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
         let currentUserId = null;
@@ -1903,7 +1904,7 @@
             }
             const ext = buildVoiceEmotionExt();
             const extPayload = Object.keys(ext).length ? ext : {};
-            console.log("[TTS ext]", extPayload, JSON.stringify(extPayload));
+            console.log("[TTS ext send]", extPayload);
             const controller = new AbortController();
             ttsAbortControllers.add(controller);
             try {
@@ -2066,8 +2067,13 @@
 
         function buildVoiceEmotionExt() {
             let sourceState = voiceEmotionState;
+            if (window.currentTtsExt && typeof window.currentTtsExt === "object") {
+                sourceState = window.currentTtsExt;
+            }
             if (!sourceState || typeof sourceState !== "object" || !Object.keys(sourceState).length) {
-                const raw = safeLocalStorageGet(STORAGE_VOICE_EMOTION_EXT);
+                const raw =
+                    safeLocalStorageGet(STORAGE_VOICE_EMOTION_EXT)
+                    || safeLocalStorageGet(STORAGE_LIPVOICE_TTS_EXT);
                 if (raw) {
                     try {
                         const parsed = JSON.parse(raw);
@@ -2081,8 +2087,9 @@
             }
             const ext = {};
             Object.entries(sourceState || {}).forEach(([key, value]) => {
-                if (typeof value === "number" && value > 0) {
-                    ext[key] = value;
+                const numericValue = Number(value);
+                if (Number.isFinite(numericValue) && numericValue > 0) {
+                    ext[key] = numericValue;
                 }
             });
             return ext;
