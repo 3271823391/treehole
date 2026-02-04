@@ -1906,6 +1906,15 @@
             const ext = buildVoiceEmotionExt();
             const extPayload = Object.keys(ext).length ? ext : {};
             console.log("[TTS ext send]", extPayload);
+            const { speed: extSpeed, ...extWithoutSpeed } = extPayload;
+            const requestPayload = {
+                user_id: currentUserId,
+                text: text,
+                ext: extWithoutSpeed
+            };
+            if (Number.isFinite(extSpeed)) {
+                requestPayload.speed = extSpeed;
+            }
             const controller = new AbortController();
             ttsAbortControllers.add(controller);
             try {
@@ -1913,9 +1922,7 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        user_id: currentUserId,
-                        text: text,
-                        ext: extPayload
+                        ...requestPayload
                     }),
                     signal: controller.signal
                 });
@@ -2102,12 +2109,20 @@
                     try {
                         const parsed = JSON.parse(raw);
                         if (parsed && typeof parsed === "object") {
+                            if (parsed.surprise !== undefined && parsed.surprised === undefined) {
+                                parsed.surprised = parsed.surprise;
+                                delete parsed.surprise;
+                            }
                             sourceState = parsed;
                         }
                     } catch (err) {
                         // ignore parse error
                     }
                 }
+            }
+            if (sourceState?.surprise !== undefined && sourceState?.surprised === undefined) {
+                sourceState = { ...sourceState, surprised: sourceState.surprise };
+                delete sourceState.surprise;
             }
             const ext = {};
             const base = sourceState || {};
