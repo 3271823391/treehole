@@ -50,6 +50,7 @@ class EmotionRequest(BaseModel):
 # 核心接口
 # ===============================
 @router.post("/emotion")
+@router.post("/api/emotion")
 def analyze_emotion(req: EmotionRequest, request: Request):
     user_id = req.user_id
     if not user_id:
@@ -80,12 +81,12 @@ def analyze_emotion(req: EmotionRequest, request: Request):
         history = history[-MAX_HISTORY_MESSAGES:]
 
     logger.info(
-        "Emotion request user_id=%s user_key=%s round_id=%s history_len=%s current_input=%s",
+        "Emotion request user_id=%s user_key=%s round_id=%s history_len=%s current_input_len=%s",
         user_id,
         user_key,
         round_id,
         len(history),
-        current_input,
+        len(current_input),
     )
 
     try:
