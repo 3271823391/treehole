@@ -360,9 +360,19 @@ def parse_voice_clone_emotion_params(raw: str | None) -> dict:
     return parsed
 
 
+def _normalize_voice_clone_style(style: str | int | None) -> str:
+    try:
+        style_value = int(style)
+    except (TypeError, ValueError):
+        style_value = 2
+    if style_value not in (1, 2):
+        style_value = 2
+    return str(style_value)
+
+
 def resolve_voice_clone_emotion_profile(
     emotion_params: dict | None,
-    style_override: str | None = None,
+    style_override: str | int | None = None,
     speed_override: str | None = None
 ) -> tuple[str, str | None, str | None, float]:
     dominant_emotion: str | None = None
@@ -373,7 +383,9 @@ def resolve_voice_clone_emotion_profile(
             if isinstance(value, (int, float)) and value > intensity:
                 intensity = float(value)
                 dominant_emotion = key
-    style = style_override or _VOICE_CLONE_STYLE_MAP.get(dominant_emotion) or "2"
+    style = _normalize_voice_clone_style(style_override) if style_override is not None else None
+    if not style:
+        style = _VOICE_CLONE_STYLE_MAP.get(dominant_emotion) or "2"
     speed = speed_override
     if not speed and dominant_emotion and intensity >= 0.7:
         speed = _VOICE_CLONE_SPEED_MAP.get(dominant_emotion)

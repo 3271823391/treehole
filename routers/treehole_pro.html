@@ -1905,7 +1905,7 @@
             }
             const ext = buildVoiceEmotionExt();
             const extPayload = Object.keys(ext).length ? ext : {};
-            console.log("[TTS ext send]", extPayload);
+            console.log("[TTS] extPayload =", extPayload);
             const { speed: extSpeed, ...extWithoutSpeed } = extPayload;
             const requestPayload = {
                 user_id: currentUserId,
@@ -2054,12 +2054,11 @@
             safeLocalStorageSet(STORAGE_VOICE_EMOTION_EXT, JSON.stringify(voiceEmotionState));
         }
 
-        function loadEmotionState() {
-            if (!isProPlan) return;
+        function loadVoiceEmotionState() {
+            if (!isProPlan) return null;
             const raw = safeLocalStorageGet(STORAGE_VOICE_EMOTION_EXT);
             if (!raw) {
-                applyEmotionState(createDefaultEmotionState());
-                return;
+                return null;
             }
             try {
                 const parsed = JSON.parse(raw);
@@ -2068,13 +2067,22 @@
                         parsed.surprised = parsed.surprise;
                         delete parsed.surprise;
                     }
-                    applyEmotionState(parsed);
-                    return;
+                    return parsed;
                 }
             } catch (err) {
                 // ignore parse error
             }
-            applyEmotionState(createDefaultEmotionState());
+            return null;
+        }
+
+        function loadEmotionState() {
+            if (!isProPlan) return;
+            const storedState = loadVoiceEmotionState();
+            if (!storedState) {
+                applyEmotionState(createDefaultEmotionState());
+                return;
+            }
+            applyEmotionState(storedState);
         }
 
         function buildVoiceCloneEmotionParams() {
@@ -2102,22 +2110,9 @@
                 sourceState = window.currentTtsExt;
             }
             if (!sourceState || typeof sourceState !== "object" || !Object.keys(sourceState).length) {
-                const raw =
-                    safeLocalStorageGet(STORAGE_VOICE_EMOTION_EXT)
-                    || safeLocalStorageGet(STORAGE_LIPVOICE_TTS_EXT);
-                if (raw) {
-                    try {
-                        const parsed = JSON.parse(raw);
-                        if (parsed && typeof parsed === "object") {
-                            if (parsed.surprise !== undefined && parsed.surprised === undefined) {
-                                parsed.surprised = parsed.surprise;
-                                delete parsed.surprise;
-                            }
-                            sourceState = parsed;
-                        }
-                    } catch (err) {
-                        // ignore parse error
-                    }
+                const storedState = loadVoiceEmotionState();
+                if (storedState) {
+                    sourceState = storedState;
                 }
             }
             if (sourceState?.surprise !== undefined && sourceState?.surprised === undefined) {
