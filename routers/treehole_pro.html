@@ -1344,12 +1344,14 @@
         let ttsQueue = [];
         let ttsBuffer = "";
         let ttsActive = false;
+        let ttsPlayLock = false;
         let ttsAudio = null;
         let ttsAbortControllers = new Set();
         let ttsToken = 0;
         let ttsUnlocked = false;
         let ttsUnlockHinted = false;
         let ttsPrefetch = null;
+        let ttsLastEnqueue = { text: "", time: 0 };
         const TTS_MIN_CHARS = 8;
         const TTS_MIN_CHARS_WITH_END = 4;
         const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
@@ -1730,7 +1732,9 @@
             ttsQueue = [];
             ttsBuffer = "";
             ttsActive = false;
+            ttsPlayLock = false;
             ttsPrefetch = null;
+            ttsLastEnqueue = { text: "", time: 0 };
             if (ttsAbortControllers.size) {
                 ttsAbortControllers.forEach((controller) => controller.abort());
                 ttsAbortControllers.clear();
@@ -1885,8 +1889,22 @@
         function enqueueTtsSegments(segments) {
             if (!voiceOutputEnabled) return;
             if (!Array.isArray(segments) || segments.length === 0) return;
-            ttsQueue.push(...segments);
-            if (ttsActive) {
+            const now = Date.now();
+            const filtered = [];
+            for (const segment of segments) {
+                const text = (segment || "").trim();
+                if (!text) continue;
+                const lastQueued = ttsQueue[ttsQueue.length - 1] || "";
+                const isRecentDuplicate = text === ttsLastEnqueue.text && now - ttsLastEnqueue.time < 1500;
+                if (text === lastQueued || isRecentDuplicate) {
+                    continue;
+                }
+                filtered.push(text);
+                ttsLastEnqueue = { text, time: now };
+            }
+            if (!filtered.length) return;
+            ttsQueue.push(...filtered);
+            if (ttsActive || ttsPlayLock) {
                 primeTtsPrefetch(ttsToken);
             } else {
                 playNextTts();
@@ -1910,87 +1928,97 @@
 
         async function playNextTts() {
             if (!voiceOutputEnabled) return;
-            const token = ttsToken;
-            const nextText = ttsQueue.shift();
-            if (!nextText) {
-                ttsActive = false;
-                if (voiceStopBtn) {
-                    voiceStopBtn.disabled = true;
-                }
-                return;
-            }
-            ttsActive = true;
-            if (voiceStopBtn) {
-                voiceStopBtn.disabled = false;
-            }
+            if (ttsPlayLock) return;
+            ttsPlayLock = true;
             try {
-                let res;
-                if (ttsPrefetch && ttsPrefetch.token === token && ttsPrefetch.text === nextText) {
-                    const prefetched = await ttsPrefetch.promise;
-                    ttsPrefetch = null;
-                    if (prefetched.err) {
-                        throw prefetched.err;
+                while (voiceOutputEnabled) {
+                    const token = ttsToken;
+                    const nextText = ttsQueue.shift();
+                    if (!nextText) {
+                        ttsActive = false;
+                        if (voiceStopBtn) {
+                            voiceStopBtn.disabled = true;
+                        }
+                        return;
                     }
-                    res = prefetched.res;
-                } else {
-                    res = await requestVoiceCloneTts(nextText, token);
-                }
-                if (token !== ttsToken) return;
-                const blob = await res.blob();
-                if (token !== ttsToken) return;
-                ensureTtsAudio();
-                const url = URL.createObjectURL(blob);
-                try {
-                    ttsAudio.src = url;
-                    const playPromise = ttsAudio.play();
-                    if (playPromise && typeof playPromise.then === "function") {
-                        await playPromise;
+                    ttsActive = true;
+                    if (voiceStopBtn) {
+                        voiceStopBtn.disabled = false;
                     }
-                    // 预取下一段，减少播放后的等待。
-                    primeTtsPrefetch(token);
-                    await new Promise((resolve, reject) => {
-                        const onEnd = () => {
-                            cleanup();
-                            resolve();
-                        };
-                        const onError = () => {
-                            cleanup();
-                            reject(new Error("audio_error"));
-                        };
-                        const cleanup = () => {
-                            ttsAudio.removeEventListener("ended", onEnd);
-                            ttsAudio.removeEventListener("error", onError);
-                        };
-                        ttsAudio.addEventListener("ended", onEnd);
-                        ttsAudio.addEventListener("error", onError);
-                    });
-                } finally {
-                    URL.revokeObjectURL(url);
-                }
-            } catch (err) {
-                const errorName = err?.name || "";
-                const errorMessage = err?.message || "语音合成失败";
-                if (errorName === "NotAllowedError") {
-                    if (!ttsUnlockHinted) {
-                        ttsUnlockHinted = true;
-                        showToast("请先点击发送按钮以启用语音播放");
+                    try {
+                        let res;
+                        if (ttsPrefetch && ttsPrefetch.token === token && ttsPrefetch.text === nextText) {
+                            const prefetched = await ttsPrefetch.promise;
+                            ttsPrefetch = null;
+                            if (prefetched.err) {
+                                throw prefetched.err;
+                            }
+                            res = prefetched.res;
+                        } else {
+                            res = await requestVoiceCloneTts(nextText, token);
+                        }
+                        if (token !== ttsToken) return;
+                        const blob = await res.blob();
+                        if (token !== ttsToken) return;
+                        ensureTtsAudio();
+                        const url = URL.createObjectURL(blob);
+                        try {
+                            ttsAudio.src = url;
+                            let cleanup = () => {};
+                            const playEnded = new Promise((resolve, reject) => {
+                                const onEnd = () => {
+                                    cleanup();
+                                    resolve();
+                                };
+                                const onError = () => {
+                                    cleanup();
+                                    reject(new Error("audio_error"));
+                                };
+                                cleanup = () => {
+                                    ttsAudio.removeEventListener("ended", onEnd);
+                                    ttsAudio.removeEventListener("error", onError);
+                                };
+                                ttsAudio.addEventListener("ended", onEnd);
+                                ttsAudio.addEventListener("error", onError);
+                            });
+                            const playPromise = ttsAudio.play();
+                            if (playPromise && typeof playPromise.then === "function") {
+                                try {
+                                    await playPromise;
+                                } catch (playError) {
+                                    cleanup();
+                                    throw playError;
+                                }
+                            }
+                            // 预取下一段，减少播放后的等待。
+                            primeTtsPrefetch(token);
+                            await playEnded;
+                        } finally {
+                            URL.revokeObjectURL(url);
+                        }
+                    } catch (err) {
+                        const errorName = err?.name || "";
+                        const errorMessage = err?.message || "语音合成失败";
+                        if (errorName === "NotAllowedError") {
+                            if (!ttsUnlockHinted) {
+                                ttsUnlockHinted = true;
+                                showToast("请先点击发送按钮以启用语音播放");
+                            }
+                        } else if (errorName === "AbortError") {
+                            // 用户停止或切换时主动取消请求
+                        } else if (errorName === "TtsNonAudioError") {
+                            // 已在请求阶段提示 toast
+                        } else {
+                            showToast(errorMessage);
+                        }
+                        console.warn("语音合成失败", err);
+                    } finally {
+                        if (token !== ttsToken) return;
+                        ttsActive = false;
                     }
-                } else if (errorName === "AbortError") {
-                    // 用户停止或切换时主动取消请求
-                } else if (errorName === "TtsNonAudioError") {
-                    // 已在请求阶段提示 toast
-                } else {
-                    showToast(errorMessage);
                 }
-                console.warn("语音合成失败", err);
             } finally {
-                if (token !== ttsToken) return;
-                ttsActive = false;
-                if (ttsQueue.length) {
-                    playNextTts();
-                } else if (voiceStopBtn) {
-                    voiceStopBtn.disabled = true;
-                }
+                ttsPlayLock = false;
             }
         }
 
