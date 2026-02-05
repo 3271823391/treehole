@@ -4,381 +4,73 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>与江澈聊天 - 信箱之旅</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: "Microsoft YaHei", 宋体, sans-serif;
-        }
-        body {
-            background-image: url("/static/backgrounds/jiangche.jpg");
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            line-height: 1.6;
-            padding-bottom: 80px;
-        }
-
-        @media (max-width: 768px) {
-            body {
-                background-attachment: scroll;
-            }
-        }
-        .chat-header {
-            background-color: #fff;
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .back-btn {
-            font-size: 1.2rem;
-            color: #5a4f41;
-            cursor: pointer;
-        }
-        .chat-title {
-            font-size: 1.2rem;
-            color: #333;
-            font-weight: 600;
-        }
-        .role-tag {
-            font-size: 0.8rem;
-            color: #999;
-            margin-left: 8px;
-        }
-        .chat-container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px 15px;
-        }
-        .message {
-            display: flex;
-            margin-bottom: 25px;
-            max-width: 85%;
-        }
-        .avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: #eee;
-            margin-right: 10px;
-            flex-shrink: 0;
-            background-size: cover;
-            background-position: center;
-
-        }
-        .role-message {
-            flex-direction: row;
-        }
-        .role-message .message-content {
-            background-color: #fff;
-            border: 1px solid #c8e6c9;
-            color: #555;
-            border-radius: 0 12px 12px 12px;
-            padding: 12px 15px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
-        }
-        .role-name {
-            font-size: 0.8rem;
-            color: #999;
-            margin-bottom: 4px;
-        }
-        .user-message {
-            flex-direction: row-reverse;
-            margin-left: auto;
-        }
-        .user-message .avatar {
-            margin-right: 0;
-            margin-left: 10px;
-            /* 用户头像接口 */
-        }
-        .user-message .message-content {
-            background-color: #c8e6c9;
-            color: #fff;
-            border-radius: 12px 0 12px 12px;
-            padding: 12px 15px;
-        }
-        .input-area {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: #fff;
-            padding: 10px 15px;
-            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .message-input {
-            flex: 1;
-            height: 45px;
-            border: 1px solid #eee;
-            border-radius: 22px;
-            padding: 0 15px;
-            font-size: 1rem;
-            outline: none;
-            resize: none;
-            line-height: 45px;
-        }
-        .send-btn {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background-color: #c8e6c9;
-            color: #fff;
-            border: none;
-            cursor: pointer;
-            font-size: 1.2rem;
-            transition: all 0.3s ease;
-        }
-        .send-btn:hover {
-            opacity: 0.8;
-            transform: scale(1.05);
-        }
-
-        .mobile-toast {
-            position: fixed;
-            left: 50%;
-            bottom: 20px;
-            transform: translateX(-50%);
-            background: rgba(28, 37, 59, 0.92);
-            color: #fff;
-            padding: 0.6rem 1rem;
-            border-radius: 999px;
-            font-size: 0.9rem;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-            z-index: 9999;
-        }
-
-        .mobile-toast.show {
-            opacity: 1;
-        }
-        @media (max-width: 768px) {
-            .chat-container {
-                padding: 15px 10px;
-            }
-            .avatar {
-                width: 35px;
-                height: 35px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/static/virtual_ip_chat.css">
 </head>
 <body>
+<div
+    id="vip-chat-page"
+    data-character-id="jiangche"
+    data-character-name="江澈"
+    data-role-name="江澈"
+    data-role-tag="易碎感+保护欲过满"
+    data-role-avatar="/static/avatars/jiangche.jpg"
+    data-background="/static/backgrounds/jiangche.jpg"
+    data-accent="#8ab7d6"
+    data-role-border="#8ab7d6"
+    data-input-placeholder="输入想对江澈说的话..."
+    data-send-icon="🎨"
+    data-initial-message="是不是受委屈啦？🥺 没关系的，我在这里呢。"
+>
     <div class="chat-header">
-        <div class="back-btn">←</div>
-        <div>
-            <div class="chat-title">江澈 <span class="role-tag">易碎感+保护欲过满</span></div>
-        </div>
+        <button class="back-btn" id="backBtn" type="button" aria-label="返回">←</button>
+        <div class="chat-title"><span id="chatTitleText"></span> <span class="role-tag" id="roleTag"></span></div>
+        <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="打开菜单">☰</button>
     </div>
 
-    <div class="chat-container" id="chatContent">
-
-    <!-- 第一条初始消息，必须在这里 -->
-    <div class="message role-message">
-        <div class="avatar"
-             style="background-image: url('/static/avatars/jiangche.jpg');">
-        </div>
-        <div class="message-wrapper">
-            <div class="role-name">江澈</div>
-            <div class="message-content">
-                是不是受委屈啦？🥺 没关系的，我在这里呢。
+    <div class="vip-layout">
+        <div class="chat-panel">
+            <div class="chat-container" id="chatContent">
+                <div class="message role-message">
+                    <div class="avatar" id="roleAvatar"></div>
+                    <div class="message-wrapper">
+                        <div class="role-name" id="roleName"></div>
+                        <div class="message-content" id="initialMessage"></div>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <aside class="info-sidebar" id="infoSidebar">
+            <div class="drawer-header">
+                <strong>用户信息</strong>
+                <button class="back-btn" id="drawerCloseBtn" type="button" aria-label="关闭菜单">×</button>
+            </div>
+            <div class="user-info">
+                <img class="user-info-avatar" src="/static/avatars/default.svg" alt="用户头像" data-user-avatar>
+                <div style="min-width: 0;">
+                    <div class="user-info-name" data-user-name>用户名</div>
+                    <div class="user-info-hint">来自 Treehole 的当前身份</div>
+                </div>
+            </div>
+            <hr class="info-divider">
+            <section class="favorability-card favorability-normal" data-favorability-card>
+                <div class="favorability-title" id="favorabilityTitle"></div>
+                <div class="favorability-state" data-favorability-state>普通</div>
+                <div class="favorability-bar"><div class="favorability-fill" data-favorability-fill></div></div>
+                <div class="favorability-value" data-favorability-value>50 / 100</div>
+            </section>
+        </aside>
     </div>
 
-</div>
-
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
 
     <div class="input-area">
-        <input type="text" class="message-input" id="messageInput" placeholder="输入想对江澈说的话...">
-        <button class="send-btn" id="sendBtn">🎨</button>
+        <input type="text" class="message-input" id="messageInput">
+        <button class="send-btn" id="sendBtn" type="button">✈️</button>
     </div>
 
     <div class="mobile-toast" id="toast" role="status" aria-live="polite"></div>
-
-    <script>
-    const chatContent = document.getElementById('chatContent');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const toast = document.getElementById('toast');
-    const STORAGE_USER_ID_KEY = "treehole_user_id";
-    const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const USER_ID_SHA1_PATTERN = /^u_[0-9a-f]{40}$/i;
-    let toastTimer = null;
-
-    function isValidUserId(userId) {
-        return typeof userId === "string"
-            && (USER_ID_UUID_PATTERN.test(userId) || USER_ID_SHA1_PATTERN.test(userId));
-    }
-
-    function createAnonymousUserId() {
-        if (crypto?.randomUUID) {
-            return `u_${crypto.randomUUID()}`;
-        }
-        // TODO: 老设备/iOS 无痕兜底
-        return `u_${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
-    }
-
-    function safeLocalStorageGet(key) {
-        try {
-            return localStorage.getItem(key);
-        } catch (e) {
-            // TODO: iOS Safari 无痕模式可能禁用 localStorage
-            return "";
-        }
-    }
-
-    function safeLocalStorageSet(key, value) {
-        try {
-            localStorage.setItem(key, value);
-        } catch (e) {
-            // ignore
-        }
-    }
-
-    function showToast(message) {
-        if (!toast) return;
-        toast.innerText = message || "服务暂不可用";
-        toast.classList.add("show");
-        if (toastTimer) {
-            clearTimeout(toastTimer);
-        }
-        toastTimer = setTimeout(() => {
-            toast.classList.remove("show");
-        }, 2200);
-    }
-
-    function initUserId() {
-        const params = new URLSearchParams(window.location.search);
-        const paramId = params.get("user_id") || "";
-        if (isValidUserId(paramId)) {
-            safeLocalStorageSet(STORAGE_USER_ID_KEY, paramId);
-            return paramId;
-        }
-        const stored = safeLocalStorageGet(STORAGE_USER_ID_KEY);
-        if (isValidUserId(stored)) {
-            return stored;
-        }
-        const created = createAnonymousUserId();
-        safeLocalStorageSet(STORAGE_USER_ID_KEY, created);
-        return created;
-    }
-
-    const currentUserId = initUserId();
-
-    async function parseErrorMessage(res) {
-        const contentType = res.headers.get("content-type") || "";
-        if (contentType.includes("application/json")) {
-            try {
-                const data = await res.json();
-                return data?.msg || "服务暂不可用";
-            } catch (e) {
-                return "服务暂不可用";
-            }
-        }
-        try {
-            await res.text();
-        } catch (e) {
-            // ignore
-        }
-        return "服务暂不可用";
-    }
-
-    async function sendMessage() {
-        const inputText = messageInput.value.trim();
-        if (!inputText) return;
-        if (!isValidUserId(currentUserId)) {
-            // TODO: 确保身份初始化成功，避免 invalid_user_id
-            showToast("请输入用户名/初始化身份");
-            return;
-        }
-
-        // 用户消息
-        const userMessage = document.createElement('div');
-        userMessage.className = 'message user-message';
-        userMessage.innerHTML = `
-            <div class="avatar" style="background-color: #888;"></div>
-            <div class="message-content">${inputText}</div>
-        `;
-        chatContent.appendChild(userMessage);
-        messageInput.value = '';
-        chatContent.scrollTop = chatContent.scrollHeight;
-
-        let roleMessage = null;
-        let contentDiv = null;
-        let hasStarted = false;
-
-        try {
-            const res = await fetch('/chat_stream', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: currentUserId,
-                    user_input: inputText
-                })
-            });
-
-            const contentType = res.headers.get("content-type") || "";
-            if (!res.ok || contentType.includes("application/json") || contentType.includes("text/html")) {
-                const errMsg = await parseErrorMessage(res);
-                showToast(errMsg);
-                return;
-            }
-            if (!res.body) {
-                showToast("服务暂不可用");
-                return;
-            }
-
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder('utf-8');
-
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-
-                const text = decoder.decode(value, { stream: true });
-                if (!text) continue;
-
-                if (!hasStarted) {
-                    hasStarted = true;
-                    roleMessage = document.createElement('div');
-                    roleMessage.className = 'message role-message';
-                    roleMessage.innerHTML = `
-                        <div class="avatar"
-                         style="background-image: url('/static/avatars/jiangche.jpg');">
-                    </div>
-                        <div class="message-wrapper">
-                            <div class="role-name">江澈</div>
-                            <div class="message-content"></div>
-                        </div>
-                    `;
-                    contentDiv = roleMessage.querySelector('.message-content');
-                    chatContent.appendChild(roleMessage);
-                }
-
-                contentDiv.textContent += text;
-                chatContent.scrollTop = chatContent.scrollHeight;
-            }
-
-        } catch (e) {
-            showToast("连接失败，请稍后再试");
-        }
-    }
-
-    sendBtn.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') sendMessage();
-    });
-    </script>
-
+</div>
+<script src="/static/virtual_ip_chat.js"></script>
 </body>
 </html>
