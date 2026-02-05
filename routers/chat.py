@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from data_store import load_user_data, save_user_data
-from chat_core import stream_chat_with_deepseek
+from chat_core import IP_PROMPT_MAP, stream_chat_with_deepseek
 from core.auth_utils import is_valid_user_id
 
 router = APIRouter()
@@ -37,6 +37,7 @@ def greeting(user_id: str, request: Request):
 class ChatStreamRequest(BaseModel):
     user_id: str
     user_input: str
+    character_id: str | None = None
 
 
 @router.post("/chat_stream")
@@ -48,6 +49,9 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_user_id"})
 
     user_input = req.user_input.strip()
+    character_id = (req.character_id or "").strip() or None
+    if character_id and character_id not in IP_PROMPT_MAP:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_character_id"})
 
     user_info = load_user_data(user_id)
     save_user_data(user_id, user_info)
@@ -62,7 +66,7 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
     if not user_info.get("system_prompt"):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_system_prompt"})
 
-    stream = stream_chat_with_deepseek(user_id, user_input)
+    stream = stream_chat_with_deepseek(user_id, user_input, character_id=character_id)
     return StreamingResponse(stream, media_type="text/plain")
 
 

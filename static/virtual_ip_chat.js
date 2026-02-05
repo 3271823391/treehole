@@ -236,7 +236,11 @@
             const res = await fetch('/chat_stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: currentUserId, user_input: inputText })
+                body: JSON.stringify({
+                    user_id: currentUserId,
+                    user_input: inputText,
+                    character_id: config.characterId
+                })
             });
 
             const contentType = res.headers.get('content-type') || "";
