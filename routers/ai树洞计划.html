@@ -55,15 +55,16 @@
         /* 版本卡片区域 */
         .versions {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 30px;
             margin-bottom: 80px;
+            align-items: stretch;
         }
 
         /* 版本卡片通用样式 */
         .version-card {
             background: white;
-            border-radius: 20px;
+            border-radius: 16px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
             overflow: hidden;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -86,10 +87,6 @@
         }
 
         /* 不同版本的标签颜色 */
-        .tag-basic {
-            background: linear-gradient(90deg, #6b7280, #9ca3af);
-        }
-
         .tag-evolution {
             background: linear-gradient(90deg, #3b82f6, #60a5fa);
         }
@@ -182,44 +179,56 @@
             background-color: #4c51bf;
         }
 
-        /* 底部引导 */
-        .footer-guide {
-            text-align: center;
-            margin: 60px 0 40px;
-            padding: 30px;
-            background: white;
-            border-radius: 20px;
+        /* 轻语信箱入口卡片 */
+        .mailbox-entry {
+            background: linear-gradient(160deg, #eef2ff 0%, #e0e7ff 100%);
+            border-radius: 16px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            padding: 30px 25px;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
-        .footer-guide h2 {
+        .mailbox-entry:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .mailbox-entry h2 {
             color: #5a67d8;
-            margin-bottom: 20px;
-            font-size: 1.8rem;
+            margin-bottom: 18px;
+            font-size: 1.6rem;
+            line-height: 1.4;
+            max-width: 12em;
         }
 
-        .footer-guide p {
-            color: #666;
-            max-width: 800px;
-            margin: 0 auto 30px;
+        .mailbox-entry p {
+            color: #555;
+            margin-bottom: 30px;
             line-height: 1.8;
+            max-width: 24ch;
         }
 
-        .footer-guide .start-btn {
+        .mailbox-entry .start-btn {
             display: inline-block;
-            padding: 18px 40px;
+            width: fit-content;
+            align-self: center;
+            padding: 15px 28px;
             background: linear-gradient(90deg, #5a67d8, #818cf8);
             color: white;
-            border-radius: 50px;
+            border-radius: 10px;
             text-decoration: none;
             font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 1rem;
             box-shadow: 0 4px 15px rgba(90, 103, 216, 0.3);
-            transition: transform 0.2s ease;
+            transition: background 0.2s ease;
         }
 
-        .footer-guide .start-btn:hover {
-            transform: scale(1.05);
+        .mailbox-entry .start-btn:hover {
+            background: linear-gradient(90deg, #4c51bf, #6366f1);
         }
 
         /* 页脚 */
@@ -236,21 +245,22 @@
             .header h1 {
                 font-size: 2.2rem;
             }
-            
+
             .header {
                 margin: 20px 0 40px;
             }
-            
+
             .versions {
                 grid-template-columns: 1fr;
                 gap: 20px;
             }
-            
-            .version-card {
+
+            .version-card,
+            .mailbox-entry {
                 margin: 0 10px;
             }
-            
-            .footer-guide h2 {
+
+            .mailbox-entry h2 {
                 font-size: 1.5rem;
             }
         }
@@ -266,28 +276,9 @@
 
         <!-- 版本介绍区域 -->
         <div class="versions">
-            <!-- 普通版 -->
-            <div class="version-card">
-                <div class="version-tag tag-basic">普通版</div>
-                <div class="version-content">
-                    <h3>🌱 基础情绪陪伴</h3>
-                    <ul class="feature-list">
-                        <li>7x24小时在线倾听，无时长限制</li>
-                        <li>基础情绪识别与回应</li>
-                        <li>文字形式的单向倾诉</li>
-                        <li>无广告干扰的纯净体验</li>
-                        <li>简单的情绪分析报告</li>
-                    </ul>
-                    <div class="version-highlight">
-                        <p><strong>适合人群：</strong>初次尝试AI信箱，仅需基础情绪陪伴的用户</p>
-                    </div>
-                    <a href="#basic" class="action-btn">立即体验</a>
-                </div>
-            </div>
-
             <!-- 进化版 -->
             <div class="version-card">
-                <div class="version-tag tag-evolution">进化版</div>
+                <div class="version-tag tag-evolution">普通版</div>
                 <div class="version-content">
                     <h3>🌿 深度情感交流</h3>
                     <ul class="feature-list">
@@ -324,13 +315,13 @@
                 </div>
             </div>
 
-        </div>
-
-        <!-- 底部引导区域 -->
-        <div class="footer-guide">
-            <h2>准备好开始你的信箱之旅了吗？</h2>
-            <p>无论你处于人生的哪个阶段，无论你有什么样的情绪需要倾诉，轻语信箱都能为你提供最温暖的陪伴。<br>从普通版开始，体验AI带来的暖心陪伴，根据需求随时升级。</p>
-            <a href="/ip" class="start-btn">立即进入轻语信箱</a>
+            <div class="mailbox-entry">
+                <div>
+                    <h2>准备好开始你的信箱之旅了吗？</h2>
+                    <p>无论你处于人生的哪个阶段，轻语信箱都能为你提供温暖陪伴。现在就开始你的倾诉。</p>
+                </div>
+                <a href="/ip" class="start-btn">立即进入轻语信箱</a>
+            </div>
         </div>
 
         <!-- 页脚 -->
@@ -356,7 +347,7 @@ document.querySelectorAll('.action-btn').forEach(btn => {
                 target = '/treehole_free';
                 break;
             case '#evolution':
-                message = '即将进入进化版轻语信箱～';
+                message = '即将进入普通版轻语信箱～';
                 plan = 'plus';
                 target = '/treehole_plus';
                 break;
