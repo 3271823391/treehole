@@ -27,7 +27,7 @@ async def evolution_plus_page():
 
 @router.get("/page", response_class=HTMLResponse)
 async def chat_page(request: Request):
-    plan = request.query_params.get("plan", "free")
+    plan = request.query_params.get("plan", "plus")
 
     base_dir = os.path.dirname(__file__)
     html_path = os.path.join(base_dir, "treehole.html")
@@ -38,9 +38,6 @@ async def chat_page(request: Request):
     html = html.replace("{{DEFAULT_PLAN}}", plan)
     return html
 
-@router.get("/treehole_free", response_class=HTMLResponse)
-async def treehole_free_page():
-    return render_html("treehole_free.html")
 
 @router.get("/treehole_plus", response_class=HTMLResponse)
 async def treehole_plus_page():

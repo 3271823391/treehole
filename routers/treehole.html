@@ -1074,7 +1074,7 @@
     <script>
         const STORAGE_USERNAME_KEY = "treehole_username";
         const STORAGE_USER_ID_KEY = "treehole_user_id";
-        const APP_PLAN = "plus"; // TODO: FREE/PLUS/PRO 页面拷贝时按版本调整
+        const APP_PLAN = "plus"; // 页面版本常量
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
         let currentUserId = null;
         let anonymousUserId = null;
@@ -1481,17 +1481,10 @@
         const emotionTagsMobile = document.getElementById('emotion-tags-mobile');
         const emotionAnalysisMobile = document.getElementById('emotion-analysis-mobile');
         const emotionSuggestMobile = document.getElementById('emotion-suggest-mobile');
-        const isFreePlan = APP_PLAN === "free";
-        const isProPlan = APP_PLAN === "pro";
+                const isProPlan = APP_PLAN === "pro";
 
-        anonymousUserId = initAnonymousUserId({ persist: !isFreePlan });
-        currentUserId = isFreePlan ? anonymousUserId : null;
-
-        if (isFreePlan) {
-            // TODO: FREE 版本隐藏用户名/头像入口，避免误以为可持久化身份
-            document.querySelector('.user-card')?.remove();
-            userModal?.remove();
-        }
+        anonymousUserId = initAnonymousUserId({ persist: true });
+        currentUserId = null;
 
         function clearChatWindow() {
             chatWindow.innerHTML = "";
@@ -1511,7 +1504,7 @@
         }
 
         async function loadHistory() {
-            if (!isValidUserId(currentUserId) || isFreePlan) return;
+            if (!isValidUserId(currentUserId)) return;
             const data = await fetchJson(`/load_history?user_id=${encodeURIComponent(currentUserId)}`);
             if (!data || !data.ok) {
                 showErrorModal(data?.msg || "加载历史失败");
@@ -1523,7 +1516,7 @@
         }
 
         async function loadProfile() {
-            if (!isValidUserId(currentUserId) || isFreePlan) return false;
+            if (!isValidUserId(currentUserId)) return false;
             const data = await fetchJson(`/profile?user_id=${encodeURIComponent(currentUserId)}`);
             if (!data || !data.ok) {
                 showErrorModal(data?.msg || "资料加载失败");
@@ -1544,7 +1537,7 @@
 
         let usernameChangeToken = 0;
         async function applyUsernameChange({ loadRemote = true } = {}) {
-            if (isFreePlan || !loginUsernameInput) return;
+            if (!loginUsernameInput) return;
             const username = loginUsernameInput.value.trim();
             if (!username) {
                 currentUserId = null;
@@ -1570,7 +1563,7 @@
         }
 
         async function persistProfile({ avatarUrl } = {}) {
-            if (isFreePlan || !loginUsernameInput) {
+            if (!loginUsernameInput) {
                 return false;
             }
             if (!currentUserId) {
@@ -1607,8 +1600,7 @@
         }
 
         async function uploadAvatar(file) {
-            if (isFreePlan) return;
-            if (!file || !currentUserId) return;
+                        if (!file || !currentUserId) return;
             const formData = new FormData();
             formData.append("file", file);
             formData.append("user_id", currentUserId);
@@ -1629,24 +1621,23 @@
         }
 
         function openAvatarPicker() {
-            if (isFreePlan) return;
-            if (!currentUserId) {
+                        if (!currentUserId) {
                 setLockStatus("请先输入用户名", "#d9534f");
                 return;
             }
             avatarInput.click();
         }
 
-        if (!isFreePlan && uploadAvatarBtn) {
+        if (uploadAvatarBtn) {
             uploadAvatarBtn.addEventListener('click', openAvatarPicker);
         }
-        if (!isFreePlan && userAvatarBox) {
+        if (userAvatarBox) {
             userAvatarBox.addEventListener('click', openAvatarPicker);
         }
-        if (!isFreePlan && mobileAvatarBox) {
+        if (mobileAvatarBox) {
             mobileAvatarBox.addEventListener('click', openAvatarPicker);
         }
-        if (!isFreePlan && avatarInput) {
+        if (avatarInput) {
             avatarInput.addEventListener('change', (e) => {
                 const file = e.target.files?.[0];
                 if (file) {
@@ -1657,7 +1648,7 @@
         }
 
         let usernameDebounceTimer = null;
-        if (!isFreePlan && loginUsernameInput) {
+        if (loginUsernameInput) {
             loginUsernameInput.addEventListener('input', () => {
                 syncUsernameInputs(loginUsernameInput.value);
                 if (usernameDebounceTimer) {
@@ -1674,7 +1665,7 @@
             });
         }
 
-        if (!isFreePlan && mobileUsernameInput) {
+        if (mobileUsernameInput) {
             mobileUsernameInput.addEventListener('input', () => {
                 syncUsernameInputs(mobileUsernameInput.value);
                 if (usernameDebounceTimer) {
@@ -1691,7 +1682,7 @@
             });
         }
 
-        if (!isFreePlan && loginUsernameInput) {
+        if (loginUsernameInput) {
             const lastUsername = safeLocalStorageGet(STORAGE_USERNAME_KEY);
             if (lastUsername) {
                 syncUsernameInputs(lastUsername);
@@ -1846,9 +1837,7 @@
 
         async function sendMessage() {
         if (!isValidUserId(currentUserId)) {
-            if (!isFreePlan) {
-                setLockStatus("请先输入用户名", "#d9534f");
-            }
+            setLockStatus("请先输入用户名", "#d9534f");
             showErrorModal("请输入用户名/初始化身份");
             return;
         }

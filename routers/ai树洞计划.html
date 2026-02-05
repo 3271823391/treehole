@@ -3,379 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>轻语信箱 - 版本介绍 | 你的专属AI倾诉空间</title>
+    <title>轻语信箱 - 版本介绍</title>
     <style>
-        /* 全局样式重置 */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
-        }
-
-        /* 页面背景与整体布局 */
-        :root {
-            --app-height: 100%;
-        }
-
-        body {
-            background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
-            min-height: var(--app-height);
-            color: #333;
-            padding: 20px;
-        }
-
-        /* 页面容器 */
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px 0;
-        }
-
-        /* 页面头部 */
-        .header {
-            text-align: center;
-            margin: 40px 0 60px;
-        }
-
-        .header h1 {
-            font-size: 2.8rem;
-            margin-bottom: 20px;
-            color: #5a67d8;
-        }
-
-        .header p {
-            font-size: 1.2rem;
-            color: #666;
-            max-width: 800px;
-            margin: 0 auto;
-            line-height: 1.8;
-        }
-
-        /* 版本卡片区域 */
-        .versions {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 30px;
-            margin-bottom: 80px;
-            align-items: stretch;
-        }
-
-        /* 版本卡片通用样式 */
-        .version-card {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            position: relative;
-        }
-
-        .version-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-        }
-
-        /* 版本标签 */
-        .version-tag {
-            padding: 12px 0;
-            text-align: center;
-            font-weight: bold;
-            font-size: 1.3rem;
-            color: white;
-            position: relative;
-        }
-
-        /* 不同版本的标签颜色 */
-        .tag-evolution {
-            background: linear-gradient(90deg, #3b82f6, #60a5fa);
-        }
-
-        .tag-allround {
-            background: linear-gradient(90deg, #10b981, #34d399);
-        }
-
-        .tag-custom {
-            background: linear-gradient(90deg, #8b5cf6, #a78bfa);
-        }
-
-        /* 版本内容区域 */
-        .version-content {
-            padding: 30px 25px;
-        }
-
-        .version-content h3 {
-            font-size: 1.1rem;
-            margin-bottom: 20px;
-            color: #444;
-            display: flex;
-            align-items: center;
-        }
-
-        .version-content h3 i {
-            margin-right: 10px;
-            color: #5a67d8;
-        }
-
-        /* 功能列表 */
-        .feature-list {
-            list-style: none;
-        }
-
-        .feature-list li {
-            padding: 12px 0;
-            border-bottom: 1px solid #f0f0f0;
-            display: flex;
-            align-items: flex-start;
-            line-height: 1.6;
-        }
-
-        .feature-list li:last-child {
-            border-bottom: none;
-        }
-
-        .feature-list li::before {
-            content: "✓";
-            color: #10b981;
-            font-weight: bold;
-            margin-right: 12px;
-            font-size: 1.1rem;
-        }
-
-        /* 版本亮点 */
-        .version-highlight {
-            margin-top: 25px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 12px;
-            border-left: 4px solid #5a67d8;
-        }
-
-        .version-highlight p {
-            color: #555;
-            font-size: 0.95rem;
-            line-height: 1.7;
-        }
-
-        /* 行动按钮 */
-        .action-btn {
-            display: block;
-            width: 100%;
-            padding: 15px;
-            margin-top: 30px;
-            text-align: center;
-            background-color: #5a67d8;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-            text-decoration: none;
-        }
-
-        .action-btn:hover {
-            background-color: #4c51bf;
-        }
-
-        /* 轻语信箱入口卡片 */
-        .mailbox-entry {
-            background: linear-gradient(160deg, #eef2ff 0%, #e0e7ff 100%);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-            padding: 30px 25px;
-            min-height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .mailbox-entry:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-        }
-
-        .mailbox-entry h2 {
-            color: #5a67d8;
-            margin-bottom: 18px;
-            font-size: 1.6rem;
-            line-height: 1.4;
-            max-width: 12em;
-        }
-
-        .mailbox-entry p {
-            color: #555;
-            margin-bottom: 30px;
-            line-height: 1.8;
-            max-width: 24ch;
-        }
-
-        .mailbox-entry .start-btn {
-            display: inline-block;
-            width: fit-content;
-            align-self: center;
-            padding: 15px 28px;
-            background: linear-gradient(90deg, #5a67d8, #818cf8);
-            color: white;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 1rem;
-            box-shadow: 0 4px 15px rgba(90, 103, 216, 0.3);
-            transition: background 0.2s ease;
-        }
-
-        .mailbox-entry .start-btn:hover {
-            background: linear-gradient(90deg, #4c51bf, #6366f1);
-        }
-
-        /* 页脚 */
-        .footer {
-            text-align: center;
-            color: #999;
-            font-size: 0.9rem;
-            margin-top: 60px;
-            padding: 20px 0;
-        }
-
-        /* 响应式适配 */
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2.2rem;
-            }
-
-            .header {
-                margin: 20px 0 40px;
-            }
-
-            .versions {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-
-            .version-card,
-            .mailbox-entry {
-                margin: 0 10px;
-            }
-
-            .mailbox-entry h2 {
-                font-size: 1.5rem;
-            }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; }
+        :root { --app-height: 100%; }
+        body { background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%); min-height: var(--app-height); color: #333; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px 0; }
+        .header { text-align: center; margin: 40px 0 60px; }
+        .header h1 { font-size: 2.8rem; margin-bottom: 20px; color: #5a67d8; }
+        .header p { font-size: 1.2rem; color: #666; max-width: 800px; margin: 0 auto; line-height: 1.8; }
+        .versions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 30px; margin-bottom: 80px; align-items: stretch; }
+        .version-card { background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); overflow: hidden; transition: transform .3s ease, box-shadow .3s ease; display: flex; flex-direction: column; }
+        .version-card:hover { transform: translateY(-8px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12); }
+        .version-tag { padding: 12px 0; text-align: center; font-weight: bold; font-size: 1.3rem; color: #fff; }
+        .tag-normal { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+        .tag-allround { background: linear-gradient(90deg, #10b981, #34d399); }
+        .tag-ip { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+        .version-content { padding: 30px 25px; display: flex; flex-direction: column; height: 100%; }
+        .subtitle { font-size: 1.05rem; margin-bottom: 20px; color: #444; }
+        .feature-list { list-style: none; }
+        .feature-list li { padding: 12px 0; border-bottom: 1px solid #f0f0f0; display: flex; align-items: flex-start; line-height: 1.6; }
+        .feature-list li:last-child { border-bottom: none; }
+        .feature-list li::before { content: "✓"; color: #10b981; font-weight: bold; margin-right: 12px; font-size: 1.1rem; }
+        .version-highlight { margin-top: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 12px; border-left: 4px solid #5a67d8; }
+        .version-highlight p { color: #555; font-size: .95rem; line-height: 1.7; }
+        .action-btn { display: block; width: 100%; padding: 15px; margin-top: auto; text-align: center; background-color: #5a67d8; color: #fff; border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color .2s ease; text-decoration: none; }
+        .action-btn:hover { background-color: #4c51bf; }
+        .ip-description { color: #555; line-height: 1.8; margin-bottom: 24px; white-space: pre-line; }
+        .footer { text-align: center; color: #999; font-size: .9rem; margin-top: 60px; padding: 20px 0; }
+        @media (max-width: 768px) { .header h1 { font-size: 2.2rem; } .header { margin: 20px 0 40px; } .versions { grid-template-columns: 1fr; gap: 20px; } .version-card { margin: 0 10px; } }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- 页面头部 -->
         <div class="header">
             <h1>轻语信箱 - 版本介绍</h1>
-            <p>选择最适合你的信箱版本，让AI成为你最贴心的倾听者。<br>从基础的情绪陪伴到深度的心理疏导，总有一款适合你。</p>
+            <p>当前仅提供普通版与全能版两种体验，以及 5 个固定预设的虚拟 IP 交流入口。</p>
         </div>
 
-        <!-- 版本介绍区域 -->
         <div class="versions">
-            <!-- 进化版 -->
             <div class="version-card">
-                <div class="version-tag tag-evolution">普通版</div>
+                <div class="version-tag tag-normal">普通版</div>
                 <div class="version-content">
-                    <h3>🌿 深度情感交流</h3>
+                    <p class="subtitle">情绪陪伴与持续交流</p>
                     <ul class="feature-list">
-                        <li>包含普通版全部功能</li>
-                        <li>多轮对话的情感跟进</li>
-                        <li>个性化的情绪疏导建议</li>
-                        <li>按次收费语音克隆服务</li>
-                        <li>常见心理问题解答库</li>
+                        <li>情绪化对话与长期上下文陪伴</li>
+                        <li>多轮交流中的情绪理解与回应</li>
+                        <li>个性化的情绪引导与安抚</li>
+                        <li>纯文本形式的完整陪伴体验</li>
+                        <li>私密、安全的对话环境</li>
                     </ul>
                     <div class="version-highlight">
-                        <p><strong>适合人群：</strong>需要深度情感交流，想体验基础语音克隆的用户</p>
+                        <p><strong>适合人群：</strong>希望通过文字获得稳定情绪陪伴与长期交流的用户</p>
                     </div>
-                    <a href="#evolution" class="action-btn">立即体验</a>
+                    <a href="/treehole_plus" class="action-btn">立即体验</a>
                 </div>
             </div>
 
-            <!-- 全能版 -->
             <div class="version-card">
                 <div class="version-tag tag-allround">全能版</div>
                 <div class="version-content">
-                    <h3>🌳 专业心理支持</h3>
+                    <p class="subtitle">语音克隆 · 更真实的陪伴体验</p>
                     <ul class="feature-list">
-                        <li>包含进化版全部功能</li>
-                        <li>专业心理量表测评</li>
-                        <li>定制化的情绪管理方案</li>
-                        <li>一对一专属AI心理顾问</li>
-                        <li>隐私加密的云端数据存储</li>
-                        <li>加强版语音克隆套餐</li>
+                        <li>包含普通版全部功能</li>
+                        <li>专属语音克隆陪伴服务</li>
+                        <li>使用克隆语音进行实时对话</li>
+                        <li>更具沉浸感的情绪交流体验</li>
                     </ul>
                     <div class="version-highlight">
-                        <p><strong>适合人群：</strong>有长期心理陪伴需求，需要高阶语音克隆的用户</p>
+                        <p><strong>适合人群：</strong>希望通过语音获得更真实陪伴体验的用户</p>
                     </div>
-                    <a href="#allround" class="action-btn">立即体验</a>
+                    <a href="/treehole_pro" class="action-btn">立即体验</a>
                 </div>
             </div>
 
-            <div class="mailbox-entry">
-                <div>
-                    <h2>准备好开始你的信箱之旅了吗？</h2>
-                    <p>无论你处于人生的哪个阶段，轻语信箱都能为你提供温暖陪伴。现在就开始你的倾诉。</p>
+            <div class="version-card">
+                <div class="version-tag tag-ip">虚拟 IP</div>
+                <div class="version-content">
+                    <p class="ip-description">在虚拟 IP 中，你可以选择一个预设角色开始交流。
+
+当前提供 5 个不同的角色预设，
+每个角色都拥有稳定的性格设定与长期记忆，
+交流方式与回应风格各不相同。
+
+角色不可自定义，
+但你可以在持续互动中逐渐了解并建立关系。</p>
+                    <a href="/ip" class="action-btn">选择虚拟 IP</a>
                 </div>
-                <a href="/ip" class="start-btn">立即进入轻语信箱</a>
             </div>
         </div>
 
-        <!-- 页脚 -->
         <div class="footer">
-            <p>轻语信箱 © 2026 | 你的情绪，值得被认真对待 | 隐私保障 · 安全加密 | 版权所有-JSHT捷思慧图科技公司</p>
+            <p>轻语信箱 © 2026 | 你的情绪，值得被认真对待 | 版权所有-JSHT捷思慧图科技公司</p>
         </div>
     </div>
-
-    <script>
-document.querySelectorAll('.action-btn').forEach(btn => {
-    btn.addEventListener('click', function (e) {
-        e.preventDefault();
-
-    const href = this.getAttribute('href');
-    let message = '';
-        let plan = 'free'; // 默认
-        let target = '/treehole_free';
-
-        switch (href) {
-            case '#basic':
-                message = '即将进入普通版轻语信箱～';
-                plan = 'free';
-                target = '/treehole_free';
-                break;
-            case '#evolution':
-                message = '即将进入普通版轻语信箱～';
-                plan = 'plus';
-                target = '/treehole_plus';
-                break;
-            case '#allround':
-                message = '即将进入全能版轻语信箱～';
-                plan = 'pro';
-                target = '/treehole_pro';
-                break;
-            case '#custom':
-                message = '即将进入定制咨询服务～';
-                plan = 'pro';
-                target = '/treehole_pro';
-                break;
-            case '#start':
-                message = '欢迎进入轻语信箱～';
-                plan = 'free';
-                target = '/treehole_free';
-                break;
-            default:
-                message = '正在进入轻语信箱...';
-        }
-
-    alert(message);
-
-    window.location.href = target;
-  });
-});
-</script>
 
     <script>
         function updateAppHeight() {
@@ -383,7 +104,6 @@ document.querySelectorAll('.action-btn').forEach(btn => {
             const height = viewport ? viewport.height : window.innerHeight;
             document.documentElement.style.setProperty('--app-height', `${height}px`);
         }
-
         updateAppHeight();
         window.addEventListener('resize', updateAppHeight);
         if (window.visualViewport) {

@@ -1,16 +1,6 @@
 MODES = {
-    "free": {
-        "label": "倾听树洞",
-        "price": 0,
-        "features": {
-            "memory": False,
-            "long_context": False,
-            "deep_analysis": False,
-            "initiative_greeting": True
-        }
-    },
     "plus": {
-        "label": "陪伴增强",
+        "label": "普通版",
         "price": 29,
         "features": {
             "memory": True,
@@ -20,7 +10,7 @@ MODES = {
         }
     },
     "pro": {
-        "label": "心理助理",
+        "label": "全能版",
         "price": 99,
         "features": {
             "memory": True,
