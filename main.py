@@ -7,11 +7,11 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
-from api import admin_logs, client_log, debug_relationship
+from api import client_log, debug_relationship
 from config import HOST, PORT
 from core.log_buffer import add_log
 from core.log_handler import BufferLogHandler
-from routers import auth, chat, emotion, page, profile, voice_clone
+from routers import admin_api, admin_console, auth, chat, emotion, page, profile, voice_clone
 
 app = FastAPI(title="DeepSeek虚拟树洞（精致版）")
 
@@ -95,7 +95,9 @@ app.include_router(chat.router)
 app.include_router(voice_clone.router)
 app.include_router(debug_relationship.router)
 app.include_router(client_log.router)
-app.include_router(admin_logs.router)
+if os.getenv("DEBUG_ADMIN", "0") == "1":
+    app.include_router(admin_console.router)
+    app.include_router(admin_api.router)
 
 
 def run_api():
