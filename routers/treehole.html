@@ -319,10 +319,12 @@
             border-radius: 16px;
             padding: 1.4rem;
             box-shadow: 0 0 20px rgba(74, 144, 226, 0.08);
+            height: auto;
+            min-height: unset;
+            overflow: visible;
             display: flex;
             flex-direction: column;
             gap: 0.9rem;
-            overflow: visible;
         }
 
         .user-card-header {
@@ -695,9 +697,25 @@
         }
 
         .username-actions {
+            margin-top: 16px;
             display: flex;
-            gap: 10px;
-            margin-top: 12px;
+            justify-content: flex-end;
+        }
+
+        #usernameConfirmBtn {
+            position: static;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            visibility: visible;
+            flex: 0 0 auto;
+        }
+
+        .username-secondary-actions {
+            margin-top: 10px;
+            display: flex;
+            justify-content: flex-end;
         }
 
         .btn-primary,
@@ -1053,6 +1071,8 @@
                 </div>
                 <div class="username-actions">
                     <button id="usernameConfirmBtn" class="btn-primary" type="button">确定</button>
+                </div>
+                <div class="username-secondary-actions">
                     <button id="usernameCancelBtn" class="btn-ghost" type="button">取消</button>
                 </div>
             </div>

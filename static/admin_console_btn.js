@@ -1,6 +1,15 @@
 (function () {
   var STYLE_ID = 'admin-console-btn-style';
-  var BTN_ID = 'adminConsoleBtn';
+  var BTN_ID = 'settingsBtn';
+  var LEGACY_BTN_ID = 'adminConsoleBtn';
+  var allowPaths = ['/', '/treehole', '/home'];
+
+  function removeSettingsButtons() {
+    var btn = document.getElementById(BTN_ID);
+    if (btn) btn.remove();
+    var legacyBtn = document.getElementById(LEGACY_BTN_ID);
+    if (legacyBtn) legacyBtn.remove();
+  }
 
   function ensureStyle() {
     if (document.getElementById(STYLE_ID)) return;
@@ -35,7 +44,7 @@
   }
 
   function ensureButton() {
-    var btn = document.getElementById(BTN_ID);
+    var btn = document.getElementById(BTN_ID) || document.getElementById(LEGACY_BTN_ID);
     if (!btn) {
       btn = document.createElement('a');
       btn.id = BTN_ID;
@@ -45,6 +54,9 @@
       btn.setAttribute('title', '后台控制台');
       btn.textContent = '⚙️';
       document.body.appendChild(btn);
+    }
+    if (btn.id !== BTN_ID) {
+      btn.id = BTN_ID;
     }
     if (!btn.classList.contains('admin-console-btn')) {
       btn.classList.add('admin-console-btn');
@@ -63,9 +75,18 @@
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
+      if (!allowPaths.includes(window.location.pathname)) {
+        removeSettingsButtons();
+        return;
+      }
       ensureStyle();
       bindClick(ensureButton());
     });
+    return;
+  }
+
+  if (!allowPaths.includes(window.location.pathname)) {
+    removeSettingsButtons();
     return;
   }
 
