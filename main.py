@@ -96,8 +96,7 @@ app.include_router(voice_clone.router)
 app.include_router(debug_relationship.router)
 app.include_router(client_log.router)
 app.include_router(admin_console.router)
-if os.getenv("DEBUG_ADMIN", "0") == "1":
-    app.include_router(admin_api.router)
+app.include_router(admin_api.router)
 
 
 def run_api():

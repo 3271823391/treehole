@@ -5,36 +5,174 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Admin Console</title>
   <style>
-    :root { color-scheme: dark; }
+    :root {
+      --bg: #f3f4f6;
+      --panel: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --primary: #4f46e5;
+      --primary-weak: #eef2ff;
+      --danger-border: rgba(239, 68, 68, 0.35);
+      --danger-bg: rgba(239, 68, 68, 0.06);
+      --danger-text: #991b1b;
+      --shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+      --radius: 14px;
+    }
+
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: "Segoe UI", "PingFang SC", sans-serif; background: #121418; color: #e5e7eb; }
-    .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
-    .sidebar { background: #181b20; border-right: 1px solid #2b313a; padding: 20px 14px; }
-    .title { font-size: 18px; margin: 0 0 16px; color: #f3f4f6; }
-    .menu-btn { width: 100%; background: transparent; border: 1px solid #2f3742; color: #d1d5db; text-align: left; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
-    .menu-btn.active, .menu-btn:hover { background: #242a33; color: #fff; }
-    .main { padding: 22px; }
-    .panel { background: #181b20; border: 1px solid #2f3742; border-radius: 12px; padding: 16px; margin-bottom: 18px; }
-    h2 { margin: 0 0 12px; font-size: 18px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border-bottom: 1px solid #2b313a; text-align: left; font-size: 13px; padding: 9px 6px; vertical-align: top; }
-    th { color: #9ca3af; font-weight: 600; }
-    pre { background: #0f1115; padding: 10px; border-radius: 8px; overflow: auto; font-size: 12px; }
-    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-    input, select, button { border: 1px solid #3b4452; background: #11151b; color: #e5e7eb; border-radius: 8px; padding: 8px 10px; }
-    .muted { color: #9ca3af; font-size: 12px; }
-    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .sidebar { border-right: none; border-bottom: 1px solid #2b313a; } }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .admin-root {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      height: 100vh;
+    }
+
+    .sidebar {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 18px;
+    }
+
+    .sidebar h1 {
+      font-size: 18px;
+      margin: 0 0 14px 0;
+    }
+
+    .nav-btn {
+      width: 100%;
+      padding: 10px 12px;
+      margin: 8px 0;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+      text-align: left;
+      cursor: pointer;
+      transition: 0.15s;
+      color: var(--text);
+    }
+
+    .nav-btn:hover {
+      border-color: rgba(79, 70, 229, 0.35);
+      background: var(--primary-weak);
+    }
+
+    .nav-btn.active {
+      border-color: rgba(79, 70, 229, 0.6);
+      box-shadow: 0 0 0 4px var(--primary-weak);
+      background: #fff;
+    }
+
+    .main {
+      padding: 22px;
+      overflow: auto;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .subtext {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    input, select, button {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .table th, .table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .table th {
+      background: #f9fafb;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .error {
+      border: 1px solid var(--danger-border);
+      background: var(--danger-bg);
+      color: var(--danger-text);
+      padding: 12px;
+      border-radius: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    pre {
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      overflow: auto;
+      font-size: 12px;
+    }
+
+    .muted { color: var(--muted); font-size: 12px; }
+
+    @media (max-width: 900px) {
+      .admin-root { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+    }
   </style>
 </head>
 <body>
-<div class="layout">
+<div class="admin-root">
   <aside class="sidebar">
-    <h1 class="title">Admin Console</h1>
-    <button class="menu-btn active" data-view="users">用户列表</button>
-    <button class="menu-btn" data-view="user-detail">用户详情</button>
-    <button class="menu-btn" data-view="relationship">好感度</button>
-    <button class="menu-btn" data-view="logs">日志</button>
-    <p class="muted">仅在 DEBUG_ADMIN=1 时可访问</p>
+    <h1>Admin Console</h1>
+    <button class="nav-btn active" data-view="users">用户列表</button>
+    <button class="nav-btn" data-view="user-detail">用户详情</button>
+    <button class="nav-btn" data-view="relationship">好感度</button>
+    <button class="nav-btn" data-view="logs">日志</button>
   </aside>
   <main class="main" id="app"></main>
 </div>

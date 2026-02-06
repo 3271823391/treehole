@@ -41,9 +41,9 @@
       btn.id = BTN_ID;
       btn.href = '/admin/console';
       btn.className = 'admin-console-btn';
-      btn.setAttribute('aria-label', '打开后台控制台');
+      btn.setAttribute('aria-label', '后台控制台');
       btn.setAttribute('title', '后台控制台');
-      btn.textContent = '🛠';
+      btn.textContent = '⚙️';
       document.body.appendChild(btn);
     }
     if (!btn.classList.contains('admin-console-btn')) {
