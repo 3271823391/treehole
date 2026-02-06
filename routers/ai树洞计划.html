@@ -32,9 +32,11 @@
         .ip-description { color: #555; line-height: 1.8; margin-bottom: 24px; white-space: pre-line; }
         .footer { text-align: center; color: #999; font-size: .9rem; margin-top: 60px; padding: 20px 0; }
         @media (max-width: 768px) { .header h1 { font-size: 2.2rem; } .header { margin: 20px 0 40px; } .versions { grid-template-columns: 1fr; gap: 20px; } .version-card { margin: 0 10px; } }
+        .admin-console-link { position: fixed; top: 8px; right: 12px; opacity: 0.2; font-size: 14px; text-decoration: none; z-index: 99; }
     </style>
 </head>
 <body>
+    {{ADMIN_CONSOLE_LINK}}
     <div class="container">
         <div class="header">
             <h1>轻语信箱 - 版本介绍</h1>
