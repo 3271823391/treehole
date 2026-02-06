@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import os
+from datetime import datetime, timedelta
 from typing import Generator, Optional
 
 from config import (
@@ -17,8 +18,15 @@ from data_store import (
     load_user_data,
     save_user_data,
     add_user_memory,
-    get_user_memory_text
+    get_user_memory_text,
+    append_affinity_eval_log,
+    get_relationship_state,
+    increment_user_msg_count,
+    reset_user_msg_count,
+    save_relationship_state,
 )
+from relationship.emotion_client import analyze_relationship
+from relationship.judge import evaluate_affinity_delta
 
 # =========================================================
 # 角色 prompt 映射（仅静态加载）
@@ -101,6 +109,49 @@ def load_system_prompt(user_info: dict, character_id: Optional[str] = None) -> s
 
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
+
+
+
+
+RISK_TRIGGER_WORDS = [
+    "离不开你", "只要你", "只能是你", "别离开我", "必须听我的",
+    "你只能", "控制", "威胁", "冷暴力", "吵架",
+]
+
+
+def _parse_iso_datetime(value: str | None):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        return None
+
+
+def should_trigger_affinity_eval(state: dict, user_input: str) -> bool:
+    count = int(state.get("user_msg_count_since_last_eval", 0))
+    last_eval_at = _parse_iso_datetime(state.get("last_affinity_eval_at"))
+    now = datetime.now()
+
+    count_ready = count >= 6
+    cooldown_ready = (last_eval_at is None) or ((now - last_eval_at) >= timedelta(minutes=10))
+    keyword_hit = any(word in user_input for word in RISK_TRIGGER_WORDS)
+
+    return keyword_hit or (count_ready and cooldown_ready)
+
+
+def build_affinity_constraint(affinity_score: float) -> str:
+    if affinity_score >= 75:
+        level = "信赖"
+        rule = "允许更真诚和有温度的回应；避免占有、排他、越界承诺。"
+    elif affinity_score >= 60:
+        level = "亲近"
+        rule = "允许适度情感表达；避免依赖暗示、关系绑定、过度承诺。"
+    else:
+        level = "普通"
+        rule = "保持礼貌陪伴与倾听；禁止暧昧推进、禁止亲密承诺。"
+
+    return f"【关系状态：{level}】\n- 当前允许的表达范围如下：{rule}"
 
 
 def build_character_identity_constraint(character_id: str) -> str:
@@ -210,11 +261,35 @@ def stream_chat_with_deepseek(
     else:
         history = user_info.get("history", [])
 
-    # 3. system prompt
+    # 3. system prompt + 关系约束
     system_prompt = load_system_prompt(user_info, character_id)
+    if character_id:
+        state = get_relationship_state(user_id, character_id)
+        affinity_constraint = build_affinity_constraint(float(state.get("affinity_score", 50)))
+        system_prompt = f"{system_prompt}\n\n{affinity_constraint}"
 
     # 4. 构造 messages
     messages = build_messages(system_prompt, history, user_input, character_id)
+
+    # 4.5 关系评估（仅虚拟IP）
+    if character_id:
+        increment_user_msg_count(user_id, character_id)
+        state = get_relationship_state(user_id, character_id)
+        if should_trigger_affinity_eval(state, user_input):
+            recent_history = history[-12:] if history else []
+            recent_messages = recent_history + [{"role": "user", "content": user_input}]
+            result = analyze_relationship(
+                character_id=character_id,
+                character_name=CHARACTER_NAME_MAP.get(character_id, character_id),
+                messages=recent_messages,
+            )
+            signals = result.get("signals", ["neutral_interaction"])
+            confidence = result.get("confidence", "low")
+            delta, note = evaluate_affinity_delta(state, signals, confidence)
+            state["affinity_score"] = max(0.0, min(100.0, float(state.get("affinity_score", 50)) + delta))
+            save_relationship_state(user_id, character_id, state)
+            append_affinity_eval_log(user_id, character_id, signals, confidence, delta, note)
+            reset_user_msg_count(user_id, character_id)
 
     # 5. 调模型
     full_reply = ""
