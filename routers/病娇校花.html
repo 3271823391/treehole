@@ -52,13 +52,20 @@
                     <div class="user-info-hint">来自 Treehole 的当前身份</div>
                 </div>
             </div>
-            <div class="ip-profile-editor">
-                <label class="ip-profile-label" for="ipDisplayUsername">虚拟IP显示名</label>
-                <input id="ipDisplayUsername" class="ip-profile-input" type="text" placeholder="默认使用 Treehole 用户名">
-                <button id="saveIpProfileBtn" class="ip-profile-btn" type="button">同步用户名到Treehole并应用当前角色</button>
-                <button id="uploadIpAvatarBtn" class="ip-profile-btn ip-profile-btn-secondary" type="button">上传头像（同步Treehole+当前角色）</button>
-                <input id="ipAvatarInput" type="file" accept="image/*" hidden>
-            </div>
+            <section class="identity-settings" aria-label="虚拟 IP 显示身份设置">
+                <div class="identity-settings-title">虚拟 IP 显示身份设置</div>
+                <div class="ip-profile-editor">
+                    <label class="ip-profile-label" for="ipDisplayUsername">显示身份名（可选）</label>
+                    <input id="ipDisplayUsername" class="ip-profile-input" type="text" placeholder="当前使用 Treehole 用户名">
+                    <p class="identity-status" id="identityStatusText">当前使用 Treehole 用户名</p>
+                    <div class="identity-actions">
+                        <a href="#" id="syncIpProfileBtn" class="identity-action-link" role="button">同步用户名</a>
+                        <span class="identity-action-separator">·</span>
+                        <a href="#" id="uploadIpAvatarLink" class="identity-action-link" role="button">上传头像</a>
+                    </div>
+                    <input id="ipAvatarInput" type="file" accept="image/*" hidden>
+                </div>
+            </section>
             <hr class="info-divider">
             <section class="favorability-card favorability-normal" data-favorability-card>
                 <div class="favorability-title" id="favorabilityTitle"></div>

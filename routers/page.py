@@ -66,8 +66,6 @@ async def linyu_page(request: Request):
     user_info = load_user_data(user_id)
 
     user_info["ip_name"] = "linyu"   # ★ 必须
-    user_info["history"] = []
-    user_info["has_greeted"] = False
 
     save_user_data(user_id, user_info)
 
@@ -81,8 +79,6 @@ async def suwan_page(request: Request):
     user_info = load_user_data(user_id)
 
     user_info["ip_name"] = "suwan"
-    user_info["history"] = []
-    user_info["has_greeted"] = False
 
     save_user_data(user_id, user_info)
 
@@ -95,8 +91,6 @@ async def xiaxingmian_page(request: Request):
     user_info = load_user_data(user_id)
 
     user_info["ip_name"] = "xiaxingmian"
-    user_info["history"] = []
-    user_info["has_greeted"] = False
 
     save_user_data(user_id, user_info)
 
@@ -108,8 +102,6 @@ async def jiangche_page(request: Request):
     user_info = load_user_data(user_id)
 
     user_info["ip_name"] = "jiangche"
-    user_info["history"] = []
-    user_info["has_greeted"] = False
 
     save_user_data(user_id, user_info)
 
@@ -121,8 +113,6 @@ async def luchengyu_page(request: Request):
     user_info = load_user_data(user_id)
 
     user_info["ip_name"] = "luchengyu"
-    user_info["history"] = []
-    user_info["has_greeted"] = False
 
     save_user_data(user_id, user_info)
 
