@@ -186,9 +186,15 @@
         currentBaseAvatar = profile.base_avatar || "";
         setUserIdentity({ username: profile.username || currentBaseUsername, avatarUrl: profile.avatar_url || currentBaseAvatar || DEFAULT_AVATAR_URL });
         const ipInput = document.getElementById('ipDisplayUsername');
+        const identityStatus = document.getElementById('identityStatusText');
         if (ipInput) {
             ipInput.value = profile.ip_display_username || "";
-            ipInput.placeholder = currentBaseUsername ? `默认：${currentBaseUsername}` : '默认使用 Treehole 用户名';
+            ipInput.placeholder = currentBaseUsername ? `默认：${currentBaseUsername}` : '当前使用 Treehole 用户名';
+        }
+        if (identityStatus) {
+            identityStatus.textContent = profile.ip_display_username
+                ? `当前使用角色显示名：${profile.ip_display_username}`
+                : '当前使用 Treehole 用户名';
         }
         return true;
     }
@@ -235,6 +241,29 @@
         }
         await loadProfile();
         showToast('头像已同步到Treehole');
+    }
+
+    function appendMessageByRole(role, content) {
+        if (!content) return;
+        if (role === 'user') {
+            addUserMessage(content);
+            return;
+        }
+        const contentDiv = addRoleMessageShell();
+        contentDiv.textContent = content;
+        const chatContent = document.getElementById('chatContent');
+        chatContent.scrollTop = chatContent.scrollHeight;
+    }
+
+    async function loadChatHistory() {
+        if (!isValidUserId(currentUserId)) return;
+        const data = await fetchJson(`/load_history?user_id=${encodeURIComponent(currentUserId)}&character_id=${encodeURIComponent(config.characterId)}`);
+        if (!data?.ok || !Array.isArray(data.history)) return;
+        if (data.history.length > 0) {
+            const initialMessage = document.querySelector('#chatContent #initialMessage')?.closest('.message');
+            if (initialMessage) initialMessage.remove();
+        }
+        data.history.forEach((item) => appendMessageByRole(item?.role, item?.content || ''));
     }
 
     async function parseErrorMessage(res) {
@@ -350,9 +379,9 @@
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
         const drawerCloseBtn = document.getElementById('drawerCloseBtn');
         const drawerBackdrop = document.getElementById('drawerBackdrop');
-        const saveIpProfileBtn = document.getElementById('saveIpProfileBtn');
+        const syncIpProfileBtn = document.getElementById('syncIpProfileBtn');
         const ipDisplayUsernameInput = document.getElementById('ipDisplayUsername');
-        const uploadIpAvatarBtn = document.getElementById('uploadIpAvatarBtn');
+        const uploadIpAvatarLink = document.getElementById('uploadIpAvatarLink');
         const ipAvatarInput = document.getElementById('ipAvatarInput');
 
         sendBtn.addEventListener('click', sendMessage);
@@ -367,16 +396,22 @@
         drawerCloseBtn.addEventListener('click', () => document.body.classList.remove('drawer-open'));
         drawerBackdrop.addEventListener('click', () => document.body.classList.remove('drawer-open'));
 
-        if (saveIpProfileBtn) {
-            saveIpProfileBtn.addEventListener('click', persistIpProfile);
+        if (syncIpProfileBtn) {
+            syncIpProfileBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                persistIpProfile();
+            });
         }
         if (ipDisplayUsernameInput) {
             ipDisplayUsernameInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') persistIpProfile();
             });
         }
-        if (uploadIpAvatarBtn && ipAvatarInput) {
-            uploadIpAvatarBtn.addEventListener('click', () => ipAvatarInput.click());
+        if (uploadIpAvatarLink && ipAvatarInput) {
+            uploadIpAvatarLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                ipAvatarInput.click();
+            });
             ipAvatarInput.addEventListener('change', (e) => {
                 const file = e.target.files?.[0];
                 if (file) uploadIpAvatar(file);
@@ -406,5 +441,6 @@
         updateDeviceMode();
         bindEvents();
         await initUserIdentity();
+        await loadChatHistory();
     })();
 })();

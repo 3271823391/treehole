@@ -40,6 +40,10 @@ CHARACTER_NAME_MAP = {
     "luchengyu": "陆承宇",
 }
 
+
+def build_character_history_key(user_id: str, character_id: str) -> str:
+    return f"history:{user_id}:{character_id}"
+
 # =========================================================
 # 安全检测
 # =========================================================
@@ -201,7 +205,8 @@ def stream_chat_with_deepseek(
     user_info = load_user_data(user_id)
     history_map = user_info.get("character_histories", {})
     if character_id:
-        history = history_map.get(character_id, [])
+        history_key = build_character_history_key(user_id, character_id)
+        history = history_map.get(history_key, history_map.get(character_id, []))
     else:
         history = user_info.get("history", [])
 
@@ -230,7 +235,7 @@ def stream_chat_with_deepseek(
     history.append({"role": "user", "content": user_input})
     history.append({"role": "assistant", "content": full_reply})
     if character_id:
-        user_info.setdefault("character_histories", {})[character_id] = history[-MAX_HISTORY * 2:]
+        user_info.setdefault("character_histories", {})[history_key] = history[-MAX_HISTORY * 2:]
     else:
         user_info["history"] = history[-MAX_HISTORY * 2:]
 

@@ -99,6 +99,7 @@ body {
     padding: 16px;
     position: sticky;
     top: 74px;
+    height: auto;
 }
 .user-info { display: flex; align-items: center; gap: 12px; }
 .user-info-avatar {
@@ -107,7 +108,7 @@ body {
 }
 .user-info-name { font-size: 1rem; color: #2f3a50; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .user-info-hint { font-size: 0.78rem; color: #8893a7; }
-.info-divider { margin: 14px 0; border: 0; border-top: 1px solid #e8edf6; }
+.info-divider { margin: 16px 0; border: 0; border-top: 1px solid #e2e9f5; }
 
 .ip-profile-editor { margin-top: 12px; display: grid; gap: 8px; }
 .ip-profile-label { font-size: 0.8rem; color: #667189; }
@@ -119,17 +120,39 @@ body {
     padding: 0 10px;
     font-size: 0.9rem;
 }
-.ip-profile-btn {
-    border: none;
-    border-radius: 10px;
-    background: var(--vip-accent);
-    color: #fff;
-    height: 34px;
-    cursor: pointer;
-    font-size: 0.8rem;
+.identity-settings {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    background: #f6f9ff;
+    border: 1px solid #e2e9f5;
 }
-.ip-profile-btn-secondary {
-    background: #6c7a92;
+.identity-settings-title {
+    font-size: 0.85rem;
+    color: #3e4b66;
+    font-weight: 600;
+}
+.identity-status {
+    font-size: 0.78rem;
+    color: #6d7891;
+}
+.identity-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.identity-action-link {
+    font-size: 0.8rem;
+    color: #5d6d8b;
+    text-decoration: none;
+    border-bottom: 1px dashed #9aa8c3;
+}
+.identity-action-link:hover {
+    color: #3f4f70;
+    border-bottom-color: #6f7f9d;
+}
+.identity-action-separator {
+    color: #9aa5ba;
 }
 
 .favorability-title { font-size: 0.95rem; color: #2f3a50; font-weight: 600; }
