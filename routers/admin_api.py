@@ -1,24 +1,14 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 
 from admin_log import query_admin_logs
 from data_store import USER_DATA_FILE, load_user_data
 
-router = APIRouter(prefix="/admin/api", tags=["admin-api"])
-
-
-def _enabled() -> bool:
-    return os.getenv("DEBUG_ADMIN", "0") == "1"
-
-
-def _assert_enabled() -> None:
-    if not _enabled():
-        raise HTTPException(status_code=404, detail="Not Found")
+router = APIRouter(prefix="/api/admin", tags=["admin-api"])
 
 
 def _read_all_users() -> dict:
@@ -35,7 +25,6 @@ def _read_all_users() -> dict:
 
 @router.get("/users")
 def get_users():
-    _assert_enabled()
     users = _read_all_users()
     items = []
     for user_id, info in users.items():
@@ -61,7 +50,6 @@ def get_users():
 
 @router.get("/user/{user_id}")
 def get_user(user_id: str):
-    _assert_enabled()
     user = load_user_data(user_id)
     profile = user.get("profile") if isinstance(user.get("profile"), dict) else {}
     relationships = user.get("relationships") if isinstance(user.get("relationships"), dict) else {}
@@ -84,7 +72,6 @@ def get_user(user_id: str):
 
 @router.get("/user/{user_id}/characters")
 def get_user_characters(user_id: str):
-    _assert_enabled()
     user = load_user_data(user_id)
     relationships = user.get("relationships") if isinstance(user.get("relationships"), dict) else {}
     items = []
@@ -113,7 +100,6 @@ def get_user_characters(user_id: str):
 
 @router.get("/relationship")
 def get_relationship_overview():
-    _assert_enabled()
     users = _read_all_users()
     rows = []
     for user_id, info in users.items():
@@ -142,5 +128,4 @@ def get_admin_logs(
     limit: int = Query(default=500, ge=1, le=5000),
     category: str | None = Query(default=None),
 ):
-    _assert_enabled()
     return query_admin_logs(since=since, limit=limit, category=category)
