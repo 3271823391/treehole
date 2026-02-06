@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin Console</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", "PingFang SC", sans-serif; background: #121418; color: #e5e7eb; }
+    .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    .sidebar { background: #181b20; border-right: 1px solid #2b313a; padding: 20px 14px; }
+    .title { font-size: 18px; margin: 0 0 16px; color: #f3f4f6; }
+    .menu-btn { width: 100%; background: transparent; border: 1px solid #2f3742; color: #d1d5db; text-align: left; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+    .menu-btn.active, .menu-btn:hover { background: #242a33; color: #fff; }
+    .main { padding: 22px; }
+    .panel { background: #181b20; border: 1px solid #2f3742; border-radius: 12px; padding: 16px; margin-bottom: 18px; }
+    h2 { margin: 0 0 12px; font-size: 18px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #2b313a; text-align: left; font-size: 13px; padding: 9px 6px; vertical-align: top; }
+    th { color: #9ca3af; font-weight: 600; }
+    pre { background: #0f1115; padding: 10px; border-radius: 8px; overflow: auto; font-size: 12px; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    input, select, button { border: 1px solid #3b4452; background: #11151b; color: #e5e7eb; border-radius: 8px; padding: 8px 10px; }
+    .muted { color: #9ca3af; font-size: 12px; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .sidebar { border-right: none; border-bottom: 1px solid #2b313a; } }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <h1 class="title">Admin Console</h1>
+    <button class="menu-btn active" data-view="users">用户列表</button>
+    <button class="menu-btn" data-view="user-detail">用户详情</button>
+    <button class="menu-btn" data-view="relationship">好感度</button>
+    <button class="menu-btn" data-view="logs">日志</button>
+    <p class="muted">仅在 DEBUG_ADMIN=1 时可访问</p>
+  </aside>
+  <main class="main" id="app"></main>
+</div>
+<script src="/static/admin_console.js"></script>
+</body>
+</html>
