@@ -1494,8 +1494,7 @@
         const STORAGE_LIPVOICE_TTS_EXT = "lipvoice_tts_ext";
         const APP_PLAN = "pro"; // 页面版本常量
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
-        let currentUserId = null;
-        let anonymousUserId = null;
+        const CURRENT_USER_ID = getOrCreateStableUserId();
         const chatHistory = [];
         let emotionLocked = false;
         let emotionDebounceTimer = null;
@@ -1517,17 +1516,19 @@
         const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-        const USER_ID_STABLE_PATTERN = /^u_[0-9a-f]{32}$/i;
+        const USER_ID_SHA1_PATTERN = /^u_[0-9a-f]{40}$/i;
+        const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
         function isValidUserId(userId) {
-            return typeof userId === "string" && USER_ID_STABLE_PATTERN.test(userId);
+            return typeof userId === "string" && (USER_ID_SHA1_PATTERN.test(userId) || USER_ID_UUID_PATTERN.test(userId));
         }
 
         function createStableUserId() {
             if (crypto?.randomUUID) {
-                return `u_${crypto.randomUUID().replace(/-/g, "")}`;
+                return `u_${crypto.randomUUID()}`;
             }
-            return `u_${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`.slice(0, 34);
+            const randomHex = `${Math.random().toString(16).slice(2)}${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`.slice(0, 40);
+            return `u_${randomHex}`;
         }
 
         function safeLocalStorageGet(key) {
@@ -1648,7 +1649,7 @@
 
         async function handleVoiceCloneUpload() {
             if (!voiceCloneFile || !voiceCloneAction) return;
-            if (!isValidUserId(currentUserId)) {
+            if (!isValidUserId(CURRENT_USER_ID) || !confirmedUsername) {
                 setVoiceCloneStatus("请先输入用户名并完成用户绑定", "error");
                 showToast("请先输入用户名并完成用户绑定");
                 return;
@@ -1665,7 +1666,7 @@
             formData.append("file", file);
             formData.append("name", name);
             formData.append("describe", describe);
-            formData.append("user_id", currentUserId);
+            formData.append("user_id", CURRENT_USER_ID);
             formData.append("emotion_params", JSON.stringify(buildVoiceCloneEmotionParams()));
 
             voiceCloneAction.disabled = true;
@@ -1941,7 +1942,7 @@
         }
 
         async function requestVoiceCloneTts(text, token) {
-            if (!isValidUserId(currentUserId)) {
+            if (!isValidUserId(CURRENT_USER_ID) || !confirmedUsername) {
                 throw new Error("user_id_invalid");
             }
             const ext = buildVoiceEmotionExt();
@@ -1949,7 +1950,7 @@
             console.log("[TTS] extPayload =", extPayload);
             const { speed: extSpeed, ...extWithoutSpeed } = extPayload;
             const requestPayload = {
-                user_id: currentUserId,
+                user_id: CURRENT_USER_ID,
                 text: text,
                 ext: extWithoutSpeed
             };
@@ -2214,7 +2215,8 @@
         async function updateEmotionOnce(content) {
             // ✅ 同一轮对话只允许分析一次
             if (emotionLocked || lastEmotionRound === currentRound) return;
-            if (!isValidUserId(currentUserId)) return;
+            if (!CURRENT_USER_ID || !confirmedUsername) return;
+            if (!isValidUserId(CURRENT_USER_ID)) return;
 
             emotionLocked = true;
             lastEmotionRound = currentRound;
@@ -2226,7 +2228,7 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        user_id: currentUserId,
+                        user_id: CURRENT_USER_ID,
                         history,
                         current_input: content,
                         round_id: currentRound
@@ -2334,8 +2336,12 @@
         const voiceStopBtn = document.getElementById('voice-stop-btn');
                 const isProPlan = APP_PLAN === "pro";
 
-        anonymousUserId = getOrCreateStableUserId();
-        currentUserId = anonymousUserId;
+
+        const settingsBtn = document.getElementById("settingsBtn");
+        if (settingsBtn) {
+            const allow = location.pathname === "/" || location.pathname === "/index.html";
+            if (!allow) settingsBtn.remove();
+        }
 
         function clearChatWindow() {
             chatWindow.innerHTML = "";
@@ -2355,8 +2361,8 @@
         }
 
         async function loadHistory() {
-            if (!isValidUserId(currentUserId)) return;
-            const data = await fetchJson(`/load_history?user_id=${encodeURIComponent(currentUserId)}`);
+            if (!isValidUserId(CURRENT_USER_ID) || !confirmedUsername) return;
+            const data = await fetchJson(`/load_history?user_id=${encodeURIComponent(CURRENT_USER_ID)}`);
             if (!data || !data.ok) {
                 showErrorModal(data?.msg || "加载历史失败");
                 return;
@@ -2367,19 +2373,22 @@
         }
 
         async function loadProfile() {
-            if (!isValidUserId(currentUserId)) return false;
-            const data = await fetchJson(`/profile?user_id=${encodeURIComponent(currentUserId)}`);
+            if (!isValidUserId(CURRENT_USER_ID)) return false;
+            const data = await fetchJson(`/profile?user_id=${encodeURIComponent(CURRENT_USER_ID)}`);
             if (!data || !data.ok) {
                 showErrorModal(data?.msg || "资料加载失败");
                 return false;
             }
             const profileData = data.profile || {};
-            const nextUsername = profileData.username || loginUsernameInput.value.trim();
+            const nextUsername = (profileData.username || "").trim();
             if (nextUsername) {
+                confirmedUsername = nextUsername;
+                pendingUsername = nextUsername;
+                safeLocalStorageSet(STORAGE_USERNAME_KEY, confirmedUsername);
                 syncUsernameInputs(nextUsername);
             }
             updateProfileState({
-                username: profileData.username || loginUsernameInput.value.trim()
+                username: nextUsername
             });
             updateAvatar(data.profile?.avatar_url);
             await loadHistory();
@@ -2387,43 +2396,37 @@
         }
 
         let pendingUsername = "";
+        let confirmedUsername = "";
 
         function handleUsernameInput(value) {
-            pendingUsername = value;
-            syncUsernameInputs(value);
-            updateProfileState({ username: value.trim() });
-            setLockStatus("输入用户名后，点击「确定」保存", "#6b7280");
-            sendBtn.disabled = !isValidUserId(currentUserId) || msgInput.value.trim() === "";
+            pendingUsername = (value || "").trim();
+            syncUsernameInputs(pendingUsername);
+            setLockStatus("输入完成后点击「确定」保存", "#6b7280");
         }
 
         async function confirmUsername() {
-            if (!loginUsernameInput) return;
-            const username = (pendingUsername || loginUsernameInput.value || "").trim();
-            if (!username) {
-                setLockStatus("用户名不能为空", "#d9534f");
+            if (!pendingUsername) {
                 return;
             }
-            if (!isValidUserId(currentUserId)) {
-                currentUserId = getOrCreateStableUserId();
-            }
-            const data = await fetchJson("/api/user/profile", {
+            const res = await fetch("/api/user/profile", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ user_id: currentUserId, nickname: username })
+                body: JSON.stringify({ user_id: CURRENT_USER_ID, username: pendingUsername })
             });
-            if (!data?.ok) {
+            const data = await res.json();
+            if (!res.ok || !data?.ok) {
                 setLockStatus("资料保存失败", "#d9534f");
                 return;
             }
-            safeLocalStorageSet(STORAGE_USERNAME_KEY, username);
-            pendingUsername = username;
-            syncUsernameInputs(username);
-            updateProfileState({ username: data.profile?.username || username });
+            confirmedUsername = pendingUsername;
+            safeLocalStorageSet(STORAGE_USERNAME_KEY, confirmedUsername);
+            syncUsernameInputs(confirmedUsername);
+            updateProfileState({ username: confirmedUsername });
             setLockStatus("资料已保存", "#3b6fb6");
             await loadProfile();
             closeModal(userModal);
             showToast("资料已保存");
-            sendBtn.disabled = !isValidUserId(currentUserId) || msgInput.value.trim() === "";
+            sendBtn.disabled = !isValidUserId(CURRENT_USER_ID) || !confirmedUsername || msgInput.value.trim() === "";
         }
 
         function bindUsernameConfirmButtons(confirmFn) {
@@ -2435,11 +2438,11 @@
         }
 
         async function persistProfile({ avatarUrl } = {}) {
-            if (!currentUserId) {
+            if (!CURRENT_USER_ID || !confirmedUsername) {
                 setLockStatus("请先保存用户名", "#d9534f");
                 return false;
             }
-            const payload = { user_id: currentUserId };
+            const payload = { user_id: CURRENT_USER_ID };
             if (avatarUrl !== undefined) {
                 payload.avatar_url = avatarUrl || "";
             }
@@ -2457,10 +2460,10 @@
         }
 
         async function uploadAvatar(file) {
-                        if (!file || !currentUserId) return;
+                        if (!file || !CURRENT_USER_ID || !confirmedUsername) return;
             const formData = new FormData();
             formData.append("file", file);
-            formData.append("user_id", currentUserId);
+            formData.append("user_id", CURRENT_USER_ID);
 
             const data = await fetchJson("/avatar_upload", {
                 method: "POST",
@@ -2478,7 +2481,7 @@
         }
 
         function openAvatarPicker() {
-                        if (!currentUserId) {
+                        if (!CURRENT_USER_ID || !confirmedUsername) {
                 setLockStatus("请先保存用户名", "#d9534f");
                 return;
             }
@@ -2507,23 +2510,11 @@
             loginUsernameInput.addEventListener('input', () => {
                 handleUsernameInput(loginUsernameInput.value);
             });
-            loginUsernameInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    confirmUsername();
-                }
-            });
         }
 
         if (mobileUsernameInput) {
             mobileUsernameInput.addEventListener('input', () => {
                 handleUsernameInput(mobileUsernameInput.value);
-            });
-            mobileUsernameInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    confirmUsername();
-                }
             });
             mobileUsernameInput.addEventListener('blur', restoreIOSViewport);
         }
@@ -2537,11 +2528,13 @@
             const lastUsername = safeLocalStorageGet(STORAGE_USERNAME_KEY);
             if (lastUsername) {
                 pendingUsername = lastUsername;
+                confirmedUsername = lastUsername;
                 syncUsernameInputs(lastUsername);
                 updateProfileState({ username: lastUsername });
             }
-            loadProfile();
-        }
+            if (confirmedUsername) {
+                loadProfile();
+            }
         }
 
         function openModal(modal) {
@@ -2721,7 +2714,7 @@
         // 监听输入框变化，控制发送按钮状态+自适应高度
         msgInput.addEventListener('input', () => {
             const content = msgInput.value.trim();
-            sendBtn.disabled = !isValidUserId(currentUserId) || content === '';
+            sendBtn.disabled = !isValidUserId(CURRENT_USER_ID) || !confirmedUsername || content === '';
             // 自适应输入框高度
             msgInput.style.height = 'auto';
             msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
@@ -2739,9 +2732,9 @@
         sendBtn.addEventListener('click', sendMessage);
 
         async function sendMessage() {
-        if (!isValidUserId(currentUserId)) {
+        if (!isValidUserId(CURRENT_USER_ID) || !confirmedUsername) {
             setLockStatus("请先保存用户名", "#d9534f");
-            showErrorModal("请输入用户名/初始化身份");
+            showErrorModal("请先输入并确认用户名");
             return;
         }
         const content = msgInput.value.trim();
@@ -2794,7 +2787,7 @@
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    user_id: currentUserId,   // ← 必须有
+                    user_id: CURRENT_USER_ID,   // ← 必须有
                     history: chatHistory,
                     user_input: content,
                     round_id: currentRound

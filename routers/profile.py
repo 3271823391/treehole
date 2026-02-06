@@ -76,19 +76,19 @@ def get_profile(user_id: str = "", character_id: str = ""):
 def save_user_profile(payload: dict):
     payload = payload or {}
     user_id = (payload.get("user_id") or "").strip()
-    nickname = (payload.get("nickname") or "").strip()
+    username = (payload.get("username") or "").strip()
 
     if not user_id:
         return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_user_id"})
     if not is_valid_user_id(user_id):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_user_id"})
-    if not nickname:
-        return JSONResponse(status_code=400, content={"ok": False, "msg": "nickname_required"})
+    if not username:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "username_required"})
 
     user_info = load_user_data(user_id)
     profile = normalize_profile(user_info)
-    profile["base_username"] = nickname
-    profile["username"] = nickname
+    profile["base_username"] = username
+    profile["username"] = username
     save_user_data(user_id, user_info)
 
     return {
