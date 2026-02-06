@@ -15,6 +15,8 @@
     let currentAvatarUrl = DEFAULT_AVATAR_URL;
     let currentUserId = "";
     let currentUsername = "";
+    let currentBaseUsername = "";
+    let currentBaseAvatar = "";
     let toastTimer = null;
 
     const root = document.getElementById('vip-chat-page');
@@ -154,26 +156,85 @@
 
         currentUserId = resolvedId;
 
-        let profileUsername = username;
-        let profileAvatar = DEFAULT_AVATAR_URL;
-        if (isValidUserId(currentUserId)) {
-            try {
-                const res = await fetch(`/profile?user_id=${encodeURIComponent(currentUserId)}`);
-                const contentType = res.headers.get('content-type') || "";
-                if (res.ok && contentType.includes('application/json')) {
-                    const data = await res.json();
-                    if (data?.ok) {
-                        profileUsername = data.profile?.username || profileUsername;
-                        profileAvatar = data.profile?.avatar_url || profileAvatar;
-                    }
-                }
-            } catch (e) {
-                // ignore
-            }
-        }
-
-        setUserIdentity({ username: profileUsername, avatarUrl: profileAvatar });
+        setUserIdentity({ username: username, avatarUrl: DEFAULT_AVATAR_URL });
+        await loadProfile();
         loadFavorability();
+    }
+
+
+    async function fetchJson(url, options = {}) {
+        const res = await fetch(url, options);
+        const contentType = res.headers.get('content-type') || "";
+        if (!contentType.includes('application/json')) {
+            return { ok: false, msg: '服务暂不可用' };
+        }
+        try {
+            const data = await res.json();
+            if (!res.ok) return { ok: false, msg: data?.msg || '服务暂不可用' };
+            return data;
+        } catch (e) {
+            return { ok: false, msg: '服务暂不可用' };
+        }
+    }
+
+    async function loadProfile() {
+        if (!isValidUserId(currentUserId)) return false;
+        const data = await fetchJson(`/profile?user_id=${encodeURIComponent(currentUserId)}&character_id=${encodeURIComponent(config.characterId)}`);
+        if (!data?.ok) return false;
+        const profile = data.profile || {};
+        currentBaseUsername = profile.base_username || "";
+        currentBaseAvatar = profile.base_avatar || "";
+        setUserIdentity({ username: profile.username || currentBaseUsername, avatarUrl: profile.avatar_url || currentBaseAvatar || DEFAULT_AVATAR_URL });
+        const ipInput = document.getElementById('ipDisplayUsername');
+        if (ipInput) {
+            ipInput.value = profile.ip_display_username || "";
+            ipInput.placeholder = currentBaseUsername ? `默认：${currentBaseUsername}` : '默认使用 Treehole 用户名';
+        }
+        return true;
+    }
+
+    async function persistIpProfile() {
+        const ipInput = document.getElementById('ipDisplayUsername');
+        if (!ipInput || !isValidUserId(currentUserId)) return;
+        const username = ipInput.value.trim();
+        const payload = {
+            user_id: currentUserId,
+            character_id: config.characterId
+        };
+        if (username) payload.username = username;
+        const data = await fetchJson('/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!data?.ok) {
+            showToast(data?.msg || '资料保存失败');
+            return;
+        }
+        safeLocalStorageSet(STORAGE_USERNAME_KEY, data.profile?.base_username || username);
+        setUserIdentity({ username: data.profile?.username, avatarUrl: data.profile?.avatar_url });
+        currentBaseUsername = data.profile?.base_username || "";
+        currentBaseAvatar = data.profile?.base_avatar || "";
+        showToast('资料已同步到Treehole');
+    }
+
+
+    async function uploadIpAvatar(file) {
+        if (!file || !isValidUserId(currentUserId)) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('user_id', currentUserId);
+        formData.append('character_id', config.characterId);
+        const data = await fetchJson('/avatar_upload', {
+            method: 'POST',
+            body: formData
+        });
+        if (!data?.ok) {
+            showToast(data?.msg || '头像上传失败');
+            return;
+        }
+        await loadProfile();
+        showToast('头像已同步到Treehole');
     }
 
     async function parseErrorMessage(res) {
@@ -289,6 +350,10 @@
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
         const drawerCloseBtn = document.getElementById('drawerCloseBtn');
         const drawerBackdrop = document.getElementById('drawerBackdrop');
+        const saveIpProfileBtn = document.getElementById('saveIpProfileBtn');
+        const ipDisplayUsernameInput = document.getElementById('ipDisplayUsername');
+        const uploadIpAvatarBtn = document.getElementById('uploadIpAvatarBtn');
+        const ipAvatarInput = document.getElementById('ipAvatarInput');
 
         sendBtn.addEventListener('click', sendMessage);
         messageInput.addEventListener('keydown', (e) => {
@@ -301,6 +366,23 @@
         });
         drawerCloseBtn.addEventListener('click', () => document.body.classList.remove('drawer-open'));
         drawerBackdrop.addEventListener('click', () => document.body.classList.remove('drawer-open'));
+
+        if (saveIpProfileBtn) {
+            saveIpProfileBtn.addEventListener('click', persistIpProfile);
+        }
+        if (ipDisplayUsernameInput) {
+            ipDisplayUsernameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') persistIpProfile();
+            });
+        }
+        if (uploadIpAvatarBtn && ipAvatarInput) {
+            uploadIpAvatarBtn.addEventListener('click', () => ipAvatarInput.click());
+            ipAvatarInput.addEventListener('change', (e) => {
+                const file = e.target.files?.[0];
+                if (file) uploadIpAvatar(file);
+                e.target.value = '';
+            });
+        }
 
         window.addEventListener('resize', updateDeviceMode);
     }

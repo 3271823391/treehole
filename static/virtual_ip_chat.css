@@ -109,6 +109,29 @@ body {
 .user-info-hint { font-size: 0.78rem; color: #8893a7; }
 .info-divider { margin: 14px 0; border: 0; border-top: 1px solid #e8edf6; }
 
+.ip-profile-editor { margin-top: 12px; display: grid; gap: 8px; }
+.ip-profile-label { font-size: 0.8rem; color: #667189; }
+.ip-profile-input {
+    width: 100%;
+    border: 1px solid #dbe7fb;
+    border-radius: 10px;
+    height: 36px;
+    padding: 0 10px;
+    font-size: 0.9rem;
+}
+.ip-profile-btn {
+    border: none;
+    border-radius: 10px;
+    background: var(--vip-accent);
+    color: #fff;
+    height: 34px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+.ip-profile-btn-secondary {
+    background: #6c7a92;
+}
+
 .favorability-title { font-size: 0.95rem; color: #2f3a50; font-weight: 600; }
 .favorability-state { margin-top: 4px; font-size: 0.82rem; color: #667189; }
 .favorability-bar { margin-top: 10px; height: 10px; background: #edf2fc; border-radius: 999px; overflow: hidden; }
