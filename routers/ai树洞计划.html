@@ -32,11 +32,13 @@
         .ip-description { color: #555; line-height: 1.8; margin-bottom: 24px; white-space: pre-line; }
         .footer { text-align: center; color: #999; font-size: .9rem; margin-top: 60px; padding: 20px 0; }
         @media (max-width: 768px) { .header h1 { font-size: 2.2rem; } .header { margin: 20px 0 40px; } .versions { grid-template-columns: 1fr; gap: 20px; } .version-card { margin: 0 10px; } }
-        .admin-console-link { position: fixed; top: 8px; right: 12px; opacity: 0.2; font-size: 14px; text-decoration: none; z-index: 99; }
+        .admin-console-btn { position: fixed; top: max(14px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); z-index: 9999; width: 36px; height: 36px; border-radius: 999px; border: 1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.92); box-shadow: 0 6px 18px rgba(0,0,0,0.10); display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; text-decoration: none; color: #334155; }
+        .admin-console-btn:hover { transform: translateY(-1px); }
+        .admin-console-btn:active { transform: translateY(0px) scale(0.98); }
     </style>
 </head>
 <body>
-    {{ADMIN_CONSOLE_LINK}}
+    <a id="adminConsoleBtn" class="admin-console-btn" href="/admin/console" aria-label="打开后台控制台" title="后台控制台">🛠</a>
     <div class="container">
         <div class="header">
             <h1>轻语信箱 - 版本介绍</h1>
@@ -111,6 +113,16 @@
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', updateAppHeight);
         }
+
+        (function () {
+            const btn = document.getElementById('adminConsoleBtn');
+            if (!btn) return;
+
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.location.href = '/admin/console';
+            });
+        })();
     </script>
 </body>
 </html>

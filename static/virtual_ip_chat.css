@@ -263,3 +263,30 @@ body.drawer-open .drawer-backdrop { display: block; }
     }
     body.drawer-open .info-sidebar { transform: translateX(0); }
 }
+
+.admin-console-btn {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 9999;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.admin-console-btn:hover {
+  transform: translateY(-1px);
+}
+
+.admin-console-btn:active {
+  transform: translateY(0px) scale(0.98);
+}

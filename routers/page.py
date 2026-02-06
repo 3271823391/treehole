@@ -7,15 +7,19 @@ router = APIRouter()
 
 
 def _with_admin_logger(html: str) -> str:
-    script_tag = '<script src="/static/admin_console_logger.js"></script>'
-    if script_tag in html:
+    script_tags = [
+        '<script src="/static/admin_console_logger.js"></script>',
+        '<script src="/static/admin_console_btn.js"></script>',
+    ]
+    if all(tag in html for tag in script_tags):
         return html
-    return html.replace("</body>", f"    {script_tag}\n</body>")
+
+    injection = "".join(f"    {tag}\n" for tag in script_tags if tag not in html)
+    return html.replace("</body>", f"{injection}</body>")
 
 
 def _with_admin_link(html: str) -> str:
-    show_link = os.getenv("SHOW_ADMIN_LINK", "1") == "1"
-    return html.replace("{{ADMIN_CONSOLE_LINK}}", '<a href="/admin/console" class="admin-console-link">🛠</a>' if show_link else "")
+    return html.replace("{{ADMIN_CONSOLE_LINK}}", "")
 
 @router.get("/", response_class=HTMLResponse)
 async def intro_page():
