@@ -72,6 +72,32 @@ def get_profile(user_id: str = "", character_id: str = ""):
     }
 
 
+@router.post("/api/user/profile")
+def save_user_profile(payload: dict):
+    payload = payload or {}
+    user_id = (payload.get("user_id") or "").strip()
+    nickname = (payload.get("nickname") or "").strip()
+
+    if not user_id:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_user_id"})
+    if not is_valid_user_id(user_id):
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_user_id"})
+    if not nickname:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "nickname_required"})
+
+    user_info = load_user_data(user_id)
+    profile = normalize_profile(user_info)
+    profile["base_username"] = nickname
+    profile["username"] = nickname
+    save_user_data(user_id, user_info)
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "profile": resolve_profile_payload(profile),
+    }
+
+
 @router.post("/profile")
 def update_profile(payload: dict):
     payload = payload or {}
