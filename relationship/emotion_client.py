@@ -4,6 +4,17 @@ from typing import Any
 
 import requests
 
+
+def _debug_enabled() -> bool:
+    return os.getenv("DEBUG_RELATIONSHIP", "0") == "1"
+
+
+def _fault_mode() -> str:
+    if not _debug_enabled():
+        return ""
+    return os.getenv("EMOTION_FAULT_MODE", "").strip().lower()
+
+
 DEEPSEEK_EMOTION_URL = "https://api.deepseek.com/chat/completions"
 ALLOWED_SIGNALS = {
     "boundary_pressure",
@@ -99,15 +110,24 @@ def analyze_relationship(character_id: str, character_name: str, messages: list[
     }
 
     try:
-        resp = requests.post(
-            DEEPSEEK_EMOTION_URL,
-            headers=headers,
-            json=payload,
-            timeout=20,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        content = (((data.get("choices") or [{}])[0]).get("message") or {}).get("content", "")
+        fault_mode = _fault_mode()
+        if fault_mode == "empty":
+            content = ""
+        elif fault_mode == "bad_json":
+            content = "not a json"
+        elif fault_mode == "bad_signals":
+            content = json.dumps({"signals": ["made_up_signal"], "confidence": "high"}, ensure_ascii=False)
+        else:
+            resp = requests.post(
+                DEEPSEEK_EMOTION_URL,
+                headers=headers,
+                json=payload,
+                timeout=20,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = (((data.get("choices") or [{}])[0]).get("message") or {}).get("content", "")
+
         if not content:
             return _fallback()
         parsed = json.loads(content)

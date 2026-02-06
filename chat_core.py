@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import os
+import logging
 from datetime import datetime, timedelta
 from typing import Generator, Optional
 
@@ -47,6 +48,16 @@ CHARACTER_NAME_MAP = {
     "jiangche": "江澈",
     "luchengyu": "陆承宇",
 }
+
+logger = logging.getLogger(__name__)
+
+
+def _debug_enabled() -> bool:
+    return os.getenv("DEBUG_RELATIONSHIP", "0") == "1"
+
+
+def _test_fast_enabled() -> bool:
+    return _debug_enabled() and os.getenv("AFFINITY_TEST_FAST", "0") == "1"
 
 
 def build_character_history_key(user_id: str, character_id: str) -> str:
@@ -128,16 +139,40 @@ def _parse_iso_datetime(value: str | None):
         return None
 
 
-def should_trigger_affinity_eval(state: dict, user_input: str) -> bool:
+def evaluate_affinity_trigger(state: dict, user_input: str) -> dict:
     count = int(state.get("user_msg_count_since_last_eval", 0))
     last_eval_at = _parse_iso_datetime(state.get("last_affinity_eval_at"))
     now = datetime.now()
 
-    count_ready = count >= 6
-    cooldown_ready = (last_eval_at is None) or ((now - last_eval_at) >= timedelta(minutes=10))
+    fast_mode = _test_fast_enabled()
+    count_threshold = 1 if fast_mode else 6
+    cooldown_seconds = 0 if fast_mode else 10 * 60
+
+    count_ready = count >= count_threshold
     keyword_hit = any(word in user_input for word in RISK_TRIGGER_WORDS)
 
-    return keyword_hit or (count_ready and cooldown_ready)
+    cooldown_remaining_seconds = 0
+    cooldown_ready = True
+    if cooldown_seconds > 0 and last_eval_at is not None:
+        elapsed = (now - last_eval_at).total_seconds()
+        cooldown_remaining_seconds = max(0, int(cooldown_seconds - elapsed))
+        cooldown_ready = elapsed >= cooldown_seconds
+
+    trigger_reason = None
+    should_eval = False
+    if keyword_hit:
+        trigger_reason = "risk_words"
+        should_eval = True
+    elif count_ready:
+        trigger_reason = "count>=6"
+        should_eval = cooldown_ready
+
+    return {
+        "should_eval": should_eval,
+        "trigger_reason": trigger_reason,
+        "cooldown_ready": cooldown_ready,
+        "cooldown_remaining_seconds": cooldown_remaining_seconds,
+    }
 
 
 def build_affinity_constraint(affinity_score: float) -> str:
@@ -275,7 +310,20 @@ def stream_chat_with_deepseek(
     if character_id:
         increment_user_msg_count(user_id, character_id)
         state = get_relationship_state(user_id, character_id)
-        if should_trigger_affinity_eval(state, user_input):
+        trigger_info = evaluate_affinity_trigger(state, user_input)
+        trigger_reason = trigger_info.get("trigger_reason")
+
+        if trigger_reason and not trigger_info.get("should_eval", False):
+            logger.info(json.dumps({
+                "event": "affinity_eval_skipped",
+                "user_id": user_id,
+                "character_id": character_id,
+                "trigger_reason": trigger_reason,
+                "cooldown_remaining_seconds": trigger_info.get("cooldown_remaining_seconds", 0),
+                "ts": datetime.now().isoformat(timespec="seconds"),
+            }, ensure_ascii=False))
+
+        if trigger_info.get("should_eval", False):
             recent_history = history[-12:] if history else []
             recent_messages = recent_history + [{"role": "user", "content": user_input}]
             result = analyze_relationship(
@@ -285,11 +333,37 @@ def stream_chat_with_deepseek(
             )
             signals = result.get("signals", ["neutral_interaction"])
             confidence = result.get("confidence", "low")
+            score_before = float(state.get("affinity_score", 50))
+            stable_streak_before = int(state.get("stable_streak", 0))
             delta, note = evaluate_affinity_delta(state, signals, confidence)
-            state["affinity_score"] = max(0.0, min(100.0, float(state.get("affinity_score", 50)) + delta))
+            state["affinity_score"] = max(0.0, min(100.0, score_before + delta))
+            score_after = float(state.get("affinity_score", 50))
+            stable_streak_after = int(state.get("stable_streak", 0))
             save_relationship_state(user_id, character_id, state)
             append_affinity_eval_log(user_id, character_id, signals, confidence, delta, note)
             reset_user_msg_count(user_id, character_id)
+
+            risk_buffer = state.get("risk_buffer", {}) if isinstance(state, dict) else {}
+            logger.info(json.dumps({
+                "event": "affinity_eval",
+                "user_id": user_id,
+                "character_id": character_id,
+                "trigger_reason": trigger_reason or "manual",
+                "signals": signals,
+                "confidence": confidence,
+                "delta": delta,
+                "score_before": score_before,
+                "score_after": score_after,
+                "stable_streak_before": stable_streak_before,
+                "stable_streak_after": stable_streak_after,
+                "risk_buffer": {
+                    "boundary_pressure": int(risk_buffer.get("boundary_pressure", 0)),
+                    "dependency_attempt": int(risk_buffer.get("dependency_attempt", 0)),
+                    "conflict_pattern": int(risk_buffer.get("conflict_pattern", 0)),
+                },
+                "cooldown_skipped": False,
+                "ts": datetime.now().isoformat(timespec="seconds"),
+            }, ensure_ascii=False))
 
     # 5. 调模型
     full_reply = ""
