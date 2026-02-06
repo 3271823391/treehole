@@ -694,6 +694,33 @@
             margin-top: 0.2rem;
         }
 
+        .username-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .btn-primary,
+        .btn-ghost {
+            flex: 1;
+            border-radius: 12px;
+            padding: 10px 12px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            color: #fff;
+            background: linear-gradient(135deg, #6366f1, #4a90e2);
+            border-color: rgba(99, 102, 241, 0.45);
+        }
+
+        .btn-ghost {
+            color: #475569;
+            background: rgba(255, 255, 255, 0.75);
+        }
+
         .emotion-modal-content {
             display: flex;
             flex-direction: column;
@@ -1024,6 +1051,10 @@
                     </div>
                     <input id="mobile-username" type="text" placeholder="请输入用户名">
                 </div>
+                <div class="username-actions">
+                    <button id="usernameConfirmBtn" class="btn-primary" type="button">确定</button>
+                    <button id="usernameCancelBtn" class="btn-ghost" type="button">取消</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1091,20 +1122,17 @@
         const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-        const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        const USER_ID_SHA1_PATTERN = /^u_[0-9a-f]{40}$/i;
+        const USER_ID_STABLE_PATTERN = /^u_[0-9a-f]{32}$/i;
 
         function isValidUserId(userId) {
-            return typeof userId === "string"
-                && (USER_ID_UUID_PATTERN.test(userId) || USER_ID_SHA1_PATTERN.test(userId));
+            return typeof userId === "string" && USER_ID_STABLE_PATTERN.test(userId);
         }
 
-        function createAnonymousUserId() {
+        function createStableUserId() {
             if (crypto?.randomUUID) {
-                return `u_${crypto.randomUUID()}`;
+                return `u_${crypto.randomUUID().replace(/-/g, "")}`;
             }
-            // TODO: 兜底随机串（防止极老 Safari/无痕模式）
-            return `u_${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
+            return `u_${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`.slice(0, 34);
         }
 
         function safeLocalStorageGet(key) {
@@ -1124,15 +1152,13 @@
             }
         }
 
-        function initAnonymousUserId({ persist = true } = {}) {
-            const stored = persist ? safeLocalStorageGet(STORAGE_USER_ID_KEY) : "";
+        function getOrCreateStableUserId() {
+            const stored = safeLocalStorageGet(STORAGE_USER_ID_KEY);
             if (isValidUserId(stored)) {
                 return stored;
             }
-            const created = createAnonymousUserId();
-            if (persist) {
-                safeLocalStorageSet(STORAGE_USER_ID_KEY, created);
-            }
+            const created = createStableUserId();
+            safeLocalStorageSet(STORAGE_USER_ID_KEY, created);
             return created;
         }
 
@@ -1245,21 +1271,6 @@
             } catch (e) {
                 return { ok: false, msg: "服务暂不可用", status: res.status };
             }
-        }
-
-        async function sha1Hex(input) {
-            const data = new TextEncoder().encode(input);
-            const buffer = await crypto.subtle.digest("SHA-1", data);
-            return Array.from(new Uint8Array(buffer))
-                .map((b) => b.toString(16).padStart(2, "0"))
-                .join("");
-        }
-
-        async function makeUserId(username) {
-            const norm = (username || "").trim().toLowerCase();
-            if (!norm) return "";
-            const digest = await sha1Hex(norm);
-            return `u_${digest}`;
         }
 
         let currentProfile = {
@@ -1476,6 +1487,8 @@
         const mobileAvatarImg = document.getElementById('mobile-avatar-img');
         const mobileUsernameInput = document.getElementById('mobile-username');
         const mobileLockStatus = document.getElementById('mobile-lock-status');
+        const usernameConfirmBtn = document.getElementById('usernameConfirmBtn');
+        const usernameCancelBtn = document.getElementById('usernameCancelBtn');
         const emotionScoreNumMobile = document.getElementById('emotion-score-num-mobile');
         const scoreFillMobile = document.getElementById('score-fill-mobile');
         const emotionTagsMobile = document.getElementById('emotion-tags-mobile');
@@ -1483,8 +1496,8 @@
         const emotionSuggestMobile = document.getElementById('emotion-suggest-mobile');
                 const isProPlan = APP_PLAN === "pro";
 
-        anonymousUserId = initAnonymousUserId({ persist: true });
-        currentUserId = null;
+        anonymousUserId = getOrCreateStableUserId();
+        currentUserId = anonymousUserId;
 
         function clearChatWindow() {
             chatWindow.innerHTML = "";
@@ -1535,50 +1548,52 @@
             return true;
         }
 
-        let usernameChangeToken = 0;
-        async function applyUsernameChange({ loadRemote = true } = {}) {
+        let pendingUsername = "";
+
+        function handleUsernameInput(value) {
+            pendingUsername = value;
+            syncUsernameInputs(value);
+            updateProfileState({ username: value.trim() });
+            setLockStatus("输入完成后点击“确定”保存", "#6b7280");
+            sendBtn.disabled = !isValidUserId(currentUserId) || msgInput.value.trim() === "";
+        }
+
+        async function confirmUsername() {
             if (!loginUsernameInput) return;
-            const username = loginUsernameInput.value.trim();
+            const username = (pendingUsername || loginUsernameInput.value || "").trim();
             if (!username) {
-                currentUserId = null;
-                updateAvatar("");
-                updateProfileState({ username: "" });
-                setLockStatus("请输入用户名后即可保存资料", "#d9534f");
-                sendBtn.disabled = true;
+                setLockStatus("用户名不能为空", "#d9534f");
                 return;
             }
-
-            const token = ++usernameChangeToken;
-            const nextUserId = await makeUserId(username);
-            if (token !== usernameChangeToken) return;
-            currentUserId = nextUserId;
-            safeLocalStorageSet(STORAGE_USERNAME_KEY, username);
-            updateProfileState({ username });
-            setLockStatus("用户名已就绪，资料将自动保存", "#3b6fb6");
-            if (loadRemote) {
-                await loadProfile();
+            if (!isValidUserId(currentUserId)) {
+                currentUserId = getOrCreateStableUserId();
             }
-            await persistProfile();
+            const data = await fetchJson("/api/user/profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: currentUserId, nickname: username })
+            });
+            if (!data?.ok) {
+                setLockStatus("资料保存失败", "#d9534f");
+                return;
+            }
+            safeLocalStorageSet(STORAGE_USERNAME_KEY, username);
+            pendingUsername = username;
+            syncUsernameInputs(username);
+            updateProfileState({ username: data.profile?.username || username });
+            setLockStatus("资料已保存", "#3b6fb6");
+            await loadProfile();
+            closeModal(userModal);
+            showToast("资料已保存");
             sendBtn.disabled = !isValidUserId(currentUserId) || msgInput.value.trim() === "";
         }
 
         async function persistProfile({ avatarUrl } = {}) {
-            if (!loginUsernameInput) {
-                return false;
-            }
             if (!currentUserId) {
-                setLockStatus("请先输入用户名", "#d9534f");
+                setLockStatus("请先保存用户名", "#d9534f");
                 return false;
             }
-            const username = loginUsernameInput.value.trim();
-            if (!username) {
-                setLockStatus("用户名不能为空", "#d9534f");
-                return false;
-            }
-            const payload = {
-                user_id: currentUserId,
-                username
-            };
+            const payload = { user_id: currentUserId };
             if (avatarUrl !== undefined) {
                 payload.avatar_url = avatarUrl || "";
             }
@@ -1588,15 +1603,11 @@
                 body: JSON.stringify(payload)
             });
             if (data?.ok) {
-                updateProfileState({
-                    username: data.profile?.username || username
-                });
                 setLockStatus("资料已保存", "#3b6fb6");
                 return true;
-            } else {
-                setLockStatus("资料保存失败", "#d9534f");
-                return false;
             }
+            setLockStatus("资料保存失败", "#d9534f");
+            return false;
         }
 
         async function uploadAvatar(file) {
@@ -1622,7 +1633,7 @@
 
         function openAvatarPicker() {
                         if (!currentUserId) {
-                setLockStatus("请先输入用户名", "#d9534f");
+                setLockStatus("请先保存用户名", "#d9534f");
                 return;
             }
             avatarInput.click();
@@ -1646,48 +1657,47 @@
                 e.target.value = "";
             });
         }
-
-        let usernameDebounceTimer = null;
         if (loginUsernameInput) {
             loginUsernameInput.addEventListener('input', () => {
-                syncUsernameInputs(loginUsernameInput.value);
-                if (usernameDebounceTimer) {
-                    clearTimeout(usernameDebounceTimer);
-                }
-                usernameDebounceTimer = setTimeout(() => {
-                    applyUsernameChange({ loadRemote: true });
-                }, 250);
+                handleUsernameInput(loginUsernameInput.value);
             });
-
-            loginUsernameInput.addEventListener('blur', () => {
-                applyUsernameChange({ loadRemote: true });
-                restoreIOSViewport();
+            loginUsernameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    confirmUsername();
+                }
             });
         }
 
         if (mobileUsernameInput) {
             mobileUsernameInput.addEventListener('input', () => {
-                syncUsernameInputs(mobileUsernameInput.value);
-                if (usernameDebounceTimer) {
-                    clearTimeout(usernameDebounceTimer);
+                handleUsernameInput(mobileUsernameInput.value);
+            });
+            mobileUsernameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    confirmUsername();
                 }
-                usernameDebounceTimer = setTimeout(() => {
-                    applyUsernameChange({ loadRemote: true });
-                }, 250);
             });
+            mobileUsernameInput.addEventListener('blur', restoreIOSViewport);
+        }
 
-            mobileUsernameInput.addEventListener('blur', () => {
-                applyUsernameChange({ loadRemote: true });
-                restoreIOSViewport();
-            });
+        if (usernameConfirmBtn) {
+            usernameConfirmBtn.addEventListener('click', confirmUsername);
+        }
+        if (usernameCancelBtn) {
+            usernameCancelBtn.addEventListener('click', () => closeModal(userModal));
         }
 
         if (loginUsernameInput) {
             const lastUsername = safeLocalStorageGet(STORAGE_USERNAME_KEY);
             if (lastUsername) {
+                pendingUsername = lastUsername;
                 syncUsernameInputs(lastUsername);
-                applyUsernameChange({ loadRemote: true });
+                updateProfileState({ username: lastUsername });
             }
+            loadProfile();
+        }
         }
 
         function openModal(modal) {
@@ -1837,7 +1847,7 @@
 
         async function sendMessage() {
         if (!isValidUserId(currentUserId)) {
-            setLockStatus("请先输入用户名", "#d9534f");
+            setLockStatus("请先保存用户名", "#d9534f");
             showErrorModal("请输入用户名/初始化身份");
             return;
         }
