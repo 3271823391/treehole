@@ -484,8 +484,12 @@
 
         .user-card-actions {
             display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
+            gap: 0.6rem;
+        }
+
+        #usernameConfirmBtnDesktop {
+            flex: 1;
+            justify-content: center;
         }
 
         .user-card button {
@@ -523,6 +527,11 @@
         .lock-status {
             font-size: 0.82rem;
             color: #d9534f;
+        }
+
+        .username-hint {
+            white-space: normal;
+            overflow: visible;
         }
 
         /* 小盈形象卡片 - 优化渐变和阴影 */
@@ -1238,7 +1247,7 @@
                     </div>
                     <div>
                         <div class="user-card-title" id="user-card-title">用户名</div>
-                        <div class="lock-status" id="lock-status">请输入用户名后即可保存资料</div>
+                        <div class="lock-status username-hint" id="lock-status">输入用户名后，点击「确定」保存</div>
                     </div>
                 </div>
 
@@ -1259,7 +1268,8 @@
                 </div>
 
                 <div class="user-card-actions">
-                    <button id="upload-avatar-btn" class="secondary">上传头像</button>
+                    <button id="upload-avatar-btn" class="secondary" type="button">上传头像</button>
+                    <button id="usernameConfirmBtnDesktop" class="btn-primary" type="button">确定</button>
                 </div>
 
                 <!-- TODO: Pro 菜单新增语音输出开关 -->
@@ -1334,7 +1344,7 @@
                         <img src="/static/avatars/default.svg" alt="用户头像" id="mobile-avatar-img">
                     </div>
                     <div>
-                        <div class="lock-status" id="mobile-lock-status">请输入用户名后即可保存资料</div>
+                        <div class="lock-status username-hint" id="mobile-lock-status">输入用户名后，点击「确定」保存</div>
                     </div>
                 </div>
                 <div class="form-row">
@@ -2382,7 +2392,7 @@
             pendingUsername = value;
             syncUsernameInputs(value);
             updateProfileState({ username: value.trim() });
-            setLockStatus("输入完成后点击“确定”保存", "#6b7280");
+            setLockStatus("输入用户名后，点击「确定」保存", "#6b7280");
             sendBtn.disabled = !isValidUserId(currentUserId) || msgInput.value.trim() === "";
         }
 
@@ -2414,6 +2424,14 @@
             closeModal(userModal);
             showToast("资料已保存");
             sendBtn.disabled = !isValidUserId(currentUserId) || msgInput.value.trim() === "";
+        }
+
+        function bindUsernameConfirmButtons(confirmFn) {
+            const ids = ["usernameConfirmBtn", "usernameConfirmBtnDesktop"];
+            ids.forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener("click", confirmFn);
+            });
         }
 
         async function persistProfile({ avatarUrl } = {}) {
@@ -2510,9 +2528,7 @@
             mobileUsernameInput.addEventListener('blur', restoreIOSViewport);
         }
 
-        if (usernameConfirmBtn) {
-            usernameConfirmBtn.addEventListener('click', confirmUsername);
-        }
+        bindUsernameConfirmButtons(confirmUsername);
         if (usernameCancelBtn) {
             usernameCancelBtn.addEventListener('click', () => closeModal(userModal));
         }
