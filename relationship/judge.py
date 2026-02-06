@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import os
 
 POSITIVE_SCORES = {
     "stable_interaction": {"high": 0.9, "medium": 0.6, "low": 0.2},
@@ -26,6 +27,10 @@ def _parse_iso(value: str | None):
 
 def _now() -> datetime:
     return datetime.now()
+
+
+def _test_fast_enabled() -> bool:
+    return os.getenv("DEBUG_RELATIONSHIP", "0") == "1" and os.getenv("AFFINITY_TEST_FAST", "0") == "1"
 
 
 def evaluate_affinity_delta(
@@ -78,8 +83,9 @@ def evaluate_affinity_delta(
             reward_map = {4: 1.0, 9: 2.0, 15: 3.0}
             reward = reward_map.get(streak, 0)
             if reward > 0:
+                reward_cooldown_hours = 0 if _test_fast_enabled() else 72
                 last_reward_at = _parse_iso(state.get("last_streak_reward_at"))
-                if (not last_reward_at) or (now - last_reward_at) >= timedelta(hours=72):
+                if reward_cooldown_hours == 0 or (not last_reward_at) or (now - last_reward_at) >= timedelta(hours=reward_cooldown_hours):
                     delta += reward
                     state["last_streak_reward_at"] = now.isoformat(timespec="seconds")
                     notes.append(f"streak_reward:{streak}")
