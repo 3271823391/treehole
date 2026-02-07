@@ -53,5 +53,22 @@ function createInteractionStateManager() {
 
 window.SharedShellInteraction = createInteractionStateManager();
 
+function recoverSharedInteractionState() {
+    if (window.SharedShellInteraction?.reset) {
+        window.SharedShellInteraction.reset();
+    }
+    document.querySelectorAll('.mobile-panel[data-visible="true"]').forEach((panel) => {
+        panel.dataset.visible = 'false';
+    });
+}
+
 window.addEventListener('load', measureFooter);
 window.addEventListener('resize', measureFooter);
+window.addEventListener('pageshow', recoverSharedInteractionState);
+window.addEventListener('focus', recoverSharedInteractionState);
+window.addEventListener('popstate', recoverSharedInteractionState);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        recoverSharedInteractionState();
+    }
+});

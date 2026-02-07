@@ -1031,6 +1031,13 @@
             closeMobilePanel();
             closeAllTooltips();
             interactionState.reset();
+            if (mobilePanel) {
+                mobilePanel.dataset.visible = 'false';
+            }
+            document.documentElement.dataset.uiLayerOpen = 'false';
+            if (document.body?.dataset) {
+                document.body.dataset.uiLayerOpen = 'false';
+            }
         }
 
         let toastTimer = null;
