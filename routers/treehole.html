@@ -925,20 +925,63 @@
         body.is-mobile .info-tip.tooltip-open .tooltip {
             transform: translate(-50%, 0);
         }
+
+        .desktop-only { display: flex; }
+        .mobile-only { display: none; }
+        .tooltip,
+        .hint,
+        .info,
+        .username-hint,
+        .lock-status {
+            pointer-events: none;
+        }
+
+        @media (max-width: 767px) {
+            .desktop-only { display: none !important; }
+            .mobile-only { display: block !important; }
+            .drawer {
+                position: fixed;
+                top: 0;
+                right: 0;
+                width: 320px;
+                max-width: 86vw;
+                height: 100vh;
+                background: #fff;
+                box-shadow: -8px 0 24px rgba(0,0,0,0.08);
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                z-index: 100;
+                overflow-y: auto;
+            }
+            .drawer.open { transform: translateX(0); }
+            .drawer-mask {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.25);
+                z-index: 90;
+                display: none;
+            }
+            .drawer-mask.show { display: block !important; }
+        }
+
     </style>
     <!-- 引入字体图标 -->
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <!-- 顶部导航栏 - 移除AI树洞文字 -->
-    <header class="header">
+    <header class="header topbar">
         <div class="header-content">
             <div class="header-text">
                 <h1>心灵避风港</h1>
                 <p>小盈陪你倾诉所有心事，做你最温暖的倾听者</p>
             </div>
-            <div class="header-actions">
-                <button class="header-action-btn" id="mobile-menu-btn" type="button" aria-label="打开菜单">
+            <div id="desktopUserPanel" class="desktop-only" style="margin-left:auto;align-items:center;gap:8px;">
+                <span id="header-username" style="font-size:14px;">未登录</span>
+                <button id="header-settings-btn" class="header-action-btn" type="button">设置</button>
+            </div>
+            <div class="header-actions mobile-only">
+                <button class="header-action-btn" id="menuBtn" type="button" aria-label="打开菜单">
                     <i class="fas fa-bars"></i>
                     菜单
                 </button>
@@ -969,7 +1012,8 @@
         </section>
 
         <!-- 侧边栏：用户卡片 + 小盈形象 + 情绪分析报告（辅助布局） -->
-        <aside class="sidebar">
+        <div id="drawerMask" class="drawer-mask mobile-only"></div>
+        <aside id="drawer" class="sidebar drawer mobile-only">
             <div class="drawer-header">
                 <button class="drawer-close" id="drawer-close-btn" type="button" aria-label="关闭菜单">
                     <i class="fas fa-arrow-left"></i>
@@ -1230,7 +1274,7 @@
         }
 
         function updateDeviceMode() {
-            isMobile = window.innerWidth < 768;
+            isMobile = window.matchMedia("(max-width: 767px)").matches;
             document.body.classList.toggle('is-mobile', isMobile);
             if (!isMobile) {
                 closeAllTooltips();
@@ -1259,12 +1303,14 @@
 
         function openDrawer() {
             if (!isMobile) return;
-            document.body.classList.add('drawer-open');
+            drawer?.classList.add('open');
+            drawerMask?.classList.add('show');
             lockBodyScroll();
         }
 
         function closeDrawer() {
-            document.body.classList.remove('drawer-open');
+            drawer?.classList.remove('open');
+            drawerMask?.classList.remove('show');
             if (!document.querySelector('.modal-backdrop.active')) {
                 unlockBodyScroll();
             }
@@ -1301,6 +1347,8 @@
         function resolveTitleText() {
             const titleText = (currentProfile.username || "").trim();
             userCardTitle.innerText = titleText || "用户名";
+            const headerUsername = document.getElementById("header-username");
+            if (headerUsername) headerUsername.innerText = titleText || "未登录";
         }
 
         function updateAvatar(url) {
@@ -1499,10 +1547,13 @@
         const userAvatarImg = document.getElementById('user-avatar-img');
         const lockStatus = document.getElementById('lock-status');
         const userCardTitle = document.getElementById('user-card-title');
-        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenuBtn = document.getElementById('menuBtn');
         const drawerCloseBtn = document.getElementById('drawer-close-btn');
+        const drawer = document.getElementById('drawer');
+        const drawerMask = document.getElementById('drawerMask');
         const userModal = document.getElementById('user-modal');
         const emotionModal = document.getElementById('emotion-modal');
+        const headerSettingsBtn = document.getElementById('header-settings-btn');
         const mobileAvatarBox = document.getElementById('mobile-avatar-box');
         const mobileAvatarImg = document.getElementById('mobile-avatar-img');
         const mobileUsernameInput = document.getElementById('mobile-username');
@@ -1799,6 +1850,12 @@
             });
         }
 
+        if (headerSettingsBtn) {
+            headerSettingsBtn.addEventListener('click', () => {
+                openModal(userModal);
+            });
+        }
+
         if (mobileMenuBtn) {
             mobileMenuBtn.addEventListener('click', () => {
                 if (!isMobile) return;
@@ -1806,8 +1863,14 @@
             });
         }
 
-        if (drawerCloseBtn) {
+        if (isMobile && drawerCloseBtn) {
             drawerCloseBtn.addEventListener('click', () => {
+                closeDrawer();
+            });
+        }
+
+        if (isMobile && drawerMask) {
+            drawerMask.addEventListener('click', () => {
                 closeDrawer();
             });
         }
@@ -1836,6 +1899,10 @@
 
         syncViewport();
         updateDeviceMode();
+        if (!isMobile && drawer) {
+            drawer.remove();
+            drawerMask?.remove();
+        }
         setupTooltips();
 
         window.addEventListener('resize', syncViewport);
