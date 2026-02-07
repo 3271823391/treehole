@@ -57,11 +57,34 @@ function recoverSharedInteractionState() {
     if (window.SharedShellInteraction?.reset) {
         window.SharedShellInteraction.reset();
     }
+    const targets = [document.documentElement, document.body, document.getElementById('appShell')].filter(Boolean);
+    targets.forEach((node) => {
+        node.removeAttribute('inert');
+        node.style.pointerEvents = '';
+        node.style.overflow = '';
+        node.style.overflowX = '';
+        node.style.overflowY = '';
+        node.style.touchAction = '';
+        node.style.userSelect = '';
+    });
+    ['ui-locked', 'modal-open', 'drawer-open', 'panel-open'].forEach((lockClass) => {
+        document.documentElement.classList.remove(lockClass);
+        document.body?.classList.remove(lockClass);
+    });
+
+    document.querySelectorAll('.modal-backdrop.active, .drawer-backdrop.active, .overlay.active, .mask.active').forEach((layer) => {
+        layer.classList.remove('active');
+        if (layer.hasAttribute('aria-hidden')) {
+            layer.setAttribute('aria-hidden', 'true');
+        }
+    });
+
     document.querySelectorAll('.mobile-panel[data-visible="true"]').forEach((panel) => {
         panel.dataset.visible = 'false';
     });
 }
 
+document.addEventListener('DOMContentLoaded', recoverSharedInteractionState);
 window.addEventListener('load', measureFooter);
 window.addEventListener('resize', measureFooter);
 window.addEventListener('pageshow', recoverSharedInteractionState);
