@@ -1223,6 +1223,13 @@
             closeMobilePanel();
             closeAllTooltips();
             interactionState.reset();
+            if (mobilePanel) {
+                mobilePanel.dataset.visible = 'false';
+            }
+            document.documentElement.dataset.uiLayerOpen = 'false';
+            if (document.body?.dataset) {
+                document.body.dataset.uiLayerOpen = 'false';
+            }
         }
 
         let toastTimer = null;
@@ -1595,7 +1602,7 @@
                         cancelError.name = "AbortError";
                         throw cancelError;
                     }
-                    const resultRes = await fetch(`/api/voice_clone/tts/result?user_id=${encodeURIComponent(currentUserId)}&taskId=${encodeURIComponent(taskId)}`, {
+                    const resultRes = await fetch(`/api/voice_clone/tts/result?user_id=${encodeURIComponent(CURRENT_USER_ID)}&taskId=${encodeURIComponent(taskId)}`, {
                         method: "GET",
                         signal: controller.signal
                     });
@@ -1932,6 +1939,58 @@
         const voiceStopBtn = document.getElementById('voice-stop-btn');
                 const isProPlan = APP_PLAN === "pro";
 
+        function bindProVoiceControls() {
+            if (voiceCloneTriggers?.length && voiceCloneFile) {
+                voiceCloneTriggers.forEach((trigger) => {
+                    trigger.addEventListener('click', () => {
+                        voiceCloneFile.click();
+                    });
+                });
+            }
+            if (voiceCloneFile) {
+                voiceCloneFile.addEventListener('change', () => {
+                    const file = voiceCloneFile.files?.[0];
+                    if (file) {
+                        setVoiceCloneStatus(`已选择：${file.name}`);
+                    }
+                });
+            }
+            if (voiceCloneAction) {
+                voiceCloneAction.addEventListener('click', handleVoiceCloneUpload);
+            }
+            if (voiceOutputToggle) {
+                voiceOutputToggle.addEventListener('click', () => {
+                    setVoiceOutputEnabled(!voiceOutputEnabled);
+                });
+            }
+            if (voiceStopBtn) {
+                voiceStopBtn.addEventListener('click', () => {
+                    resetTtsQueue();
+                    showToast('已停止播报');
+                });
+            }
+            if (voiceEmotionReset) {
+                voiceEmotionReset.addEventListener('click', () => {
+                    applyEmotionState(createDefaultEmotionState());
+                    saveEmotionState();
+                    window.currentTtsExt = buildVoiceEmotionExt();
+                });
+            }
+            document.querySelectorAll('[data-voice-emotion]').forEach((input) => {
+                input.addEventListener('input', (event) => {
+                    const key = event.target.dataset.voiceEmotion;
+                    if (!key) return;
+                    const nextValue = clampEmotionValue(Number(event.target.value));
+                    event.target.value = nextValue;
+                    voiceEmotionState[key] = nextValue;
+                    syncEmotionValueDisplay(key, nextValue);
+                    saveEmotionState();
+                    window.currentTtsExt = buildVoiceEmotionExt();
+                });
+            });
+            loadEmotionState();
+            window.currentTtsExt = buildVoiceEmotionExt();
+        }
 
         const settingsBtn = document.getElementById("settingsBtn");
         if (settingsBtn) {
@@ -2206,6 +2265,7 @@
         applyDeviceMode();
         setupTooltips();
         initVoiceOutputToggle();
+        bindProVoiceControls();
         resetInteractionState();
 
         window.addEventListener('pageshow', resetInteractionState);
