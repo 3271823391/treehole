@@ -1209,6 +1209,13 @@
             }
         }
 
+        function resetInteractionState() {
+            closeMobilePanel();
+            closeAllTooltips();
+            document.documentElement.style.pointerEvents = '';
+            document.body.style.pointerEvents = '';
+        }
+
         let toastTimer = null;
         function showToast(message = "系统错误", { duration = 2200 } = {}) {
             const toast = document.getElementById('mobile-toast');
@@ -2190,6 +2197,11 @@
         applyDeviceMode();
         setupTooltips();
         initVoiceOutputToggle();
+        resetInteractionState();
+
+        window.addEventListener('pageshow', resetInteractionState);
+        window.addEventListener('pagehide', resetInteractionState);
+        window.addEventListener('beforeunload', resetInteractionState);
 
         window.addEventListener('resize', syncViewport);
         window.addEventListener('orientationchange', syncViewport);
