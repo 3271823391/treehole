@@ -6,5 +6,52 @@ function measureFooter() {
     document.documentElement.style.setProperty('--footer-h', `${height}px`);
 }
 
+function createInteractionStateManager() {
+    const activeLayers = new Set();
+    const lockClasses = ['ui-locked', 'modal-open', 'drawer-open', 'panel-open'];
+
+    function syncLayerFlags() {
+        const hasActiveLayer = activeLayers.size > 0;
+        const value = hasActiveLayer ? 'true' : 'false';
+        document.documentElement.dataset.uiLayerOpen = value;
+        document.body?.dataset && (document.body.dataset.uiLayerOpen = value);
+    }
+
+    function clearGlobalInteractionLocks() {
+        const targets = [document.documentElement, document.body].filter(Boolean);
+        targets.forEach((node) => {
+            node.style.pointerEvents = '';
+            node.style.overflow = '';
+            node.style.overflowX = '';
+            node.style.overflowY = '';
+            node.style.touchAction = '';
+            node.style.userSelect = '';
+            lockClasses.forEach((name) => node.classList.remove(name));
+        });
+    }
+
+    return {
+        setLayerOpen(layer, open) {
+            if (!layer) return;
+            if (open) {
+                activeLayers.add(layer);
+            } else {
+                activeLayers.delete(layer);
+            }
+            syncLayerFlags();
+            if (!open) {
+                clearGlobalInteractionLocks();
+            }
+        },
+        reset() {
+            activeLayers.clear();
+            syncLayerFlags();
+            clearGlobalInteractionLocks();
+        }
+    };
+}
+
+window.SharedShellInteraction = createInteractionStateManager();
+
 window.addEventListener('load', measureFooter);
 window.addEventListener('resize', measureFooter);

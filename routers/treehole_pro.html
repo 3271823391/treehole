@@ -1144,6 +1144,15 @@
 
         const USER_ID_SHA1_PATTERN = /^u_[0-9a-f]{40}$/i;
         const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const interactionState = window.SharedShellInteraction || {
+            setLayerOpen: () => {},
+            reset: () => {
+                document.documentElement.style.pointerEvents = '';
+                if (document.body) {
+                    document.body.style.pointerEvents = '';
+                }
+            }
+        };
 
         function isValidUserId(userId) {
             return typeof userId === "string" && (USER_ID_SHA1_PATTERN.test(userId) || USER_ID_UUID_PATTERN.test(userId));
@@ -1195,6 +1204,7 @@
             if (!mobilePanel) return;
             const visible = Boolean(open && isMobile);
             mobilePanel.dataset.visible = visible ? 'true' : 'false';
+            interactionState.setLayerOpen('mobile-panel', visible);
         }
 
         function closeMobilePanel() {
@@ -1212,8 +1222,7 @@
         function resetInteractionState() {
             closeMobilePanel();
             closeAllTooltips();
-            document.documentElement.style.pointerEvents = '';
-            document.body.style.pointerEvents = '';
+            interactionState.reset();
         }
 
         let toastTimer = null;
