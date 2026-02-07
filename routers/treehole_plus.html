@@ -1185,6 +1185,11 @@
         const EMOTION_HISTORY_LIMIT = 24;
         let isMobile = false;
         let scrollLockY = 0;
+        let scrollLocked = false;
+        const interactionState = {
+            drawerOpen: false,
+            activeModals: new Set()
+        };
         const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -1266,6 +1271,67 @@
             }
         }
 
+        function setScrollLocked(shouldLock) {
+            if (shouldLock && !scrollLocked) {
+                lockBodyScroll();
+                scrollLocked = true;
+                return;
+            }
+            if (!shouldLock && scrollLocked) {
+                unlockBodyScroll();
+                scrollLocked = false;
+            }
+        }
+
+        function applyInteractionState() {
+            const shouldLock = interactionState.drawerOpen || interactionState.activeModals.size > 0;
+            setScrollLocked(shouldLock);
+        }
+
+        function setDrawerState(open) {
+            const nextOpen = Boolean(open && isMobile && drawer && drawerMask);
+            interactionState.drawerOpen = nextOpen;
+            if (drawer) {
+                drawer.classList.toggle('open', nextOpen);
+            }
+            if (drawerMask) {
+                drawerMask.classList.toggle('show', nextOpen);
+            }
+            applyInteractionState();
+        }
+
+        function setModalState(modal, open) {
+            if (!modal) return;
+            const nextOpen = Boolean(open);
+            modal.classList.toggle('active', nextOpen);
+            modal.setAttribute('aria-hidden', nextOpen ? 'false' : 'true');
+            if (nextOpen) {
+                interactionState.activeModals.add(modal);
+            } else {
+                interactionState.activeModals.delete(modal);
+            }
+            applyInteractionState();
+        }
+
+        function resetInteractiveState() {
+            interactionState.activeModals.clear();
+            document.querySelectorAll('.modal-backdrop').forEach((modal) => {
+                modal.classList.remove('active');
+                modal.setAttribute('aria-hidden', 'true');
+            });
+            interactionState.drawerOpen = false;
+            if (drawer) {
+                drawer.classList.remove('open');
+            }
+            if (drawerMask) {
+                drawerMask.classList.remove('show');
+            }
+            if (scrollLocked || document.body.classList.contains('modal-open')) {
+                unlockBodyScroll();
+            }
+            scrollLocked = false;
+        }
+
         function restoreIOSViewport() {
             if (!isiOS) return;
             requestAnimationFrame(() => {
@@ -1282,7 +1348,7 @@
             document.body.classList.toggle('is-mobile', isMobile);
             if (!isMobile) {
                 closeAllTooltips();
-                closeDrawer();
+                setDrawerState(false);
             }
         }
 
@@ -1307,17 +1373,12 @@
 
         function openDrawer() {
             if (!isMobile) return;
-            drawer?.classList.add('open');
-            drawerMask?.classList.add('show');
-            lockBodyScroll();
+            closeAllTooltips();
+            setDrawerState(true);
         }
 
         function closeDrawer() {
-            drawer?.classList.remove('open');
-            drawerMask?.classList.remove('show');
-            if (!document.querySelector('.modal-backdrop.active')) {
-                unlockBodyScroll();
-            }
+            setDrawerState(false);
         }
 
         async function fetchJson(url, options = {}) {
@@ -1781,27 +1842,16 @@
 
         function openModal(modal) {
             if (!modal) return;
-            const hasActiveModal = document.querySelector('.modal-backdrop.active');
-            modal.classList.add('active');
-            modal.setAttribute('aria-hidden', 'false');
-            if (!hasActiveModal) {
-                lockBodyScroll();
-            }
+            setDrawerState(false);
+            setModalState(modal, true);
         }
 
         function closeModal(modal) {
-            if (!modal) return;
-            modal.classList.remove('active');
-            modal.setAttribute('aria-hidden', 'true');
-            if (!document.querySelector('.modal-backdrop.active')) {
-                unlockBodyScroll();
-            }
+            setModalState(modal, false);
         }
 
         function closeAllModals() {
-            document.querySelectorAll('.modal-backdrop.active').forEach((modal) => {
-                closeModal(modal);
-            });
+            Array.from(interactionState.activeModals).forEach((modal) => closeModal(modal));
         }
 
         function closeAllTooltips() {
@@ -1871,13 +1921,13 @@
             });
         }
 
-        if (isMobile && drawerCloseBtn) {
+        if (drawerCloseBtn) {
             drawerCloseBtn.addEventListener('click', () => {
                 closeDrawer();
             });
         }
 
-        if (isMobile && drawerMask) {
+        if (drawerMask) {
             drawerMask.addEventListener('click', () => {
                 closeDrawer();
             });
@@ -1907,6 +1957,7 @@
 
         syncViewport();
         updateDeviceMode();
+        resetInteractiveState();
         if (!isMobile && drawer) {
             drawer.remove();
             drawerMask?.remove();
