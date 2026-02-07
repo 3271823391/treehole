@@ -19,24 +19,15 @@
             --footer-h: 56px;
         }
 
-        html,
-        body {
-            height: 100%;
-            margin: 0;
-        }
-
         body {
             background-color: #f0f7ff;
             color: #333;
-            overflow: hidden; /* TODO: iOS Safari 键盘弹出时保持布局视口稳定 */
         }
 
-        /* 固定布局容器：避免键盘弹出导致 footer 跳动 */
         #appShell {
-            position: fixed;
-            inset: 0;
             display: flex;
             flex-direction: column;
+            min-height: 100vh;
         }
 
         /* 顶部导航栏 - 移除AI树洞，简化文字 */
@@ -462,7 +453,7 @@
             transform: translateY(0);
         }
 
-        .info-tip.tooltip-open .tooltip {
+        .info-tip[data-tooltip-visible="true"] .tooltip {
             opacity: 1;
             transform: translateY(0);
         }
@@ -700,12 +691,7 @@
             font-size: 0.85rem;
             color: #999;
             border-top: 1px solid #f0f7ff;
-            z-index: 9999;
             padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 0;
         }
 
         /* TODO: iOS 风格滑块，用于语音输出开关 */
@@ -771,7 +757,7 @@
         }
 
         /* 移动端菜单抽屉 */
-        .drawer-header {
+        .mobile-panel-header {
             display: none;
             align-items: center;
             gap: 0.6rem;
@@ -779,7 +765,7 @@
             border-bottom: 1px solid #e6efff;
         }
 
-        .drawer-close {
+        .mobile-panel-close {
             border: none;
             background: transparent;
             font-size: 1.1rem;
@@ -787,7 +773,7 @@
             cursor: pointer;
         }
 
-        .drawer-title {
+        .mobile-panel-title {
             font-weight: 600;
             color: #2f4b7c;
         }
@@ -807,7 +793,7 @@
             z-index: 1200;
         }
 
-        .mobile-toast.show {
+        .mobile-toast[data-visible="true"] {
             opacity: 1;
         }
 
@@ -924,7 +910,7 @@
             .desktop-only { display: none !important; }
             .mobile-only { display: block !important; }
 
-            .drawer {
+            .mobile-panel {
                 display: block;
                 position: fixed;
                 top: 0;
@@ -941,11 +927,11 @@
                 padding-bottom: calc(1.2rem + env(safe-area-inset-bottom));
             }
 
-            .drawer.open {
+            .mobile-panel[data-visible="true"] {
                 transform: translateX(0);
             }
 
-            .drawer-header {
+            .mobile-panel-header {
                 display: flex;
             }
 
@@ -960,7 +946,7 @@
                 transform: translate(-50%, -6px);
             }
 
-            .info-tip.tooltip-open .tooltip {
+            .info-tip[data-tooltip-visible="true"] .tooltip {
                 transform: translate(-50%, 0);
             }
         }
@@ -1026,12 +1012,12 @@
             </section>
 
             <!-- 侧边栏：用户卡片 + 小盈形象 + 情绪分析报告（辅助布局） -->
-        <aside id="drawer" class="sidebar drawer">
-            <div class="drawer-header">
-                <button class="drawer-close" id="drawer-close-btn" type="button" aria-label="关闭菜单">
+        <aside id="mobile-panel" class="sidebar mobile-panel">
+            <div class="mobile-panel-header">
+                <button class="mobile-panel-close" id="menu-close-btn" type="button" aria-label="关闭菜单">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <span class="drawer-title">菜单</span>
+                <span class="mobile-panel-title">菜单</span>
             </div>
             <div class="user-card">
                 <div class="user-card-header">
@@ -1145,7 +1131,6 @@
         const EMOTION_DEBOUNCE_MS = 450;
         const EMOTION_HISTORY_LIMIT = 24;
         let isMobile = window.matchMedia("(max-width: 767px)").matches;
-        let mobileDrawerOpen = false;
         let voiceOutputEnabled = false;
         let ttsActive = false;
         let ttsAudio = null;
@@ -1206,20 +1191,21 @@
             document.documentElement.style.setProperty('--app-height', `${height}px`);
             document.documentElement.style.setProperty('--vv-top', `${offsetTop}px`);
         }
-        function setMobileDrawer(open) {
-            mobileDrawerOpen = Boolean(open && isMobile && drawer);
-            if (drawer) drawer.classList.toggle('open', mobileDrawerOpen);
+        function setMobilePanelVisible(open) {
+            if (!mobilePanel) return;
+            const visible = Boolean(open && isMobile);
+            mobilePanel.dataset.visible = visible ? 'true' : 'false';
         }
 
-        function closeDrawer() {
-            setMobileDrawer(false);
+        function closeMobilePanel() {
+            setMobilePanelVisible(false);
         }
 
         function applyDeviceMode() {
             isMobile = window.matchMedia("(max-width: 767px)").matches;
             if (!isMobile) {
                 closeAllTooltips();
-                closeDrawer();
+                closeMobilePanel();
             }
         }
 
@@ -1228,14 +1214,14 @@
             const toast = document.getElementById('mobile-toast');
             if (!toast) return;
             toast.innerText = message;
-            toast.classList.add('show');
+            toast.dataset.visible = 'true';
             if (toastTimer) {
                 clearTimeout(toastTimer);
                 toastTimer = null;
             }
             if (duration > 0) {
                 toastTimer = setTimeout(() => {
-                    toast.classList.remove('show');
+                    toast.dataset.visible = 'false';
                     toastTimer = null;
                 }, duration);
             }
@@ -1244,7 +1230,7 @@
         function hideToast() {
             const toast = document.getElementById('mobile-toast');
             if (!toast) return;
-            toast.classList.remove('show');
+            toast.dataset.visible = 'false';
             if (toastTimer) {
                 clearTimeout(toastTimer);
                 toastTimer = null;
@@ -1300,10 +1286,10 @@
             }
         }
 
-        function openDrawer() {
+        function openMobilePanel() {
             if (!isMobile) return;
             closeAllTooltips();
-            setMobileDrawer(true);
+            setMobilePanelVisible(true);
         }
 
         async function fetchJson(url, options = {}) {
@@ -1457,7 +1443,7 @@
             voiceCloneStatus.textContent = message || "";
             voiceCloneStatus.className = "voice-clone-status";
             if (type) {
-                voiceCloneStatus.classList.add(type);
+                voiceCloneStatus.className = `voice-clone-status ${type}`;
             }
         }
 
@@ -1465,8 +1451,7 @@
             if (!voiceOutputToggle) return;
             const stored = safeLocalStorageGet(STORAGE_VOICE_OUTPUT);
             voiceOutputEnabled = stored === "1";
-            voiceOutputToggle.classList.toggle('on', voiceOutputEnabled);
-            voiceOutputToggle.classList.toggle('off', !voiceOutputEnabled);
+            voiceOutputToggle.className = voiceOutputEnabled ? 'ios-switch on' : 'ios-switch off';
             voiceOutputToggle.setAttribute('aria-checked', voiceOutputEnabled ? 'true' : 'false');
         }
 
@@ -1474,8 +1459,7 @@
             voiceOutputEnabled = Boolean(nextValue);
             safeLocalStorageSet(STORAGE_VOICE_OUTPUT, voiceOutputEnabled ? "1" : "0");
             if (voiceOutputToggle) {
-                voiceOutputToggle.classList.toggle('on', voiceOutputEnabled);
-                voiceOutputToggle.classList.toggle('off', !voiceOutputEnabled);
+                voiceOutputToggle.className = voiceOutputEnabled ? 'ios-switch on' : 'ios-switch off';
                 voiceOutputToggle.setAttribute('aria-checked', voiceOutputEnabled ? 'true' : 'false');
             }
             if (!voiceOutputEnabled) {
@@ -1918,8 +1902,8 @@
         const mobileLockStatus = lockStatus;
         const userCardTitle = document.getElementById('user-card-title');
         const mobileMenuBtn = document.getElementById('menuBtn');
-        const drawerCloseBtn = document.getElementById('drawer-close-btn');
-        const drawer = document.getElementById('drawer');
+        const menuCloseBtn = document.getElementById('menu-close-btn');
+        const mobilePanel = document.getElementById('mobile-panel');
         const headerSettingsBtn = document.getElementById('header-settings-btn');
         const voiceCloneTriggers = document.querySelectorAll('[data-voice-clone-trigger]');
         const voiceCloneAction = document.getElementById('voice-clone-action');
@@ -2118,8 +2102,8 @@
             }
         }
         function closeAllTooltips() {
-            document.querySelectorAll('.info-tip.tooltip-open').forEach((btn) => {
-                btn.classList.remove('tooltip-open');
+            document.querySelectorAll('.info-tip[data-tooltip-visible="true"]').forEach((btn) => {
+                btn.dataset.tooltipVisible = 'false';
                 const tooltip = btn.querySelector('.tooltip');
                 if (tooltip) {
                     tooltip.style.left = '';
@@ -2155,10 +2139,10 @@
                 btn.addEventListener('click', (event) => {
                     if (!isMobile) return;
                     event.stopPropagation();
-                    const isOpen = btn.classList.contains('tooltip-open');
+                    const isOpen = btn.dataset.tooltipVisible === 'true';
                     closeAllTooltips();
                     if (!isOpen) {
-                        btn.classList.add('tooltip-open');
+                        btn.dataset.tooltipVisible = 'true';
                         positionTooltip(btn);
                     }
                 });
@@ -2174,7 +2158,7 @@
         if (headerSettingsBtn) {
             headerSettingsBtn.addEventListener('click', () => {
                 if (isMobile) {
-                    openDrawer();
+                    openMobilePanel();
                     return;
                 }
                 loginUsernameInput?.focus();
@@ -2184,13 +2168,13 @@
         if (mobileMenuBtn) {
             mobileMenuBtn.addEventListener('click', () => {
                 if (!isMobile) return;
-                openDrawer();
+                openMobilePanel();
             });
         }
 
-        if (drawerCloseBtn) {
-            drawerCloseBtn.addEventListener('click', () => {
-                closeDrawer();
+        if (menuCloseBtn) {
+            menuCloseBtn.addEventListener('click', () => {
+                closeMobilePanel();
             });
         }
 

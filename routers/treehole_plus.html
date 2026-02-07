@@ -410,7 +410,7 @@
             transform: translateY(0);
         }
 
-        .info-tip.tooltip-open .tooltip {
+        .info-tip[data-tooltip-visible="true"] .tooltip {
             opacity: 1;
             transform: translateY(0);
         }
@@ -621,7 +621,7 @@
         }
 
         /* 移动端菜单抽屉 */
-        .drawer-header {
+        .mobile-panel-header {
             display: none;
             align-items: center;
             gap: 0.6rem;
@@ -629,7 +629,7 @@
             border-bottom: 1px solid #e6efff;
         }
 
-        .drawer-close {
+        .mobile-panel-close {
             border: none;
             background: transparent;
             font-size: 1.1rem;
@@ -637,7 +637,7 @@
             cursor: pointer;
         }
 
-        .drawer-title {
+        .mobile-panel-title {
             font-weight: 600;
             color: #2f4b7c;
         }
@@ -657,7 +657,7 @@
             z-index: 1200;
         }
 
-        .mobile-toast.show {
+        .mobile-toast[data-visible="true"] {
             opacity: 1;
         }
 
@@ -760,7 +760,7 @@
             .desktop-only { display: none !important; }
             .mobile-only { display: block !important; }
 
-            .drawer {
+            .mobile-panel {
                 display: block;
                 position: fixed;
                 top: 0;
@@ -777,11 +777,11 @@
                 padding-bottom: calc(1.2rem + env(safe-area-inset-bottom));
             }
 
-            .drawer.open {
+            .mobile-panel[data-visible="true"] {
                 transform: translateX(0);
             }
 
-            .drawer-header {
+            .mobile-panel-header {
                 display: flex;
             }
 
@@ -796,7 +796,7 @@
                 transform: translate(-50%, -6px);
             }
 
-            .info-tip.tooltip-open .tooltip {
+            .info-tip[data-tooltip-visible="true"] .tooltip {
                 transform: translate(-50%, 0);
             }
         }
@@ -851,12 +851,12 @@
         </section>
 
         <!-- 侧边栏：用户卡片 + 小盈形象 + 情绪分析报告（辅助布局） -->
-        <aside id="drawer" class="sidebar drawer">
-            <div class="drawer-header">
-                <button class="drawer-close" id="drawer-close-btn" type="button" aria-label="关闭菜单">
+        <aside id="mobile-panel" class="sidebar mobile-panel">
+            <div class="mobile-panel-header">
+                <button class="mobile-panel-close" id="menu-close-btn" type="button" aria-label="关闭菜单">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <span class="drawer-title">菜单</span>
+                <span class="mobile-panel-title">菜单</span>
             </div>
             <div class="user-card">
                 <div class="user-card-header">
@@ -947,7 +947,6 @@
         const EMOTION_DEBOUNCE_MS = 450;
         const EMOTION_HISTORY_LIMIT = 24;
         let isMobile = window.matchMedia("(max-width: 767px)").matches;
-        let mobileDrawerOpen = false;
         const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -1000,20 +999,21 @@
             document.documentElement.style.setProperty('--app-height', `${height}px`);
             document.documentElement.style.setProperty('--vv-top', `${offsetTop}px`);
         }
-        function setMobileDrawer(open) {
-            mobileDrawerOpen = Boolean(open && isMobile && drawer);
-            if (drawer) drawer.classList.toggle('open', mobileDrawerOpen);
+        function setMobilePanelVisible(open) {
+            if (!mobilePanel) return;
+            const visible = Boolean(open && isMobile);
+            mobilePanel.dataset.visible = visible ? 'true' : 'false';
         }
 
-        function closeDrawer() {
-            setMobileDrawer(false);
+        function closeMobilePanel() {
+            setMobilePanelVisible(false);
         }
 
         function applyDeviceMode() {
             isMobile = window.matchMedia("(max-width: 767px)").matches;
             if (!isMobile) {
                 closeAllTooltips();
-                closeDrawer();
+                closeMobilePanel();
             }
         }
 
@@ -1022,12 +1022,12 @@
             const toast = document.getElementById('mobile-toast');
             if (!toast) return;
             toast.innerText = message;
-            toast.classList.add('show');
+            toast.dataset.visible = 'true';
             if (toastTimer) {
                 clearTimeout(toastTimer);
             }
             toastTimer = setTimeout(() => {
-                toast.classList.remove('show');
+                toast.dataset.visible = 'false';
             }, 2200);
         }
 
@@ -1036,10 +1036,10 @@
             showToast(message || "服务暂不可用");
         }
 
-        function openDrawer() {
+        function openMobilePanel() {
             if (!isMobile) return;
             closeAllTooltips();
-            setMobileDrawer(true);
+            setMobilePanelVisible(true);
         }
 
         async function fetchJson(url, options = {}) {
@@ -1279,8 +1279,8 @@
         const mobileLockStatus = lockStatus;
         const userCardTitle = document.getElementById('user-card-title');
         const mobileMenuBtn = document.getElementById('menuBtn');
-        const drawerCloseBtn = document.getElementById('drawer-close-btn');
-        const drawer = document.getElementById('drawer');
+        const menuCloseBtn = document.getElementById('menu-close-btn');
+        const mobilePanel = document.getElementById('mobile-panel');
         const headerSettingsBtn = document.getElementById('header-settings-btn');
                 const isProPlan = APP_PLAN === "pro";
 
@@ -1476,8 +1476,8 @@
             }
         }
         function closeAllTooltips() {
-            document.querySelectorAll('.info-tip.tooltip-open').forEach((btn) => {
-                btn.classList.remove('tooltip-open');
+            document.querySelectorAll('.info-tip[data-tooltip-visible="true"]').forEach((btn) => {
+                btn.dataset.tooltipVisible = 'false';
                 const tooltip = btn.querySelector('.tooltip');
                 if (tooltip) {
                     tooltip.style.left = '';
@@ -1513,10 +1513,10 @@
                 btn.addEventListener('click', (event) => {
                     if (!isMobile) return;
                     event.stopPropagation();
-                    const isOpen = btn.classList.contains('tooltip-open');
+                    const isOpen = btn.dataset.tooltipVisible === 'true';
                     closeAllTooltips();
                     if (!isOpen) {
-                        btn.classList.add('tooltip-open');
+                        btn.dataset.tooltipVisible = 'true';
                         positionTooltip(btn);
                     }
                 });
@@ -1532,7 +1532,7 @@
         if (headerSettingsBtn) {
             headerSettingsBtn.addEventListener('click', () => {
                 if (isMobile) {
-                    openDrawer();
+                    openMobilePanel();
                     return;
                 }
                 loginUsernameInput?.focus();
@@ -1542,13 +1542,13 @@
         if (mobileMenuBtn) {
             mobileMenuBtn.addEventListener('click', () => {
                 if (!isMobile) return;
-                openDrawer();
+                openMobilePanel();
             });
         }
 
-        if (drawerCloseBtn) {
-            drawerCloseBtn.addEventListener('click', () => {
-                closeDrawer();
+        if (menuCloseBtn) {
+            menuCloseBtn.addEventListener('click', () => {
+                closeMobilePanel();
             });
         }
 
