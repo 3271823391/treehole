@@ -446,7 +446,6 @@
             text-align: left;
             box-shadow: 0 8px 16px rgba(15, 25, 40, 0.2);
             opacity: 0;
-            pointer-events: none;
             transform: translateY(-6px);
             transition: opacity 0.2s ease, transform 0.2s ease;
             z-index: 1200;
@@ -460,13 +459,11 @@
         .info-tip:focus .tooltip,
         .info-tip:focus-within .tooltip {
             opacity: 1;
-            pointer-events: auto;
             transform: translateY(0);
         }
 
         .info-tip.tooltip-open .tooltip {
             opacity: 1;
-            pointer-events: auto;
             transform: translateY(0);
         }
 
@@ -508,8 +505,7 @@
             color: #3b6fb6;
         }
 
-        .voice-clone-card button.primary,
-        .modal-body button.primary {
+        .voice-clone-card button.primary {
             background-color: #4a90e2;
             color: #fff;
             border: none;
@@ -774,226 +770,6 @@
             opacity: 0.6;
         }
 
-        .modal-backdrop {
-            position: fixed;
-            top: var(--vv-top);
-            left: 0;
-            right: 0;
-            background: rgba(15, 25, 40, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            z-index: 1100;
-            height: var(--app-height);
-        }
-
-        .modal-backdrop.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: #fff;
-            border-radius: 18px;
-            width: min(520px, 92vw);
-            max-height: calc(var(--app-height) * 0.8);
-            box-shadow: 0 20px 40px rgba(15, 25, 40, 0.25);
-            display: flex;
-            flex-direction: column;
-            overflow: visible;
-        }
-
-        .modal-header {
-            padding: 1rem 1.2rem 0.6rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid #eef3fb;
-        }
-
-        .modal-header h3 {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: #3b6fb6;
-        }
-
-        .modal-close {
-            border: none;
-            background: #e8f1ff;
-            color: #3b6fb6;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        .modal-body {
-            padding: 1rem 1.2rem 1.4rem;
-            overflow: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* TODO: 语音克隆表单样式，保持移动端可读性 */
-        .voice-clone-form {
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-        }
-
-        .voice-emotion-card {
-            margin-top: 1rem;
-            padding: 0.9rem 1rem;
-            border: 1px solid #e4edf9;
-            border-radius: 12px;
-            background: #f9fbff;
-        }
-
-        .voice-emotion-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 0.8rem;
-        }
-
-        .voice-emotion-title {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #3b6fb6;
-        }
-
-        .voice-emotion-reset {
-            border: none;
-            background: #e8f1ff;
-            color: #3b6fb6;
-            border-radius: 999px;
-            font-size: 0.8rem;
-            padding: 0.3rem 0.7rem;
-            cursor: pointer;
-        }
-
-        .voice-emotion-sliders {
-            display: grid;
-            gap: 0.7rem;
-        }
-
-        .voice-emotion-item {
-            display: grid;
-            grid-template-columns: 3.5rem 1fr 2.5rem;
-            align-items: center;
-            gap: 0.6rem;
-            font-size: 0.85rem;
-            color: #4b5c72;
-        }
-
-        .voice-emotion-item input[type="range"] {
-            width: 100%;
-        }
-
-        .voice-emotion-value {
-            text-align: right;
-            font-variant-numeric: tabular-nums;
-            color: #3b6fb6;
-        }
-
-        .voice-clone-form label {
-            font-size: 0.85rem;
-            color: #6b7c93;
-        }
-
-        .voice-clone-form input,
-        .voice-clone-form textarea {
-            border: 1px solid #d6e3f8;
-            border-radius: 10px;
-            padding: 0.55rem 0.7rem;
-            font-size: 0.9rem;
-        }
-
-        .voice-clone-status {
-            min-height: 1.2rem;
-            font-size: 0.85rem;
-            color: #6b7c93;
-        }
-
-        .voice-clone-status.success {
-            color: #2f8d46;
-        }
-
-        .voice-clone-status.error {
-            color: #d9534f;
-        }
-
-        .user-modal-profile {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.2rem;
-        }
-
-        .user-modal-profile .lock-status {
-            margin-top: 0.2rem;
-        }
-
-        .username-actions {
-            margin-top: 16px;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        #usernameConfirmBtn {
-            position: static;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 1;
-            visibility: visible;
-            flex: 0 0 auto;
-        }
-
-        .username-secondary-actions {
-            margin-top: 10px;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .btn-primary,
-        .btn-ghost {
-            flex: 1;
-            border-radius: 12px;
-            padding: 10px 12px;
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .btn-primary {
-            color: #fff;
-            background: linear-gradient(135deg, #6366f1, #4a90e2);
-            border-color: rgba(99, 102, 241, 0.45);
-        }
-
-        .btn-ghost {
-            color: #475569;
-            background: rgba(255, 255, 255, 0.75);
-        }
-
-        .emotion-modal-content {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        body.modal-open {
-            position: fixed;
-            left: 0;
-            right: 0;
-            overflow: hidden;
-        }
-
-        body.is-mobile.modal-open {
-            transform: none;
-            filter: none;
-        }
-
         /* 移动端菜单抽屉 */
         .drawer-header {
             display: none;
@@ -1027,7 +803,6 @@
             border-radius: 999px;
             font-size: 0.9rem;
             opacity: 0;
-            pointer-events: none;
             transition: opacity 0.2s ease;
             z-index: 1200;
         }
@@ -1123,96 +898,71 @@
             }
         }
 
-        body.is-mobile .header-content {
-            justify-content: space-between;
-        }
-
-        body.is-mobile .header-text {
-            text-align: left;
-        }
-
-        body.is-mobile .header-actions {
-            display: flex;
-        }
-
-        body.is-mobile .sidebar {
-            display: block;
-            position: fixed;
-            top: 0;
-            right: 0;
-            height: 100vh;
-            width: min(80vw, 320px);
-            max-width: 320px;
-            background: #fff;
-            padding: 1.2rem;
-            overflow-y: auto;
-            box-shadow: -12px 0 30px rgba(15, 25, 40, 0.15);
-            transform: translateX(100%);
-            transition: transform 0.25s ease;
-            z-index: 1050;
-            padding-bottom: calc(1.2rem + env(safe-area-inset-bottom));
-        }
-
-        body.is-mobile.drawer-open .sidebar {
-            transform: translateX(0);
-        }
-
-        body.is-mobile .drawer-header {
-            display: flex;
-        }
-
-        body.is-mobile .info-tip:hover .tooltip {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        body.is-mobile .info-tip .tooltip {
-            left: 50%;
-            right: auto;
-            top: 1.8rem;
-            transform: translate(-50%, -6px);
-        }
-
-        body.is-mobile .info-tip.tooltip-open .tooltip {
-            transform: translate(-50%, 0);
-        }
-
-        .desktop-only { display: flex; }
+                .desktop-only { display: flex; }
         .mobile-only { display: none; }
+
         .tooltip,
         .hint,
         .info,
         .username-hint,
         .lock-status {
-            pointer-events: none;
         }
 
         @media (max-width: 767px) {
+            .header-content {
+                justify-content: space-between;
+            }
+
+            .header-text {
+                text-align: left;
+            }
+
+            .header-actions {
+                display: flex;
+            }
+
             .desktop-only { display: none !important; }
             .mobile-only { display: block !important; }
+
             .drawer {
+                display: block;
                 position: fixed;
                 top: 0;
                 right: 0;
-                width: 320px;
-                max-width: 86vw;
+                width: min(86vw, 320px);
                 height: 100vh;
                 background: #fff;
-                box-shadow: -8px 0 24px rgba(0,0,0,0.08);
+                box-shadow: -12px 0 30px rgba(15, 25, 40, 0.15);
                 transform: translateX(100%);
-                transition: transform 0.3s ease;
-                z-index: 100;
+                transition: transform 0.25s ease;
+                z-index: 1050;
                 overflow-y: auto;
+                padding: 1.2rem;
+                padding-bottom: calc(1.2rem + env(safe-area-inset-bottom));
             }
-            .drawer.open { transform: translateX(0); }
-            .drawer-mask {
-                position: fixed;
-                inset: 0;
-                background: rgba(0,0,0,0.25);
-                z-index: 90;
-                display: none;
+
+            .drawer.open {
+                transform: translateX(0);
             }
-            .drawer-mask.show { display: block !important; }
+
+            .drawer-header {
+                display: flex;
+            }
+
+            .info-tip:hover .tooltip {
+                opacity: 0;
+            }
+
+            .info-tip .tooltip {
+                left: 50%;
+                right: auto;
+                top: 1.8rem;
+                transform: translate(-50%, -6px);
+            }
+
+            .info-tip.tooltip-open .tooltip {
+                transform: translate(-50%, 0);
+            }
         }
 
     </style>
@@ -1276,8 +1026,7 @@
             </section>
 
             <!-- 侧边栏：用户卡片 + 小盈形象 + 情绪分析报告（辅助布局） -->
-            <div id="drawerMask" class="drawer-mask mobile-only"></div>
-        <aside id="drawer" class="sidebar drawer mobile-only">
+        <aside id="drawer" class="sidebar drawer">
             <div class="drawer-header">
                 <button class="drawer-close" id="drawer-close-btn" type="button" aria-label="关闭菜单">
                     <i class="fas fa-arrow-left"></i>
@@ -1374,158 +1123,6 @@
         版权所有-JSHT捷思慧图科技 翻版必究
     </footer>
 
-    <div class="modal-backdrop" id="user-modal" aria-hidden="true">
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
-            <div class="modal-header">
-                <h3 id="user-modal-title">用户身份</h3>
-                <button class="modal-close" type="button" data-modal-close>
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="user-modal-profile">
-                    <div class="user-avatar-box" id="mobile-avatar-box">
-                        <img src="/static/avatars/default.svg" alt="用户头像" id="mobile-avatar-img">
-                    </div>
-                    <div>
-                        <div class="lock-status username-hint" id="mobile-lock-status">输入用户名后，点击「确定」保存</div>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="label-with-tip">
-                        <label for="mobile-username">用户名</label>
-                        <button type="button" class="info-tip" aria-label="用户名说明">
-                            <i class="fas fa-circle-info"></i>
-                            <span class="tooltip">
-                                用户名将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
-                                修改用户名将切换到另一份新的对话记忆。
-                            </span>
-                        </button>
-                    </div>
-                    <input id="mobile-username" type="text" placeholder="请输入用户名">
-                </div>
-                <div class="username-actions">
-                    <button id="usernameConfirmBtn" class="btn-primary" type="button">确定</button>
-                </div>
-                <div class="username-secondary-actions">
-                    <button id="usernameCancelBtn" class="btn-ghost" type="button">取消</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-backdrop" id="emotion-modal" aria-hidden="true">
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="emotion-modal-title">
-            <div class="modal-header">
-                <h3 id="emotion-modal-title">情绪分析报告</h3>
-                <button class="modal-close" type="button" data-modal-close>
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="emotion-modal-content">
-                    <div class="emotion-score">
-                        <div class="score-label">
-                            <span>情绪指数</span>
-                            <span><span id="emotion-score-num-mobile">60</span>/100</span>
-                        </div>
-                        <div class="score-bar">
-                            <div class="score-fill" id="score-fill-mobile"></div>
-                        </div>
-                    </div>
-                    <div class="emotion-tags" id="emotion-tags-mobile">
-                        <span class="emotion-tag">平静</span>
-                        <span class="emotion-tag">期待</span>
-                    </div>
-                    <div class="emotion-analysis">
-                        <span class="analysis-label">情绪分析：</span>
-                        <span id="emotion-analysis-mobile">当前未检测到明显的负面情绪，心态处于平和的状态，对交流抱有轻微期待。</span>
-                    </div>
-                    <div class="emotion-suggest">
-                        <span class="suggest-label">暖心建议：</span>
-                        <span id="emotion-suggest-mobile">保持这份平和的心情，大胆说出你的想法吧，我会一直在这里陪着你～</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-backdrop" id="voice-clone-modal" aria-hidden="true">
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="voice-clone-title">
-            <div class="modal-header">
-                <h3 id="voice-clone-title">语音克隆</h3>
-                <button class="modal-close" type="button" data-modal-close>
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <!-- TODO: 上传参考音频，创建音色模型 -->
-                <div class="voice-clone-form">
-                    <label for="voice-clone-file">参考音频</label>
-                    <input type="file" id="voice-clone-file" accept="audio/*">
-
-                    <label for="voice-clone-name">名称</label>
-                    <input type="text" id="voice-clone-name" value="我的声音" maxlength="32">
-
-                    <label for="voice-clone-desc">描述（可选）</label>
-                    <textarea id="voice-clone-desc" rows="2" placeholder="如：情绪平稳、无背景音"></textarea>
-
-                    <div class="voice-clone-status" id="voice-clone-status" role="status" aria-live="polite"></div>
-                    <button class="primary" id="voice-clone-action" type="button">上传/创建</button>
-                </div>
-
-                <div class="voice-emotion-card">
-                    <div class="voice-emotion-header">
-                        <div class="voice-emotion-title">设定情感参数</div>
-                        <button class="voice-emotion-reset" id="voice-emotion-reset" type="button">重置</button>
-                    </div>
-                    <div class="voice-emotion-sliders">
-                        <div class="voice-emotion-item">
-                            <span>开心</span>
-                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="happy">
-                            <span class="voice-emotion-value" data-voice-emotion-value="happy">0</span>
-                        </div>
-                        <div class="voice-emotion-item">
-                            <span>愤怒</span>
-                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="angry">
-                            <span class="voice-emotion-value" data-voice-emotion-value="angry">0</span>
-                        </div>
-                        <div class="voice-emotion-item">
-                            <span>悲伤</span>
-                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="sad">
-                            <span class="voice-emotion-value" data-voice-emotion-value="sad">0</span>
-                        </div>
-                        <div class="voice-emotion-item">
-                            <span>恐惧</span>
-                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="afraid">
-                            <span class="voice-emotion-value" data-voice-emotion-value="afraid">0</span>
-                        </div>
-                        <div class="voice-emotion-item">
-                            <span>厌恶</span>
-                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="disgusted">
-                            <span class="voice-emotion-value" data-voice-emotion-value="disgusted">0</span>
-                        </div>
-                        <div class="voice-emotion-item">
-                            <span>忧郁</span>
-                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="melancholic">
-                            <span class="voice-emotion-value" data-voice-emotion-value="melancholic">0</span>
-                        </div>
-                        <div class="voice-emotion-item">
-                            <span>惊讶</span>
-                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="surprised">
-                            <span class="voice-emotion-value" data-voice-emotion-value="surprised">0</span>
-                        </div>
-                        <div class="voice-emotion-item">
-                            <span>平静</span>
-                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="calm">
-                            <span class="voice-emotion-value" data-voice-emotion-value="calm">0</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="mobile-toast" id="mobile-toast" role="status" aria-live="polite"></div>
 
     <script src="/static/shared_shell.js"></script>
@@ -1547,13 +1144,8 @@
         let lastEmotionRound = -1;
         const EMOTION_DEBOUNCE_MS = 450;
         const EMOTION_HISTORY_LIMIT = 24;
-        let isMobile = false;
-        let scrollLockY = 0;
-        let scrollLocked = false;
-        const interactionState = {
-            drawerOpen: false,
-            activeModals: new Set()
-        };
+        let isMobile = window.matchMedia("(max-width: 767px)").matches;
+        let mobileDrawerOpen = false;
         let voiceOutputEnabled = false;
         let ttsActive = false;
         let ttsAudio = null;
@@ -1614,113 +1206,20 @@
             document.documentElement.style.setProperty('--app-height', `${height}px`);
             document.documentElement.style.setProperty('--vv-top', `${offsetTop}px`);
         }
-
-        function lockBodyScroll() {
-            scrollLockY = window.scrollY || window.pageYOffset || 0;
-            document.body.style.position = 'fixed';
-            document.body.style.top = `-${scrollLockY}px`;
-            document.body.style.width = '100%';
-            document.body.style.left = '0';
-            document.body.style.right = '0';
-            document.body.classList.add('modal-open');
+        function setMobileDrawer(open) {
+            mobileDrawerOpen = Boolean(open && isMobile && drawer);
+            if (drawer) drawer.classList.toggle('open', mobileDrawerOpen);
         }
 
-        function unlockBodyScroll() {
-            document.body.classList.remove('modal-open');
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            document.body.style.left = '';
-            document.body.style.right = '';
-            window.scrollTo(0, scrollLockY);
-            if (isiOS) {
-                requestAnimationFrame(() => {
-                    document.body.style.transform = 'translateZ(0)';
-                    requestAnimationFrame(() => {
-                        document.body.style.transform = '';
-                    });
-                });
-            }
+        function closeDrawer() {
+            setMobileDrawer(false);
         }
 
-        function setScrollLocked(shouldLock) {
-            if (shouldLock && !scrollLocked) {
-                lockBodyScroll();
-                scrollLocked = true;
-                return;
-            }
-            if (!shouldLock && scrollLocked) {
-                unlockBodyScroll();
-                scrollLocked = false;
-            }
-        }
-
-        function applyInteractionState() {
-            const shouldLock = interactionState.drawerOpen || interactionState.activeModals.size > 0;
-            setScrollLocked(shouldLock);
-        }
-
-        function setDrawerState(open) {
-            const nextOpen = Boolean(open && isMobile && drawer && drawerMask);
-            interactionState.drawerOpen = nextOpen;
-            if (drawer) {
-                drawer.classList.toggle('open', nextOpen);
-            }
-            if (drawerMask) {
-                drawerMask.classList.toggle('show', nextOpen);
-            }
-            applyInteractionState();
-        }
-
-        function setModalState(modal, open) {
-            if (!modal) return;
-            const nextOpen = Boolean(open);
-            modal.classList.toggle('active', nextOpen);
-            modal.setAttribute('aria-hidden', nextOpen ? 'false' : 'true');
-            if (nextOpen) {
-                interactionState.activeModals.add(modal);
-            } else {
-                interactionState.activeModals.delete(modal);
-            }
-            applyInteractionState();
-        }
-
-        function resetInteractiveState() {
-            interactionState.activeModals.clear();
-            document.querySelectorAll('.modal-backdrop').forEach((modal) => {
-                modal.classList.remove('active');
-                modal.setAttribute('aria-hidden', 'true');
-            });
-            interactionState.drawerOpen = false;
-            if (drawer) {
-                drawer.classList.remove('open');
-            }
-            if (drawerMask) {
-                drawerMask.classList.remove('show');
-            }
-            if (scrollLocked || document.body.classList.contains('modal-open')) {
-                unlockBodyScroll();
-            }
-            scrollLocked = false;
-        }
-
-        function restoreIOSViewport() {
-            if (!isiOS) return;
-            requestAnimationFrame(() => {
-                window.scrollTo(0, window.scrollY || 0);
-                document.body.style.transform = 'translateZ(0)';
-                requestAnimationFrame(() => {
-                    document.body.style.transform = '';
-                });
-            });
-        }
-
-        function updateDeviceMode() {
+        function applyDeviceMode() {
             isMobile = window.matchMedia("(max-width: 767px)").matches;
-            document.body.classList.toggle('is-mobile', isMobile);
             if (!isMobile) {
                 closeAllTooltips();
-                setDrawerState(false);
+                closeDrawer();
             }
         }
 
@@ -1804,11 +1303,7 @@
         function openDrawer() {
             if (!isMobile) return;
             closeAllTooltips();
-            setDrawerState(true);
-        }
-
-        function closeDrawer() {
-            setDrawerState(false);
+            setMobileDrawer(true);
         }
 
         async function fetchJson(url, options = {}) {
@@ -1876,9 +1371,6 @@
         function syncUsernameInputs(value) {
             if (loginUsernameInput) {
                 loginUsernameInput.value = value;
-            }
-            if (mobileUsernameInput) {
-                mobileUsernameInput.value = value;
             }
         }
 
@@ -2411,33 +1903,25 @@
         const emotionTags = document.getElementById('emotion-tags');
         const emotionAnalysis = document.getElementById('emotion-analysis');
         const emotionSuggest = document.getElementById('emotion-suggest');
+        const emotionScoreNumMobile = emotionScoreNum;
+        const scoreFillMobile = scoreFill;
+        const emotionTagsMobile = emotionTags;
+        const emotionAnalysisMobile = emotionAnalysis;
+        const emotionSuggestMobile = emotionSuggest;
         const loginUsernameInput = document.getElementById('login-username');
         const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
         const avatarInput = document.getElementById('avatar-input');
         const userAvatarBox = document.getElementById('user-avatar-box');
         const userAvatarImg = document.getElementById('user-avatar-img');
+        const mobileAvatarImg = userAvatarImg;
         const lockStatus = document.getElementById('lock-status');
+        const mobileLockStatus = lockStatus;
         const userCardTitle = document.getElementById('user-card-title');
         const mobileMenuBtn = document.getElementById('menuBtn');
         const drawerCloseBtn = document.getElementById('drawer-close-btn');
         const drawer = document.getElementById('drawer');
-        const drawerMask = document.getElementById('drawerMask');
-        const userModal = document.getElementById('user-modal');
-        const emotionModal = document.getElementById('emotion-modal');
         const headerSettingsBtn = document.getElementById('header-settings-btn');
-        const mobileAvatarBox = document.getElementById('mobile-avatar-box');
-        const mobileAvatarImg = document.getElementById('mobile-avatar-img');
-        const mobileUsernameInput = document.getElementById('mobile-username');
-        const mobileLockStatus = document.getElementById('mobile-lock-status');
-        const usernameConfirmBtn = document.getElementById('usernameConfirmBtn');
-        const usernameCancelBtn = document.getElementById('usernameCancelBtn');
-        const emotionScoreNumMobile = document.getElementById('emotion-score-num-mobile');
-        const scoreFillMobile = document.getElementById('score-fill-mobile');
-        const emotionTagsMobile = document.getElementById('emotion-tags-mobile');
-        const emotionAnalysisMobile = document.getElementById('emotion-analysis-mobile');
-        const emotionSuggestMobile = document.getElementById('emotion-suggest-mobile');
         const voiceCloneTriggers = document.querySelectorAll('[data-voice-clone-trigger]');
-        const voiceCloneModal = document.getElementById('voice-clone-modal');
         const voiceCloneAction = document.getElementById('voice-clone-action');
         const voiceCloneFile = document.getElementById('voice-clone-file');
         const voiceCloneName = document.getElementById('voice-clone-name');
@@ -2536,13 +2020,12 @@
             updateProfileState({ username: confirmedUsername });
             setLockStatus("资料已保存", "#3b6fb6");
             await loadProfile();
-            closeModal(userModal);
             showToast("资料已保存");
             sendBtn.disabled = !isValidUserId(CURRENT_USER_ID) || !confirmedUsername || msgInput.value.trim() === "";
         }
 
         function bindUsernameConfirmButtons(confirmFn) {
-            const ids = ["usernameConfirmBtn", "usernameConfirmBtnDesktop"];
+            const ids = ["usernameConfirmBtnDesktop"];
             ids.forEach((id) => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener("click", confirmFn);
@@ -2606,9 +2089,6 @@
         if (userAvatarBox) {
             userAvatarBox.addEventListener('click', openAvatarPicker);
         }
-        if (mobileAvatarBox) {
-            mobileAvatarBox.addEventListener('click', openAvatarPicker);
-        }
         if (avatarInput) {
             avatarInput.addEventListener('change', (e) => {
                 const file = e.target.files?.[0];
@@ -2624,18 +2104,7 @@
             });
         }
 
-        if (mobileUsernameInput) {
-            mobileUsernameInput.addEventListener('input', () => {
-                handleUsernameInput(mobileUsernameInput.value);
-            });
-            mobileUsernameInput.addEventListener('blur', restoreIOSViewport);
-        }
-
         bindUsernameConfirmButtons(confirmUsername);
-        if (usernameCancelBtn) {
-            usernameCancelBtn.addEventListener('click', () => closeModal(userModal));
-        }
-
         if (loginUsernameInput) {
             const lastUsername = safeLocalStorageGet(STORAGE_USERNAME_KEY);
             if (lastUsername) {
@@ -2648,21 +2117,6 @@
                 loadProfile();
             }
         }
-
-        function openModal(modal) {
-            if (!modal) return;
-            setDrawerState(false);
-            setModalState(modal, true);
-        }
-
-        function closeModal(modal) {
-            setModalState(modal, false);
-        }
-
-        function closeAllModals() {
-            Array.from(interactionState.activeModals).forEach((modal) => closeModal(modal));
-        }
-
         function closeAllTooltips() {
             document.querySelectorAll('.info-tip.tooltip-open').forEach((btn) => {
                 btn.classList.remove('tooltip-open');
@@ -2719,7 +2173,11 @@
 
         if (headerSettingsBtn) {
             headerSettingsBtn.addEventListener('click', () => {
-                openModal(userModal);
+                if (isMobile) {
+                    openDrawer();
+                    return;
+                }
+                loginUsernameInput?.focus();
             });
         }
 
@@ -2736,89 +2194,16 @@
             });
         }
 
-        if (drawerMask) {
-            drawerMask.addEventListener('click', () => {
-                closeDrawer();
-            });
-        }
-
-        if (voiceCloneTriggers.length) {
-            voiceCloneTriggers.forEach((btn) => {
-                btn.addEventListener('click', () => {
-                    setVoiceCloneStatus("");
-                    loadEmotionState();
-                    openModal(voiceCloneModal);
-                });
-            });
-        }
-
-        if (voiceCloneAction) {
-            voiceCloneAction.addEventListener('click', () => {
-                handleVoiceCloneUpload();
-            });
-        }
-
-        if (voiceOutputToggle) {
-            voiceOutputToggle.addEventListener('click', () => {
-                setVoiceOutputEnabled(!voiceOutputEnabled);
-            });
-        }
-
-        if (voiceStopBtn) {
-            voiceStopBtn.addEventListener('click', () => {
-                resetTtsQueue();
-                showToast("已停止播报");
-            });
-        }
-
-        document.querySelectorAll('[data-voice-emotion]').forEach((input) => {
-            input.addEventListener('input', (event) => {
-                const target = event.currentTarget;
-                const key = target.dataset.voiceEmotion;
-                const value = clampEmotionValue(Number(target.value));
-                voiceEmotionState[key] = value;
-                target.value = value;
-                syncEmotionValueDisplay(key, value);
-                saveEmotionState();
-            });
-        });
-
-        if (voiceEmotionReset) {
-            voiceEmotionReset.addEventListener('click', () => {
-                applyEmotionState(createDefaultEmotionState());
-                saveEmotionState();
-            });
-        }
-
-        document.querySelectorAll('[data-modal-close]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                closeAllModals();
-            });
-        });
-
-        document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
-            backdrop.addEventListener('click', (event) => {
-                if (event.target === backdrop) {
-                    closeModal(backdrop);
-                }
-            });
-        });
-
         window.addEventListener('resize', () => {
             const wasMobile = isMobile;
-            updateDeviceMode();
+            applyDeviceMode();
             if (wasMobile !== isMobile) {
                 closeAllTooltips();
             }
         });
 
         syncViewport();
-        updateDeviceMode();
-        resetInteractiveState();
-        if (!isMobile && drawer) {
-            drawer.remove();
-            drawerMask?.remove();
-        }
+        applyDeviceMode();
         setupTooltips();
         initVoiceOutputToggle();
 
