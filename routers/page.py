@@ -80,7 +80,7 @@ async def linyu_page(request: Request):
 
     user_info["ip_name"] = "linyu"   # ★ 必须
 
-    save_user_data(user_id, user_info)
+    save_user_data(user_id, user_info, touch_last_active=False)
 
     return HTMLResponse(_with_admin_logger(open("routers/林屿哥哥.html", encoding="utf-8").read()))
 
@@ -93,7 +93,7 @@ async def suwan_page(request: Request):
 
     user_info["ip_name"] = "suwan"
 
-    save_user_data(user_id, user_info)
+    save_user_data(user_id, user_info, touch_last_active=False)
 
     return HTMLResponse(_with_admin_logger(open("routers/苏晚姐姐.html", encoding="utf-8").read()))
 
@@ -105,7 +105,7 @@ async def xiaxingmian_page(request: Request):
 
     user_info["ip_name"] = "xiaxingmian"
 
-    save_user_data(user_id, user_info)
+    save_user_data(user_id, user_info, touch_last_active=False)
 
     return HTMLResponse(_with_admin_logger(open("routers/病娇校花.html", encoding="utf-8").read()))
 
@@ -116,7 +116,7 @@ async def jiangche_page(request: Request):
 
     user_info["ip_name"] = "jiangche"
 
-    save_user_data(user_id, user_info)
+    save_user_data(user_id, user_info, touch_last_active=False)
 
     return HTMLResponse(_with_admin_logger(open("routers/白月光江澈.html", encoding="utf-8").read()))
 
@@ -127,6 +127,6 @@ async def luchengyu_page(request: Request):
 
     user_info["ip_name"] = "luchengyu"
 
-    save_user_data(user_id, user_info)
+    save_user_data(user_id, user_info, touch_last_active=False)
 
     return HTMLResponse(_with_admin_logger(open("routers/学长.html", encoding="utf-8").read()))

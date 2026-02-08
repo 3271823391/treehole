@@ -18,8 +18,6 @@ def greeting(user_id: str, request: Request):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_user_id"})
 
     user_info = load_user_data(user_id)
-    save_user_data(user_id, user_info)
-
     if user_info.get("has_greeted"):
         return {"text": ""}
 
@@ -30,7 +28,7 @@ def greeting(user_id: str, request: Request):
         "role": "assistant",
         "content": text
     })
-    save_user_data(user_id, user_info)
+    save_user_data(user_id, user_info, touch_last_active=False)
 
     return {"text": text}
 
@@ -54,7 +52,6 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_character_id"})
 
     user_info = load_user_data(user_id)
-    save_user_data(user_id, user_info)
     if os.getenv("E2E_TEST_MODE") == "1":
         def e2e_stream():
             message = "你好。测试回复。"
@@ -78,7 +75,6 @@ def load_history(request: Request, user_id: str, character_id: str = ""):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_user_id"})
 
     user_info = load_user_data(user_id)
-    save_user_data(user_id, user_info)
     character_id = (character_id or "").strip()
     if character_id:
         if character_id not in IP_PROMPT_MAP:

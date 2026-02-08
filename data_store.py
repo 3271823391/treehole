@@ -20,6 +20,7 @@ def load_user_data(user_id: str) -> dict:
         "has_greeted": False,
         "chat_count": 0,
         "relationships": {},
+        "last_active_at": None,
         "profile": {
             "username": "",
             "display_name": "",
@@ -29,7 +30,9 @@ def load_user_data(user_id: str) -> dict:
     })
 
 
-def save_user_data(user_id: str, user_info: dict):
+def save_user_data(user_id: str, user_info: dict, touch_last_active: bool = True):
+    if touch_last_active:
+        user_info["last_active_at"] = datetime.now().isoformat(timespec="seconds")
     with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
     data[user_id] = user_info
