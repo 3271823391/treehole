@@ -15,7 +15,7 @@ def _with_admin_logger(html: str) -> str:
 
 def _with_admin_link(html: str) -> str:
     show_link = os.getenv("SHOW_ADMIN_LINK", "1") == "1"
-    return html.replace("{{ADMIN_CONSOLE_LINK}}", '<a href="/admin/console" class="admin-console-link">🛠</a>' if show_link else "")
+    return html.replace("{{ADMIN_CONSOLE_LINK}}", '<a href="/static/admin_console.html" target="_blank" rel="noopener noreferrer" class="admin-console-link">🛠</a>' if show_link else "")
 
 @router.get("/", response_class=HTMLResponse)
 async def intro_page():
