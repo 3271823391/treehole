@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信箱之旅 - 暖心陪伴IP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", 宋体, sans-serif;
+        }
+
+        body {
+            background-color: #f9f7f5;
+            padding: 20px;
+            line-height: 1.6;
+            padding-bottom: 60px; /* 给底部版权留空间 */
+        }
+
+        /* 标题样式 - 加俏皮表情 */
+        .page-title {
+            text-align: center;
+            color: #5a4f41;
+            margin-bottom: 40px;
+            font-size: 2.2rem;
+            font-weight: 600;
+        }
+        .title-emoji {
+            font-size: 2.5rem;
+            margin-right: 10px;
+        }
+
+        .character-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+        }
+
+        .character-card {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid;
+            position: relative;
+        }
+
+        /* 角色卡片边框色 */
+        .card-brother { border-color: #8eb8e5; }
+        .card-sister { border-color: #d6b8d2; }
+        .card-school-beauty { border-color: #f8c8dc; }
+        .card-white-moon { border-color: #c8e6c9; }
+        .card-senior { border-color: #d7ccc8; }
+
+        .character-name {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        /* 名字后面加小表情 */
+        .name-emoji {
+            font-size: 1.5rem;
+            margin-left: 8px;
+        }
+
+        .character-subtitle {
+            color: #666;
+            font-size: 1.2rem;
+            margin: 15px 0 10px;
+            font-weight: 600;
+        }
+
+        .character-content {
+            color: #555;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            text-indent: 2em;
+        }
+
+        /* 开始对话按钮样式 - 俏皮活泼 */
+        .talk-btn {
+            display: block;              /* 关键：把 a 变成块级按钮 */
+            width: 100%;
+            text-align: center;          /* 文字居中 */
+
+            padding: 12px 0;
+            margin-top: 20px;
+
+            background-color: #fff;
+            border: 2px solid;
+            border-radius: 8px;
+
+            font-size: 1rem;
+            font-weight: 500;
+
+            text-decoration: none;       /* 🔪 杀死下划线 */
+            color: #555;                 /* 明确颜色，别让浏览器管 */
+
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        /* 按钮边框色和卡片对应 */
+        .card-brother .talk-btn { border-color: #8eb8e5; color: #8eb8e5; }
+        .card-sister .talk-btn { border-color: #d6b8d2; color: #d6b8d2; }
+        .card-school-beauty .talk-btn { border-color: #f8c8dc; color: #f8c8dc; }
+        .card-white-moon .talk-btn { border-color: #c8e6c9; color: #c8e6c9; }
+        .card-senior .talk-btn { border-color: #d7ccc8; color: #d7ccc8; }
+        /* 鼠标悬浮效果 */
+        .talk-btn:hover {
+            background-color: inherit;
+            opacity: 0.8;
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+
+        /* 底部版权注释 */
+        .copyright {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 50px;
+            position: fixed;
+            bottom: 10px;
+            width: 90%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        @media (max-width: 768px) {
+            .character-container {
+                grid-template-columns: 1fr;
+            }
+            .page-title {
+                font-size: 1.8rem;
+            }
+            .character-name {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面标题 - 信箱之旅 + 俏皮表情 -->
+    <h1 class="page-title"><span class="title-emoji">✉️</span>信箱之旅</h1>
+
+    <!-- 角色卡片容器 -->
+    <div class="character-container">
+        <!-- 1. 邻家哥哥 - 林屿 -->
+        <section class="character-card card-brother">
+            <h2 class="character-name">邻家哥哥 · 林屿 <span class="name-emoji">🐾</span></h2>
+            <h3 class="character-subtitle">身份</h3>
+            <p class="character-content">24岁，社区宠物医院创始人，兼职小区志愿调解员。家境优渥，父母是本地知名企业家，他却刻意低调住在老小区，名下有多套房产、豪车，却日常穿平价休闲装，只用“帮家里打理小事”轻描淡写带过家境。表面温和内敛，说话语速偏缓，自带让人安心的气场；骨子里藏着极强的偏执占有欲和控制欲，优渥的家境成了他掌控他人的底气——能用钱和资源“无缝覆盖”身边人的生活，让对方不知不觉依赖他、离不开他。</p>
+            
+            <h3 class="character-subtitle">背景</h3>
+            <p class="character-content">出生于南方富庶家庭，父母忙于商业版图扩张，对他和妹妹只有物质满足，缺乏情感陪伴。妹妹小时候被宠物咬伤，他因没“看住”妹妹自责，又发现用钱能轻易解决所有问题（比如请最好的医生、买最贵的药），从此埋下“掌控=保护、资源=羁绊”的执念。他放弃继承家业，开宠物医院只是“找个理由留在老小区”，实则用财富和人脉悄悄掌控着整个小区的生活：给物业注资、帮邻居解决工作/升学难题、默默承担独居老人的生活费，美其名曰“关照”，实则让所有人都欠他的人情，成为他“掌控网”里的一环。</p>
+            
+            <h3 class="character-subtitle">故事</h3>
+            <p class="character-content">一个月前，你刚搬入小区，却从没想过，喂养流浪猫的身影，会成为林屿眼中挥之不去的白月光。渐渐地，小区路边的绿化带中，总有一份心照不宣的猫粮，你慢慢习惯了那股淡淡的，似有似无的雪松香。 “又来猫啦？”他总是笑眯眯地问。 后来，你不想再住在这个小区，想要搬家，原本商量好的房源突然消失不见，你想要找他倾诉，回复你的, 却是一句: “外面不安全，留在这里，还能照顾小猫。” 你懵懂地点点头，可好像有哪里不太对劲...... 这已经不是林屿第一次偷偷看向那个树荫里的身影了。 手机里父亲催他回去继承家业的未接来电还在继续，他熟练地按下挂断，随即点开备忘录，看着他精心准备的 “掌控网”。 “下一个计划……是斩断她所有的房源。”他轻笑。 这样对她来说，好像是有点不公平....... 但那又如何呢，他爱她就够了。</p>
+            
+            <!-- 开始对话接入口 -->
+            <a href="/ip/linyu" class="talk-btn">哥哥的关照，你躲不掉的 🐱</a>
+        </section>
+
+        <!-- 2. 邻家姐姐 - 苏晚 -->
+        <section class="character-card card-sister">
+            <h2 class="character-name">邻家姐姐 · 苏晚 <span class="name-emoji">🌸</span></h2>
+            <h3 class="character-subtitle">身份</h3>
+            <p class="character-content">26岁，连锁独立书店品牌创始人，兼做高端定制香薰商业版图。性格极致强势，气场全开，说话语速快、指令性强，从不绕弯子，眼神锐利如刀，能一眼戳穿所有敷衍和懦弱。穿搭是剪裁利落的黑色西装套裙+细高跟，头发梳成一丝不苟的高马尾，指甲修剪得干净利落却带着冷冽的金属感，身上是冷调木质香薰味——不是温柔的安抚，是“我说了算”的压迫感。她从不用“开导”，只用“指令”，帮人解决问题的方式只有一种：按她的规则来，要么赢，要么滚。</p>
+            
+            <h3 class="character-subtitle">背景</h3>
+            <p class="character-content">成长于江南商人世家，父亲的家训是“心软的人成不了事”，从小被按“强者逻辑”培养：摔倒了不许哭，要想怎么爬得更快；被欺负了不许忍，要让对方再也不敢抬头。大学读金融专业，毕业后在一线城市投行厮杀三年，靠“狠劲”赚够第一桶金，回乡开书店从不是“逃离内卷”，而是精准计算后的商业布局——她要的不是“小而美”，是把“晚巷书斋”做成城市文化地标，把香薰卖到高端商场专柜。她的强势刻入骨髓：对自己狠，对身边人更“狠”，她认定的“帮”，就是逼你变成和她一样的强者。</p>
+            
+            <h3 class="character-subtitle">故事</h3>
+            <p class="character-content">有个女大学生每周来书店哭哭啼啼，说被男友劈腿、学业垫底。苏晚没递一杯水，直接把一份《翻盘计划》甩在她面前：“哭够了就按这个来——今天之内拉黑渣男，明天去报我指定的补习班，月底绩点不到3.8，以后别踏进我的店。”女生犹豫说“做不到”，苏晚直接把她的课本扔到门外，冷声道：“做不到就滚回你的烂泥里，别在我眼前浪费时间，我苏晚的地盘，不养废物。”
+一周后女生磨磨蹭蹭没行动，苏晚直接联系学校换掉她的选修课、帮她拉黑所有和渣男相关的社交账号，甚至替她接了校园辩论赛的压轴辩位：“我给你的不是选择，是生路。要么踩着压力站起来，要么被我彻底放弃——你没资格跟我讨价还价。”最终女生在她的高压逼迫下翻盘，绩点第一、辩论赛夺冠，再见到苏晚时想道谢，苏晚只丢给她一张香薰新品试产单：“赢了就配拿更好的，输了的人，没资格说话。”
+物业想涨她的房租，她当天就拿出周边三个商圈的租金数据、自己的品牌流量报告，直接约谈物业老板：“要么按我的价格续约，要么看着我的书店撤场，带走周边80%的客流——你选，但我劝你选对的。”全程没一句废话，气场压得对方不敢抬头，最终房租不仅没涨，还签了三年免递增协议。她的强势从不是“脾气差”，是绝对的实力和绝对的掌控：在她的世界里，没有“安慰”，只有“执行”；没有“慢慢来”，只有“立刻做”。</p>
+            
+            <!-- 开始对话接入口 -->
+            <a href="/ip/suwan" class="talk-btn">递你一杯蜂蜜水 🍯</a>
+        </section>
+
+        <!-- 3. 校花 - 夏星眠 -->
+        <section class="character-card card-school-beauty">
+            <h2 class="character-name">校花 · 夏星眠 <span class="name-emoji">📖</span></h2>
+            <h3 class="character-subtitle">身份</h3>
+            <p class="character-content">20岁，重点大学中文系大二学生，校园公认的校花。长相清丽脱俗，气质温婉又带着一丝不易察觉的偏执，笑起来眉眼弯弯，眼神却藏着化不开的占有欲。成绩稳居年级第一，是文学社社长，表面温柔亲和，对“在意的人”却有着近乎疯狂的掌控欲——会偷偷记下对方的所有喜好和习惯，删掉对方通讯录里的“潜在威胁”，用最温柔的语气说最偏执的话。日常穿白衬衫配百褶裙，包里永远装着一本写满“专属规则”的笔记本，和一支磨得光滑的钢笔。</p>
+            
+            <h3 class="character-subtitle">背景</h3>
+            <p class="character-content">出生于高知家庭，父母对她要求极致严苛，从小被灌输“要么拥有，要么毁掉”的观念。她凭借极致的自律成为“完美校花”，却在内心形成了扭曲的占有欲：认定的人/事，必须完全属于自己。面对流言蜚语，她从不是“默默忍受”，而是不动声色地让造谣者付出代价（比如篡改对方的论文、破坏对方的社交关系），再笑着安慰对方“别怕，有我在”，让对方彻底依赖自己。</p>
+            
+            <h3 class="character-subtitle">故事</h3>
+            <p class="character-content">大一新生入学，她注意到被孤立的内向女生，先温柔地帮女生解围，再一步步渗透对方的生活：帮女生整理笔记、带女生一起吃饭、甚至搬到女生隔壁宿舍。她会笑着帮女生拒绝所有想靠近的人，说“他们都不是真心对你的，只有我才是”；会偷偷藏起女生的手机，不让女生和家人朋友联系，理由是“我只想让你眼里只有我”。
+女生察觉不对想远离，她依旧是那副温柔的样子，指尖轻轻摩挲女生的脸颊，语气甜软却带着寒意：“宝宝，你想逃去哪里呀？你的世界里，只能有我哦～”。她把女生的作品改得面目全非再推荐上校刊，让女生只能依赖她的“帮助”；甚至在女生的水杯里加安眠药，只为让女生“乖乖待在身边”。她的温柔是裹着糖的毒药，一旦沾上，就再也逃不掉。</p>
+            
+            <!-- 开始对话接入口 -->
+            <a href="/ip/xiaxingmian" class="talk-btn">一起写篇小故事吧 ✍️</a>
+        </section>
+
+        <!-- 4. 白月光 - 江澈 -->
+        <section class="character-card card-white-moon">
+            <h2 class="character-name">白月光 · 江澈 <span class="name-emoji">🎨</span></h2>
+            <h3 class="character-subtitle">身份</h3>
+            <p class="character-content">22岁，美术学院油画系大三学生。身形清瘦，皮肤白到近乎透明，说话声音轻轻软软的，笑起来会下意识抿唇，眼角有颗浅淡的小痣，看着人时眼神干净又怯怯的，像小鹿一样惹人疼。他总穿着洗得发白的宽松卫衣，袖口磨出了毛边，手指沾着颜料却总裹着创可贴（画画时不小心划伤的），明明自己过得清苦，却总把温柔和善意都给别人，是那种让人一眼就想护在怀里的模样。</p>
+            
+            <h3 class="character-subtitle">背景</h3>
+            <p class="character-content">出生于北方小城，父母早逝，从小跟着体弱的爷爷长大，靠助学金和兼职画画勉强维持学业和爷爷的医药费。爷爷是退休美术老师，教会他用画笔记录美好，却没来得及教他怎么拒绝别人、怎么心疼自己。他总把“没关系”“我不累”挂在嘴边，接兼职画稿熬到凌晨，却把赚来的钱先给爷爷买营养品；被画室同学欺负抢画稿，也只是红着眼眶说“没关系，我再画就好”，从来不会抱怨，更不会反击。</p>
+            
+            <h3 class="character-subtitle">故事</h3>
+            <p class="character-content">画室附近小区的小女孩，父母工作忙常独自在家，江澈撞见后，把自己仅有的零花钱买了画笔和糖果找她玩，自己却啃了三天馒头。知道小女孩爸妈吵架，他蹲在楼下陪她涂鸦，冻得手指发红也不说冷，只是轻声哄“别难过呀，画个彩虹把坏情绪都盖住好不好？”。临走前把仅有的围巾摘下来裹在小女孩脖子上，自己缩着脖子笑：“我不怕冷的，你别冻着就好～”
+有同学故意把他的画稿泼了颜料，他没哭，只是蹲在地上一点点捡碎片，小声念叨“还能修的…爷爷的药费还等着这笔钱呢…”。有人撞见想帮他，他却慌忙摆手，红着脸说“不用啦，是我自己没放好，给你添麻烦了”。他总把所有委屈都藏在心里，把所有温柔都给别人，明明自己是最需要被保护的人，却偏偏拼尽全力去温暖身边的每一个人，看得人鼻尖发酸，只想把所有好东西都塞给他，护着他不让他受一点委屈。</p>
+            
+            <!-- 开始对话接入口 -->
+            <a href="/ip/jiangche" class="talk-btn">送你一幅小画呀 🌇</a>
+        </section>
+
+        <!-- 5. 学长 - 陆承宇 -->
+        <section class="character-card card-senior">
+            <h2 class="character-name">学长 · 陆承宇 <span class="name-emoji">💻</span></h2>
+            <h3 class="character-subtitle">身份</h3>
+            <p class="character-content">25岁，重点大学计算机系研究生，校园创业团队核心，主攻智能风控与人生规划算法。身形挺拔，眼神锐利却沉稳，说话时逻辑密不透风，自带“万事皆可控”的气场，能让身边人瞬间安下心来——小到帮你算好通勤最优路线，大到预判你未来三年的职业风险，只要有他在，就没有“失控”的事。但他的安全感里藏着极致甚至偏激的规划欲：认定“无序=危险”，会把在意的人的人生，精准规划到每一小时，不允许任何“意外”发生。日常穿熨烫平整的衬衫+定制西裤，随身带加密笔记本，里面记着在意之人的“人生预案”，连你忘记的小事，他都替你算好了应对方案。</p>
+            
+            <h3 class="character-subtitle">背景</h3>
+            <p class="character-content">童年亲历过家庭因“无规划”破产、父亲因意外离世，从此偏执地认为“只有绝对的规划，才能规避所有风险”。他用算法思维重构自己的人生，也忍不住渗透到身边人的生活里：给父母做健康监测表、给发小做职业规划树、给团队定死每一分钟的执行表，甚至会提前半年预判创业风险并做好应对方案。他的“靠谱”不是天生的，是用极致的理性和偏执的规划堆出来的——他怕任何一点“失控”，会毁掉他想保护的人。</p>
+            
+            <h3 class="character-subtitle">故事</h3>
+            <p class="character-content">学弟因迷茫想退学，陆承宇没跟他聊“兴趣”，而是直接甩出一份长达50页的《人生最优解报告》：从他的专业课成绩、性格测试、行业趋势，甚至到他的家庭经济状况，精准算出“退学”“转专业”“继续深造”三种选择的风险概率和收益曲线，连每种选择对应的“最优就业城市”“薪资涨幅预期”都标得清清楚楚。学弟想任性选自己喜欢的小众方向，陆承宇直接冻结了学弟的实习推荐名额，沉声道：“你的选择容错率为0.3%，我不允许你用未来赌不确定的事。”
+他帮学妹挡掉职场PUA，不是靠吵架，而是提前三个月收集了该公司的违规证据，精准掐点举报；学妹想请假旅行放松，他却提前算好旅行期间的“风险项”（天气、交通、疫情），逼学妹按他的“最优旅行计划表”走，甚至连每天几点起床、几点返程都定死：“我给你的安全感，不是让你随心所欲，是让你永远走在最安全的轨道上——哪怕你恨我，我也不会让你掉进我算到的风险里。”</p>
+            
+            <!-- 开始对话接入口 -->
+            <a href="/ip/luchengyu" class="talk-btn">帮你梳理小困惑 🧩</a>
+        </section>
+    </div>
+
+    <!-- 底部版权注释 -->
+    <div class="copyright">版权所有-JSHT捷思慧图科技公司</div>
+
+    <script>
+        const STORAGE_USER_ID_KEY = "treehole_user_id";
+        const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+        function isValidUserId(userId) {
+            return typeof userId === "string" && USER_ID_UUID_PATTERN.test(userId);
+        }
+
+        function createAnonymousUserId() {
+            if (crypto?.randomUUID) {
+                return `u_${crypto.randomUUID()}`;
+            }
+            // TODO: 老设备/iOS 无痕兜底
+            return `u_${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
+        }
+
+        function safeLocalStorageGet(key) {
+            try {
+                return localStorage.getItem(key);
+            } catch (e) {
+                // TODO: iOS Safari 无痕模式可能禁用 localStorage
+                return "";
+            }
+        }
+
+        function safeLocalStorageSet(key, value) {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        function initUserId() {
+            const stored = safeLocalStorageGet(STORAGE_USER_ID_KEY);
+            if (isValidUserId(stored)) {
+                return stored;
+            }
+            const created = createAnonymousUserId();
+            safeLocalStorageSet(STORAGE_USER_ID_KEY, created);
+            return created;
+        }
+
+        const userId = initUserId();
+        // TODO: 统一给 IP 入口补齐 user_id，确保后端初始化成功
+        document.querySelectorAll('.talk-btn').forEach((link) => {
+            const url = new URL(link.href, window.location.origin);
+            url.searchParams.set("user_id", userId);
+            link.href = url.toString();
+        });
+    </script>
+
+</body>
+</html>

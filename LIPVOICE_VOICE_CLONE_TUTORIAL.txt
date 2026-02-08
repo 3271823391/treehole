@@ -1,0 +1,33 @@
+语音克隆服务教学（上传成功后怎么做）
+
+适用范围:
+- 本项目的 Pro 页面语音克隆上传流程。
+
+前置条件:
+1) 后端已配置 LIPVOICE_SIGN（必填）。
+2) 已能通过 /api/voice_clone/reference/upload 上传音频并返回 audioId。
+
+上传成功后的下一步:
+1) 确认返回 audioId
+   - 成功响应示例:
+     {"ok":true,"data":{"audioId":"xxxx","name":"...","describe":"..."}}
+   - 前端已将 audioId 写入 localStorage.voice_audio_id。
+
+2) 将 audioId 作为“参考音频ID”保存到用户配置
+   - TODO: 如果后续做“用户配置页”，建议把 audioId 绑定到 user_id。
+
+3) 在语音合成/播报接口中使用 audioId
+   - 你需要在 TTS 或语音生成请求里携带 audioId。
+   - TODO: 当前项目尚未接入“语音生成/播报”接口，请在后端新增相应路由并传入 audioId。
+
+4) 前端回显
+   - 显示“当前使用的音色”或“已绑定音色ID: audioId”。
+   - TODO: 后续可提供“更换音色 / 清除音色”按钮。
+
+常见问题:
+- 上传成功但没有音色播放？
+  - 需要后端接入语音合成/播放的接口，并在请求中带上 audioId。
+- 多个音色怎么管理？
+  - 建议存储多条 audioId，提供选择列表。
+
+本文件仅用于教学说明，不涉及敏感 key。

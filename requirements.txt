@@ -1,0 +1,13 @@
+# Web framework
+fastapi
+uvicorn
+python-multipart
+
+# Image handling
+Pillow
+
+# Utils
+python-dotenv
+requests
+httpx
+

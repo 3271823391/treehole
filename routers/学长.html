@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>与陆承宇学长聊天 - 信箱之旅</title>
+    <link rel="stylesheet" href="/static/virtual_ip_chat.css">
+</head>
+<body>
+<div
+    id="vip-chat-page"
+    data-character-id="luchengyu"
+    data-character-name="陆承宇学长"
+    data-role-name="陆承宇"
+    data-role-tag="安全感+偏激规划欲"
+    data-role-avatar="/static/avatars/luchengyu.jpg"
+    data-background="/static/backgrounds/luchengyu.jpg"
+    data-accent="#d7ccc8"
+    data-role-border="#d7ccc8"
+    data-input-placeholder="输入想对学长说的话..."
+    data-send-icon="✈️"
+    data-initial-message="不用迷茫，你的人生轨迹我已经帮你算好了最优解。说说看，现在最困扰你的是什么？"
+>
+    <div class="chat-header">
+        <button class="back-btn" id="backBtn" type="button" aria-label="返回">←</button>
+        <div class="chat-title"><span id="chatTitleText"></span> <span class="role-tag" id="roleTag"></span></div>
+        <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="打开菜单">☰</button>
+    </div>
+
+    <div class="vip-layout">
+        <div class="chat-panel">
+            <div class="chat-container" id="chatContent">
+                <div class="message role-message">
+                    <div class="avatar" id="roleAvatar"></div>
+                    <div class="message-wrapper">
+                        <div class="role-name" id="roleName"></div>
+                        <div class="message-content" id="initialMessage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <aside class="info-sidebar" id="infoSidebar">
+            <div class="drawer-header">
+                <strong>用户信息</strong>
+                <button class="back-btn" id="drawerCloseBtn" type="button" aria-label="关闭菜单">×</button>
+            </div>
+            <div class="user-info">
+                <img class="user-info-avatar" src="/static/avatars/default.svg" alt="用户头像" data-user-avatar>
+                <div style="min-width: 0;">
+                    <div class="user-info-name" data-user-name>用户名</div>
+                    <div class="user-info-hint">来自 Treehole 的当前身份</div>
+                </div>
+            </div>
+            <section class="identity-settings" aria-label="虚拟 IP 显示身份设置">
+                <div class="identity-settings-title">虚拟 IP 显示身份设置</div>
+                <div class="ip-profile-editor">
+                    <label class="ip-profile-label" for="ipDisplayUsername">显示身份名（可选）</label>
+                    <input id="ipDisplayUsername" class="ip-profile-input" type="text" placeholder="当前使用 Treehole 用户名">
+                    <p class="identity-status" id="identityStatusText">当前使用 Treehole 用户名</p>
+                    <div class="identity-actions">
+                        <a href="#" id="syncIpProfileBtn" class="identity-action-link" role="button">同步用户名</a>
+                        <span class="identity-action-separator">·</span>
+                        <a href="#" id="uploadIpAvatarLink" class="identity-action-link" role="button">上传头像</a>
+                    </div>
+                    <input id="ipAvatarInput" type="file" accept="image/*" hidden>
+                </div>
+            </section>
+            <hr class="info-divider">
+            <section class="favorability-card favorability-normal" data-favorability-card>
+                <div class="favorability-title" id="favorabilityTitle"></div>
+                <div class="favorability-state" data-favorability-state>普通</div>
+                <div class="favorability-bar"><div class="favorability-fill" data-favorability-fill></div></div>
+                <div class="favorability-value" data-favorability-value>50 / 100</div>
+            </section>
+        </aside>
+    </div>
+
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+
+    <div class="input-area">
+        <input type="text" class="message-input" id="messageInput">
+        <button class="send-btn" id="sendBtn" type="button">✈️</button>
+    </div>
+
+    <div class="mobile-toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+<script src="/static/virtual_ip_chat.js"></script>
+</body>
+</html>
