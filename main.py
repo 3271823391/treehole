@@ -11,7 +11,7 @@ from api import admin_logs, client_log, debug_relationship
 from config import HOST, PORT
 from core.log_buffer import add_log
 from core.log_handler import BufferLogHandler
-from routers import auth, chat, emotion, page, profile, voice_clone
+from routers import admin_api, auth, chat, emotion, page, profile, voice_clone
 
 app = FastAPI(title="DeepSeek虚拟树洞（精致版）")
 
@@ -93,6 +93,7 @@ app.include_router(profile.router)
 app.include_router(page.router)
 app.include_router(chat.router)
 app.include_router(voice_clone.router)
+app.include_router(admin_api.router)
 app.include_router(debug_relationship.router)
 app.include_router(client_log.router)
 app.include_router(admin_logs.router)
