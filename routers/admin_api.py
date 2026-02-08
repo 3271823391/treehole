@@ -42,6 +42,7 @@ def get_users():
                 "relationship_count": len(relationships),
                 "display_name": profile.get("display_name") or profile.get("username") or "",
                 "ip_name": info.get("ip_name", ""),
+                "last_active_at": info.get("last_active_at"),
             }
         )
     items.sort(key=lambda x: x["chat_count"], reverse=True)

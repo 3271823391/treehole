@@ -63,7 +63,6 @@ def get_profile(user_id: str = "", character_id: str = ""):
     user_info = load_user_data(user_id)
     character_id = (character_id or "").strip()
     profile = normalize_profile(user_info)
-    save_user_data(user_id, user_info)
     payload = resolve_profile_payload(profile, character_id)
     return {
         "ok": True,

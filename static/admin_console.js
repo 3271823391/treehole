@@ -15,6 +15,14 @@
     return resp.json();
   }
 
+  function formatLastActive(value) {
+    if (!value) return '-';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '-';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
   async function renderUsers() {
     const data = await getJson('/api/admin/users');
     const users = data.items || [];
@@ -33,8 +41,8 @@
         <article class="kpi"><div class="label">关系数</div><div class="value">${relationCount}</div></article>
       </section>
       <section class="card"><h2>用户列表 (${userCount})</h2>
-      <table class="table"><thead><tr><th>user_id</th><th>昵称</th><th>计划</th><th>聊天数</th><th>关系数</th><th>虚拟IP</th></tr></thead>
-      <tbody>${users.map((u) => `<tr><td>${u.user_id}</td><td>${u.display_name || '-'}</td><td>${u.plan}</td><td>${u.chat_count}</td><td>${u.relationship_count}</td><td>${u.ip_name || '-'}</td></tr>`).join('')}</tbody></table></section>`;
+      <table class="table"><thead><tr><th>user_id</th><th>昵称</th><th>计划</th><th>聊天数</th><th>关系数</th><th>虚拟IP</th><th>最近访问</th></tr></thead>
+      <tbody>${users.map((u) => `<tr><td>${u.user_id}</td><td>${u.display_name || '-'}</td><td>${u.plan}</td><td>${u.chat_count}</td><td>${u.relationship_count}</td><td>${u.ip_name || '-'}</td><td>${formatLastActive(u.last_active_at)}</td></tr>`).join('')}</tbody></table></section>`;
   }
 
   function renderUserDetailSelector() {

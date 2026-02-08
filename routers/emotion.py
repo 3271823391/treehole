@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from core.auth_utils import is_valid_user_id
+from data_store import load_user_data, save_user_data
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -39,6 +40,16 @@ def get_user_emotion_state(user_id: str):
 # ===============================
 # 请求体
 # ===============================
+
+
+def persist_emotion_result(user_id: str, result: dict) -> None:
+    user_info = load_user_data(user_id)
+    user_info["last_emotion"] = {
+        "at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()),
+        "result": result,
+    }
+    save_user_data(user_id, user_info)
+
 class EmotionRequest(BaseModel):
     user_id: str | None = None
     history: list = Field(default_factory=list)
@@ -198,6 +209,7 @@ def analyze_emotion(req: EmotionRequest, request: Request):
                 text = item["content"][0]["text"]
                 result = json.loads(text)
                 response_payload = {"ok": True, "data": result, "msg": "success"}
+                persist_emotion_result(user_id, result)
 
                 with _store_lock:
                     state["last_round"] = round_id
