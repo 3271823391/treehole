@@ -5,14 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>树洞</title>
   <style>
-    body{margin:0;background:#edf4ff;font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:#223042}
-    .container{max-width:900px;margin:0 auto;padding:24px}
-    .card{background:#fff;border-radius:16px;box-shadow:0 8px 26px rgba(47,86,154,.12);padding:20px}
-    .chat{height:62vh;overflow:auto;border:1px solid #dde7f8;border-radius:12px;padding:14px;background:#f9fbff}
-    .msg{margin:10px 0;padding:10px 12px;border-radius:10px;line-height:1.6}
-    .u{background:#4b6ff3;color:#fff;margin-left:20%}.a{background:#e7efff;margin-right:20%}
-    .input{display:flex;gap:10px;margin-top:12px} textarea{flex:1;min-height:54px;max-height:120px;border-radius:10px;border:1px solid #cfdcf3;padding:10px}
-    button{border:none;background:#4b6ff3;color:#fff;padding:0 20px;border-radius:10px;font-weight:700;cursor:pointer}
+    body{margin:0;min-height:100vh;background:#eceef2;font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:#223042;display:flex;align-items:center;justify-content:center;padding:24px}
+    .container{width:100%;max-width:800px;margin:0 auto}
+    .card{background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(47,86,154,.12);padding:20px 20px 16px}
+    .chat{height:62vh;overflow:auto;border:1px solid #dde7f8;border-radius:14px;padding:16px;background:#f9fbff}
+    .msg{margin:10px 0;padding:10px 14px;border-radius:12px;line-height:1.6;max-width:70%;width:fit-content;word-break:break-word}
+    .u{background:#4b6ff3;color:#fff;margin-left:auto}
+    .a{background:#e7efff;margin-right:auto}
+    .input{display:flex;gap:10px;margin-top:14px;align-items:flex-end}
+    textarea{flex:1;min-height:54px;max-height:120px;border-radius:12px;border:1px solid #cfdcf3;padding:10px 12px;box-sizing:border-box}
+    button{border:none;background:#4b6ff3;color:#fff;padding:0 20px;height:54px;border-radius:12px;font-weight:700;cursor:pointer}
   </style>
 </head>
 <body>

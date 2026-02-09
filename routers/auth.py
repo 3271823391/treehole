@@ -106,7 +106,7 @@ async def login(request: Request):
     if not _verify_password(password, record.get("password_hash", "")):
         return JSONResponse(status_code=401, content={"ok": False, "msg": "账号或密码错误"})
 
-    response = JSONResponse(status_code=200, content={"ok": True, "redirect": "/"})
+    response = JSONResponse(status_code=200, content={"ok": True, "redirect": "/ai树洞计划.html"})
     set_session_cookie(response, record["user_id"])
     return response
 

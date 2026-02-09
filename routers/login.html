@@ -37,7 +37,7 @@ async function login(){
   const res=await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
   const data=await res.json().catch(()=>({}));
   if(!res.ok||!data.ok){err.textContent='账号或密码错误';return;}
-  window.location.href='/';
+  window.location.href=data.redirect||'/ai树洞计划.html';
 }
 document.getElementById('loginBtn').onclick=login;
 </script>
