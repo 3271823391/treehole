@@ -38,7 +38,7 @@
     </style>
 </head>
 <body>
-    <a href="/login" id="logoutBtn" class="logout-btn">退出登录</a>
+    <a href="/logout" id="logoutBtn" class="logout-btn">退出登录</a>
     {{ADMIN_CONSOLE_LINK}}
     <div class="container">
         <div class="header">
@@ -102,12 +102,6 @@
             <p>轻语信箱 © 2026 | 你的情绪，值得被认真对待 | 版权所有-JSHT捷思慧图科技公司</p>
         </div>
     </div>
-
-    <script>
-        document.getElementById("logoutBtn").addEventListener("click", function () {
-            document.cookie = "is_logged_in=; Max-Age=0; path=/; SameSite=Lax";
-        });
-    </script>
 
     <script>
         function updateAppHeight() {
