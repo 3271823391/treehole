@@ -96,10 +96,10 @@ def _b64url_decode(data: str) -> bytes:
     return base64.urlsafe_b64decode(data + padding)
 
 
-def create_token(user_id: str, secret: str) -> str:
+def create_token(user_id: str, secret: str, expire_seconds: int = TOKEN_EXPIRE_SECONDS) -> str:
     header = {"alg": "HS256", "typ": "JWT"}
     now = int(time.time())
-    payload = {"user_id": user_id, "iat": now, "exp": now + TOKEN_EXPIRE_SECONDS}
+    payload = {"user_id": user_id, "iat": now, "exp": now + int(expire_seconds)}
     header_b64 = _b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
     payload_b64 = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
