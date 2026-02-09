@@ -8,11 +8,11 @@ from pydantic import BaseModel
 from core.auth_utils import (
     create_token,
     get_auth_secret,
-    hash_pin,
+    hash_password,
     make_user_id,
     normalize_username,
-    validate_pin,
-    verify_pin,
+    validate_password,
+    verify_password,
 )
 from data_store import load_user_data, save_user_data
 
@@ -54,18 +54,19 @@ def auth_init(req: AuthRequest):
     if not norm:
         return JSONResponse(status_code=200, content={"ok": False, "msg": "username_required"})
 
-    valid_pin, pin_msg = validate_pin(req.pin)
-    if not valid_pin:
-        return JSONResponse(status_code=200, content={"ok": False, "msg": pin_msg})
+    valid_password, password_msg = validate_password(req.pin)
+    if not valid_password:
+        return JSONResponse(status_code=200, content={"ok": False, "msg": password_msg})
 
     user_id = make_user_id(norm)
     user_info = load_user_data(user_id)
     profile = user_info.setdefault("profile", {})
 
-    if profile.get("pin_hash"):
+    if profile.get("password_hash"):
         return JSONResponse(status_code=200, content={"ok": False, "msg": "pin_already_set"})
 
-    profile["pin_hash"] = hash_pin(req.pin)
+    profile["password_hash"] = hash_password(req.pin)
+    profile.pop("pin_hash", None)
     profile["username"] = req.username.strip()
     profile.setdefault("avatar_url", "")
     profile.setdefault("display_name", "")
@@ -87,9 +88,9 @@ def auth_verify(req: AuthRequest):
     user_id = make_user_id(norm)
     user_info = load_user_data(user_id)
     profile = user_info.setdefault("profile", {})
-    pin_hash = profile.get("pin_hash")
+    password_hash = profile.get("password_hash")
 
-    if not pin_hash:
+    if not password_hash:
         return JSONResponse(status_code=200, content={"ok": False, "need_init": True})
 
     state = _get_failed_state(user_id)
@@ -105,11 +106,11 @@ def auth_verify(req: AuthRequest):
             },
         )
 
-    valid_pin, pin_msg = validate_pin(req.pin)
-    if not valid_pin:
-        return JSONResponse(status_code=200, content={"ok": False, "msg": pin_msg})
+    valid_password, password_msg = validate_password(req.pin)
+    if not valid_password:
+        return JSONResponse(status_code=200, content={"ok": False, "msg": password_msg})
 
-    if not verify_pin(req.pin, pin_hash):
+    if not verify_password(req.pin, password_hash):
         new_count = state.get("count", 0) + 1
         new_state = {"count": new_count, "locked_until": 0}
         if new_count >= _MAX_FAILED:
