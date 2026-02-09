@@ -1,138 +1,123 @@
-import time
-from threading import Lock
+import json
+import os
+import uuid
+from pathlib import Path
 
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+import base64
+import hashlib
+import hmac
 
-from core.auth_utils import (
-    create_token,
-    get_auth_secret,
-    hash_pin,
-    make_user_id,
-    normalize_username,
-    validate_pin,
-    verify_pin,
-)
+from core.session_auth import clear_session_cookie, get_current_user_id, set_session_cookie
 from data_store import load_user_data, save_user_data
 
 router = APIRouter()
-
-_failed_attempts = {}
-_failed_lock = Lock()
-_MAX_FAILED = 5
-_LOCK_SECONDS = 5 * 60
+AUTH_FILE = Path(__file__).resolve().parent.parent / "auth_users.json"
 
 
-class AuthRequest(BaseModel):
-    username: str
-    pin: str
+def _hash_password(password: str) -> str:
+    salt = os.urandom(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 200_000)
+    return base64.b64encode(salt + digest).decode("utf-8")
 
 
-def _get_failed_state(user_id: str):
-    with _failed_lock:
-        return _failed_attempts.get(user_id, {"count": 0, "locked_until": 0})
+def _verify_password(password: str, hashed: str) -> bool:
+    try:
+        raw = base64.b64decode(hashed.encode("utf-8"))
+        salt, digest = raw[:16], raw[16:]
+        expect = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 200_000)
+        return hmac.compare_digest(expect, digest)
+    except Exception:
+        return False
 
 
-def _set_failed_state(user_id: str, state: dict):
-    with _failed_lock:
-        _failed_attempts[user_id] = state
+
+def _load_auth_users() -> dict:
+    if not AUTH_FILE.exists():
+        AUTH_FILE.write_text("{}", encoding="utf-8")
+    return json.loads(AUTH_FILE.read_text(encoding="utf-8"))
 
 
-def _reset_failed_state(user_id: str):
-    with _failed_lock:
-        _failed_attempts.pop(user_id, None)
+def _save_auth_users(data: dict) -> None:
+    AUTH_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-@router.post("/auth/init")
-def auth_init(req: AuthRequest):
-    secret = get_auth_secret()
-    if not secret:
-        return JSONResponse(status_code=500, content={"ok": False, "msg": "auth_secret_missing"})
+def _render_html(filename: str) -> HTMLResponse:
+    base_dir = os.path.dirname(__file__)
+    html_path = os.path.join(base_dir, filename)
+    with open(html_path, "r", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
 
-    norm = normalize_username(req.username)
-    if not norm:
-        return JSONResponse(status_code=200, content={"ok": False, "msg": "username_required"})
 
-    valid_pin, pin_msg = validate_pin(req.pin)
-    if not valid_pin:
-        return JSONResponse(status_code=200, content={"ok": False, "msg": pin_msg})
+@router.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    if get_current_user_id(request):
+        return RedirectResponse(url="/", status_code=302)
+    return _render_html("login.html")
 
-    user_id = make_user_id(norm)
+
+@router.get("/register", response_class=HTMLResponse)
+def register_page(request: Request):
+    if get_current_user_id(request):
+        return RedirectResponse(url="/", status_code=302)
+    return _render_html("register.html")
+
+
+@router.post("/auth/register")
+async def register(request: Request):
+    payload = await request.json()
+    username = (payload.get("username") or "").strip().lower()
+    password = (payload.get("password") or "").strip()
+    confirm_password = (payload.get("confirm_password") or "").strip()
+
+    if not username or not password or password != confirm_password:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "注册信息无效"})
+
+    users = _load_auth_users()
+    if username in users:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "注册失败"})
+
+    user_id = f"u_{uuid.uuid4()}"
+    users[username] = {
+        "user_id": user_id,
+        "password_hash": _hash_password(password),
+    }
+    _save_auth_users(users)
+
     user_info = load_user_data(user_id)
-    profile = user_info.setdefault("profile", {})
-
-    if profile.get("pin_hash"):
-        return JSONResponse(status_code=200, content={"ok": False, "msg": "pin_already_set"})
-
-    profile["pin_hash"] = hash_pin(req.pin)
-    profile["username"] = req.username.strip()
-    profile.setdefault("avatar_url", "")
-    profile.setdefault("display_name", "")
-
+    user_info.setdefault("profile", {})
     save_user_data(user_id, user_info)
+
     return {"ok": True}
 
 
-@router.post("/auth/verify")
-def auth_verify(req: AuthRequest):
-    secret = get_auth_secret()
-    if not secret:
-        return JSONResponse(status_code=500, content={"ok": False, "msg": "auth_secret_missing"})
+@router.post("/auth/login")
+async def login(request: Request):
+    payload = await request.json()
+    username = (payload.get("username") or "").strip().lower()
+    password = (payload.get("password") or "").strip()
 
-    norm = normalize_username(req.username)
-    if not norm:
-        return JSONResponse(status_code=200, content={"ok": False, "msg": "username_required"})
+    users = _load_auth_users()
+    record = users.get(username)
+    if not username or not password or not record:
+        return JSONResponse(status_code=401, content={"ok": False, "msg": "账号或密码错误"})
 
-    user_id = make_user_id(norm)
-    user_info = load_user_data(user_id)
-    profile = user_info.setdefault("profile", {})
-    pin_hash = profile.get("pin_hash")
+    if not _verify_password(password, record.get("password_hash", "")):
+        return JSONResponse(status_code=401, content={"ok": False, "msg": "账号或密码错误"})
 
-    if not pin_hash:
-        return JSONResponse(status_code=200, content={"ok": False, "need_init": True})
+    response = JSONResponse(status_code=200, content={"ok": True, "redirect": "/"})
+    set_session_cookie(response, record["user_id"])
+    return response
 
-    state = _get_failed_state(user_id)
-    now = int(time.time())
-    locked_until = state.get("locked_until", 0)
-    if locked_until and locked_until > now:
-        return JSONResponse(
-            status_code=200,
-            content={
-                "ok": False,
-                "locked": True,
-                "seconds_left": locked_until - now,
-            },
-        )
 
-    valid_pin, pin_msg = validate_pin(req.pin)
-    if not valid_pin:
-        return JSONResponse(status_code=200, content={"ok": False, "msg": pin_msg})
+@router.post("/auth/logout")
+def logout():
+    response = JSONResponse(status_code=200, content={"ok": True})
+    clear_session_cookie(response)
+    return response
 
-    if not verify_pin(req.pin, pin_hash):
-        new_count = state.get("count", 0) + 1
-        new_state = {"count": new_count, "locked_until": 0}
-        if new_count >= _MAX_FAILED:
-            new_state["locked_until"] = now + _LOCK_SECONDS
-        _set_failed_state(user_id, new_state)
-        response = {"ok": False, "msg": "pin_incorrect"}
-        if new_state["locked_until"]:
-            response.update({"locked": True, "seconds_left": _LOCK_SECONDS})
-        return JSONResponse(status_code=200, content=response)
 
-    _reset_failed_state(user_id)
-    token = create_token(user_id, secret)
-    profile_data = {
-        "username": profile.get("username", req.username.strip()),
-        "display_name": profile.get("display_name", ""),
-        "avatar_url": profile.get("avatar_url", ""),
-    }
-    return JSONResponse(
-        status_code=200,
-        content={
-            "ok": True,
-            "user_id": user_id,
-            "token": token,
-            "profile": profile_data,
-        },
-    )
+@router.get("/auth/status")
+def auth_status(request: Request):
+    return {"ok": True, "authenticated": bool(get_current_user_id(request))}
