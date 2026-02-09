@@ -6,21 +6,19 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.auth_utils import (
-    decode_token,
-    get_auth_secret,
     is_valid_user_id,
     make_user_id,
     normalize_username,
     verify_password,
     hash_password,
     validate_password,
-    create_token,
 )
 from data_store import load_user_data, save_user_data
 router = APIRouter()
 
 LOGIN_COOKIE_NAME = "auth_token"
 REMEMBER_SECONDS = 7 * 24 * 60 * 60
+SESSION_SECONDS = 12 * 60 * 60
 
 
 class LoginRequest(BaseModel):
@@ -39,20 +37,15 @@ class RegisterRequest(BaseModel):
 
 
 def _get_current_user_id(request: Request) -> str | None:
-    token = request.cookies.get(LOGIN_COOKIE_NAME, "").strip()
-    if not token:
+    user_id = request.cookies.get(LOGIN_COOKIE_NAME, "").strip()
+    if not user_id:
         return None
 
-    secret = get_auth_secret()
-    if not secret:
+    if not is_valid_user_id(user_id):
         return None
 
-    payload, err = decode_token(token, secret)
-    if err or not payload:
-        return None
-
-    user_id = payload.get("user_id")
-    if not user_id or not is_valid_user_id(user_id):
+    user_info = load_user_data(user_id)
+    if not user_info.get("profile", {}).get("password_hash"):
         return None
     return user_id
 
@@ -158,21 +151,19 @@ async def login_action(payload: LoginRequest):
     if not verify_password(password, password_hash):
         return JSONResponse(status_code=401, content={"ok": False, "msg": "invalid_credentials"})
 
-    secret = get_auth_secret()
-    if not secret:
-        return JSONResponse(status_code=500, content={"ok": False, "msg": "auth_secret_missing"})
-
-    token_expire_seconds = REMEMBER_SECONDS if payload.remember else 12 * 60 * 60
-    token = create_token(user_id, secret, expire_seconds=token_expire_seconds)
+    token_expire_seconds = REMEMBER_SECONDS if payload.remember else SESSION_SECONDS
 
     response = JSONResponse(status_code=200, content={"ok": True, "user_id": user_id})
     cookie_kwargs = {
         "key": LOGIN_COOKIE_NAME,
-        "value": token,
+        "value": user_id,
         "httponly": True,
         "path": "/",
         "samesite": "lax",
     }
+
+    if not payload.remember:
+        cookie_kwargs["max_age"] = token_expire_seconds
 
     if payload.remember:
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=REMEMBER_SECONDS)
