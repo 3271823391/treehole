@@ -108,10 +108,39 @@
       }
     });
 
-    document.getElementById('registerForm').addEventListener('submit', function(e) {
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
       e.preventDefault();
-      alert('注册成功');
-      window.location.href = '/login';
+      const username = document.getElementById('user').value.trim();
+      const password = document.getElementById('pwd').value;
+
+      if (!username) {
+        alert('请输入用户名');
+        return;
+      }
+
+      if (password.length < 6) {
+        alert('密码长度至少为6位');
+        return;
+      }
+
+      try {
+        const response = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user: username,
+            pass: password
+          })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+          throw new Error(result.msg || '注册失败');
+        }
+        alert('注册成功，请登录');
+        window.location.href = '/login';
+      } catch (error) {
+        alert(error.message || '注册失败，请稍后重试');
+      }
     });
   </script>
 </body>

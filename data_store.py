@@ -24,7 +24,7 @@ def load_user_data(user_id: str) -> dict:
             "username": "",
             "display_name": "",
             "avatar_url": "",
-            "pin_hash": ""
+            "password_hash": ""
         }
     })
 

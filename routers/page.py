@@ -11,7 +11,9 @@ from core.auth_utils import (
     is_valid_user_id,
     make_user_id,
     normalize_username,
-    verify_pin,
+    verify_password,
+    hash_password,
+    validate_password,
     create_token,
 )
 from data_store import load_user_data, save_user_data
@@ -27,6 +29,13 @@ class LoginRequest(BaseModel):
     user: str
     password: str = Field(alias="pass")
     remember: bool = False
+
+
+class RegisterRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    username: str = Field(alias="user")
+    password: str = Field(alias="pass")
 
 
 def _get_current_user_id(request: Request) -> str | None:
@@ -99,6 +108,36 @@ async def register_page(request: Request):
         return RedirectResponse(url="/ai树洞计划.html", status_code=302)
     base_dir = os.path.dirname(os.path.dirname(__file__))
     return FileResponse(os.path.join(base_dir, "static", "register.html"))
+@router.post("/register")
+async def register_action(payload: RegisterRequest):
+    username = (payload.username or "").strip()
+    password = payload.password or ""
+
+    norm = normalize_username(username)
+    if not norm:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "username_required"})
+
+    valid_password, password_msg = validate_password(password)
+    if not valid_password:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": password_msg})
+
+    user_id = make_user_id(norm)
+    user_info = load_user_data(user_id)
+    profile = user_info.setdefault("profile", {})
+
+    if profile.get("password_hash"):
+        return JSONResponse(status_code=409, content={"ok": False, "msg": "user_already_exists"})
+
+    profile["username"] = username
+    profile.setdefault("display_name", "")
+    profile.setdefault("avatar_url", "")
+    profile["password_hash"] = hash_password(password)
+    profile.pop("pin_hash", None)
+
+    save_user_data(user_id, user_info)
+    return JSONResponse(status_code=200, content={"ok": True, "user_id": user_id})
+
+
 @router.post("/login")
 async def login_action(payload: LoginRequest):
     user = (payload.user or "").strip()
@@ -111,9 +150,12 @@ async def login_action(payload: LoginRequest):
     user_id = make_user_id(norm)
     user_info = load_user_data(user_id)
     profile = user_info.get("profile", {})
-    pin_hash = profile.get("pin_hash", "")
+    password_hash = profile.get("password_hash", "")
 
-    if not pin_hash or not verify_pin(password, pin_hash):
+    if not password_hash:
+        return JSONResponse(status_code=401, content={"ok": False, "msg": "invalid_credentials"})
+
+    if not verify_password(password, password_hash):
         return JSONResponse(status_code=401, content={"ok": False, "msg": "invalid_credentials"})
 
     secret = get_auth_secret()
