@@ -5,7 +5,7 @@ from data_store import load_user_data, save_user_data
 from core.auth_utils import is_valid_user_id, make_user_id
 router = APIRouter()
 
-LOGIN_COOKIE_NAME = "is_logged_in"
+LOGIN_COOKIE_NAME = "auth_token"
 
 
 def _is_logged_in(request: Request) -> bool:
@@ -66,14 +66,22 @@ async def login_action(request: Request):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "密码长度至少为6个字符"})
 
     response = JSONResponse(status_code=200, content={"ok": True})
-    max_age = 30 * 24 * 60 * 60 if remember else None
+    max_age = 7 * 24 * 60 * 60 if remember else None
     response.set_cookie(
         key=LOGIN_COOKIE_NAME,
         value="true",
         httponly=True,
+        path="/",
         max_age=max_age,
         samesite="lax",
     )
+    return response
+
+
+@router.get("/logout")
+async def logout_action():
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie(LOGIN_COOKIE_NAME, path="/")
     return response
 
 
