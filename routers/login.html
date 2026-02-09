@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>登录</title>
+  <style>
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#eceef2;font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:#1f2d3d}
+    .wrap{width:100%;max-width:720px;padding:24px}
+    .card{background:#f7f7f8;border-radius:28px;padding:48px 56px;box-shadow:0 15px 40px rgba(60,90,180,.12)}
+    .icon{width:110px;height:110px;border-radius:50%;margin:0 auto 24px;background:linear-gradient(145deg,#4967ee,#6f60ef);display:flex;align-items:center;justify-content:center;color:#fff;font-size:52px}
+    h1{text-align:center;margin:0;font-size:52px} p{text-align:center;color:#55657a;font-size:26px;margin:16px 0 36px}
+    label{display:block;font-size:32px;margin:22px 0 10px;font-weight:600;color:#465a78}
+    input{width:100%;height:72px;border:1px solid #d4dae3;border-radius:14px;padding:0 18px;font-size:28px;background:#fff;box-sizing:border-box}
+    button{width:100%;height:74px;border:none;border-radius:14px;margin-top:28px;background:linear-gradient(90deg,#4564ea,#6a5dec);color:#fff;font-size:32px;font-weight:700;cursor:pointer}
+    .hint{text-align:center;margin-top:26px;font-size:24px}.hint a{color:#445fee;text-decoration:none;font-weight:700}
+    .error{min-height:36px;text-align:center;color:#d84b4b;font-size:24px;margin-top:18px}
+  </style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+  <div class="icon">👤</div>
+  <h1>欢迎回来</h1>
+  <p>「甲之蜜糖，乙之砒霜。」</p>
+  <label for="username">登录账号</label><input id="username" autocomplete="username" />
+  <label for="password">密码</label><input id="password" type="password" autocomplete="current-password" />
+  <button id="loginBtn">登录账户</button>
+  <div class="error" id="error"></div>
+  <div class="hint">还没有账户? <a href="/register">立即注册</a></div>
+</div></div>
+<script>
+async function login(){
+  const username=document.getElementById('username').value.trim();
+  const password=document.getElementById('password').value;
+  const err=document.getElementById('error');
+  err.textContent='';
+  const res=await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok||!data.ok){err.textContent='账号或密码错误';return;}
+  window.location.href='/';
+}
+document.getElementById('loginBtn').onclick=login;
+</script>
+</body>
+</html>

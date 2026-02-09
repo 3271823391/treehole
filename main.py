@@ -5,13 +5,15 @@ import os
 import time
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from api import admin_logs, client_log, debug_relationship
 from config import HOST, PORT
 from core.log_buffer import add_log
 from core.log_handler import BufferLogHandler
-from routers import admin_api, auth, chat, emotion, page, profile, voice_clone
+from core.session_auth import get_current_user_id
+from routers import admin_api, auth, chat, emotion, page, voice_clone
 
 app = FastAPI(title="DeepSeek虚拟树洞（精致版）")
 
@@ -19,10 +21,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 AVATAR_DIR = os.path.join(STATIC_DIR, "avatars")
 os.makedirs(AVATAR_DIR, exist_ok=True)
-
-print("STATIC DIR EXISTS:", os.path.exists(STATIC_DIR))
-print("STATIC ABS PATH:", STATIC_DIR)
-
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
@@ -36,28 +34,28 @@ def _ensure_buffer_logging() -> None:
 
 _ensure_buffer_logging()
 
-_IGNORED_ACCESS_PREFIXES = (
-    "/favicon.ico",
-    "/.well-known/",
-    "/hybridaction/",
-    "/static/",
-    "/__pycache__/",
-)
-_ALWAYS_KEEP_PATHS = (
-    "/",
-    "/ip",
-    "/chat_stream",
-    "/load_history",
-    "/profile",
-)
+_PUBLIC_PATHS = {
+    "/login",
+    "/register",
+    "/auth/login",
+    "/auth/register",
+    "/auth/status",
+}
 
 
-def _should_skip_access(path: str) -> bool:
-    if path in _ALWAYS_KEEP_PATHS:
-        return False
-    if path.startswith("/ip/"):
-        return False
-    return path.startswith(_IGNORED_ACCESS_PREFIXES)
+@app.middleware("http")
+async def auth_guard_middleware(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/static") or path in _PUBLIC_PATHS:
+        return await call_next(request)
+
+    user_id = get_current_user_id(request)
+    if not user_id:
+        if request.method == "GET":
+            return RedirectResponse(url="/login", status_code=302)
+        return JSONResponse(status_code=401, content={"ok": False, "msg": "unauthorized"})
+
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -66,30 +64,26 @@ async def access_log_middleware(request: Request, call_next):
     response = await call_next(request)
     duration_ms = round((time.perf_counter() - start) * 1000, 2)
     path = request.url.path
-
-    if not _should_skip_access(path):
-        add_log(
-            {
-                "ts": time.time(),
-                "level": "INFO",
-                "source": "access",
-                "message": f"{request.method} {path} {response.status_code} {duration_ms}ms",
-                "meta": {
-                    "method": request.method,
-                    "path": path,
-                    "status": response.status_code,
-                    "duration_ms": duration_ms,
-                    "query": str(request.url.query or ""),
-                },
-            }
-        )
-
+    add_log(
+        {
+            "ts": time.time(),
+            "level": "INFO",
+            "source": "access",
+            "message": f"{request.method} {path} {response.status_code} {duration_ms}ms",
+            "meta": {
+                "method": request.method,
+                "path": path,
+                "status": response.status_code,
+                "duration_ms": duration_ms,
+                "query": str(request.url.query or ""),
+            },
+        }
+    )
     return response
 
 
 app.include_router(emotion.router)
 app.include_router(auth.router)
-app.include_router(profile.router)
 app.include_router(page.router)
 app.include_router(chat.router)
 app.include_router(voice_clone.router)

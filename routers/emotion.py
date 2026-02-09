@@ -9,7 +9,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from core.auth_utils import is_valid_user_id
+from core.session_auth import get_current_user_id
 from data_store import load_user_data, save_user_data
 
 router = APIRouter()
@@ -63,11 +63,9 @@ class EmotionRequest(BaseModel):
 @router.post("/emotion")
 @router.post("/api/emotion")
 def analyze_emotion(req: EmotionRequest, request: Request):
-    user_id = req.user_id
+    user_id = get_current_user_id(request)
     if not user_id:
-        return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_user_id"})
-    if not is_valid_user_id(user_id):
-        return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_user_id"})
+        return JSONResponse(status_code=401, content={"ok": False, "msg": "unauthorized"})
     history = req.history if req.history is not None else []
     current_input = req.current_input or ""
     round_id = req.round_id if req.round_id is not None else int(time.time())
