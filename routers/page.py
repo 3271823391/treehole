@@ -1,15 +1,61 @@
+import os
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
-import os
+from pydantic import BaseModel, ConfigDict, Field
+
+from core.auth_utils import (
+    decode_token,
+    get_auth_secret,
+    is_valid_user_id,
+    make_user_id,
+    normalize_username,
+    verify_pin,
+    create_token,
+)
 from data_store import load_user_data, save_user_data
-from core.auth_utils import is_valid_user_id, make_user_id
 router = APIRouter()
 
 LOGIN_COOKIE_NAME = "auth_token"
+REMEMBER_SECONDS = 7 * 24 * 60 * 60
+
+
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    user: str
+    password: str = Field(alias="pass")
+    remember: bool = False
+
+
+def _get_current_user_id(request: Request) -> str | None:
+    token = request.cookies.get(LOGIN_COOKIE_NAME, "").strip()
+    if not token:
+        return None
+
+    secret = get_auth_secret()
+    if not secret:
+        return None
+
+    payload, err = decode_token(token, secret)
+    if err or not payload:
+        return None
+
+    user_id = payload.get("user_id")
+    if not user_id or not is_valid_user_id(user_id):
+        return None
+    return user_id
 
 
 def _is_logged_in(request: Request) -> bool:
-    return request.cookies.get(LOGIN_COOKIE_NAME) == "true"
+    return _get_current_user_id(request) is not None
+
+
+def _require_login_redirect(request: Request):
+    if not _is_logged_in(request):
+        return RedirectResponse(url="/login", status_code=302)
+    return None
 
 
 def _render_html_file(filename: str) -> str:
@@ -54,27 +100,44 @@ async def register_page(request: Request):
     base_dir = os.path.dirname(os.path.dirname(__file__))
     return FileResponse(os.path.join(base_dir, "static", "register.html"))
 @router.post("/login")
-async def login_action(request: Request):
-    payload = await request.json()
-    user = str(payload.get("user", "")).strip()
-    password = str(payload.get("pass", ""))
-    remember = bool(payload.get("remember", False))
+async def login_action(payload: LoginRequest):
+    user = (payload.user or "").strip()
+    password = payload.password or ""
 
-    if not user:
-        return JSONResponse(status_code=400, content={"ok": False, "msg": "请输入登录账号"})
-    if len(password) < 6:
-        return JSONResponse(status_code=400, content={"ok": False, "msg": "密码长度至少为6个字符"})
+    norm = normalize_username(user)
+    if not norm:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "username_required"})
 
-    response = JSONResponse(status_code=200, content={"ok": True})
-    max_age = 7 * 24 * 60 * 60 if remember else None
-    response.set_cookie(
-        key=LOGIN_COOKIE_NAME,
-        value="true",
-        httponly=True,
-        path="/",
-        max_age=max_age,
-        samesite="lax",
-    )
+    user_id = make_user_id(norm)
+    user_info = load_user_data(user_id)
+    profile = user_info.get("profile", {})
+    pin_hash = profile.get("pin_hash", "")
+
+    if not pin_hash or not verify_pin(password, pin_hash):
+        return JSONResponse(status_code=401, content={"ok": False, "msg": "invalid_credentials"})
+
+    secret = get_auth_secret()
+    if not secret:
+        return JSONResponse(status_code=500, content={"ok": False, "msg": "auth_secret_missing"})
+
+    token_expire_seconds = REMEMBER_SECONDS if payload.remember else 12 * 60 * 60
+    token = create_token(user_id, secret, expire_seconds=token_expire_seconds)
+
+    response = JSONResponse(status_code=200, content={"ok": True, "user_id": user_id})
+    cookie_kwargs = {
+        "key": LOGIN_COOKIE_NAME,
+        "value": token,
+        "httponly": True,
+        "path": "/",
+        "samesite": "lax",
+    }
+
+    if payload.remember:
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=REMEMBER_SECONDS)
+        cookie_kwargs["max_age"] = REMEMBER_SECONDS
+        cookie_kwargs["expires"] = expires_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    response.set_cookie(**cookie_kwargs)
     return response
 
 
@@ -93,7 +156,10 @@ async def ai_treehole_page(request: Request):
     return HTMLResponse(_with_admin_logger(_with_admin_link(html)))
 
 @router.get("/ip", response_class=HTMLResponse)
-async def ip_page():
+async def ip_page(request: Request):
+    unauthorized = _require_login_redirect(request)
+    if unauthorized:
+        return unauthorized
     base_dir = os.path.dirname(__file__)
     html_path = os.path.join(base_dir, "虚拟ip.html")
 
@@ -101,11 +167,17 @@ async def ip_page():
         return _with_admin_logger(f.read())
 
 @router.get("/二级页面2第六版.html", response_class=HTMLResponse)
-async def evolution_plus_page():
+async def evolution_plus_page(request: Request):
+    unauthorized = _require_login_redirect(request)
+    if unauthorized:
+        return unauthorized
     return render_html("二级页面2第六版.html")
 
 @router.get("/page", response_class=HTMLResponse)
 async def chat_page(request: Request):
+    unauthorized = _require_login_redirect(request)
+    if unauthorized:
+        return unauthorized
     plan = request.query_params.get("plan", "plus")
 
     base_dir = os.path.dirname(__file__)
@@ -119,11 +191,17 @@ async def chat_page(request: Request):
 
 
 @router.get("/treehole_plus", response_class=HTMLResponse)
-async def treehole_plus_page():
+async def treehole_plus_page(request: Request):
+    unauthorized = _require_login_redirect(request)
+    if unauthorized:
+        return unauthorized
     return render_html("treehole_plus.html")
 
 @router.get("/treehole_pro", response_class=HTMLResponse)
-async def treehole_pro_page():
+async def treehole_pro_page(request: Request):
+    unauthorized = _require_login_redirect(request)
+    if unauthorized:
+        return unauthorized
     return render_html("treehole_pro.html")
 
 def render_html(filename: str):
@@ -138,6 +216,9 @@ def resolve_ip_user_id(request: Request) -> str:
 
 @router.get("/ip/linyu", response_class=HTMLResponse)
 async def linyu_page(request: Request):
+    unauthorized = _require_login_redirect(request)
+    if unauthorized:
+        return unauthorized
     user_id = resolve_ip_user_id(request)
     user_info = load_user_data(user_id)
 
@@ -151,6 +232,9 @@ async def linyu_page(request: Request):
 
 @router.get("/ip/suwan", response_class=HTMLResponse)
 async def suwan_page(request: Request):
+    unauthorized = _require_login_redirect(request)
+    if unauthorized:
+        return unauthorized
     user_id = resolve_ip_user_id(request)
     user_info = load_user_data(user_id)
 
@@ -163,6 +247,9 @@ async def suwan_page(request: Request):
 
 @router.get("/ip/xiaxingmian", response_class=HTMLResponse)
 async def xiaxingmian_page(request: Request):
+    unauthorized = _require_login_redirect(request)
+    if unauthorized:
+        return unauthorized
     user_id = resolve_ip_user_id(request)
     user_info = load_user_data(user_id)
 
@@ -174,6 +261,9 @@ async def xiaxingmian_page(request: Request):
 
 @router.get("/ip/jiangche", response_class=HTMLResponse)
 async def jiangche_page(request: Request):
+    unauthorized = _require_login_redirect(request)
+    if unauthorized:
+        return unauthorized
     user_id = resolve_ip_user_id(request)
     user_info = load_user_data(user_id)
 
@@ -185,6 +275,9 @@ async def jiangche_page(request: Request):
 
 @router.get("/ip/luchengyu", response_class=HTMLResponse)
 async def luchengyu_page(request: Request):
+    unauthorized = _require_login_redirect(request)
+    if unauthorized:
+        return unauthorized
     user_id = resolve_ip_user_id(request)
     user_info = load_user_data(user_id)
 
