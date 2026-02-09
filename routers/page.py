@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 import os
 from data_store import load_user_data, save_user_data
 from core.auth_utils import is_valid_user_id, make_user_id
@@ -45,6 +45,14 @@ async def login_page(request: Request):
     return HTMLResponse(_render_html_file("login.html"))
 
 
+
+
+@router.get("/register")
+async def register_page(request: Request):
+    if _is_logged_in(request):
+        return RedirectResponse(url="/ai树洞计划.html", status_code=302)
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    return FileResponse(os.path.join(base_dir, "static", "register.html"))
 @router.post("/login")
 async def login_action(request: Request):
     payload = await request.json()
