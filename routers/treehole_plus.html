@@ -722,6 +722,10 @@
             color: #2f4b7c;
         }
 
+
+        .username-module-hidden {
+            display: none !important;
+        }
         .mobile-toast {
             position: fixed;
             left: 50%;
@@ -927,25 +931,15 @@
                         <img src="/static/avatars/default.svg" alt="用户头像" id="user-avatar-img">
                     </div>
                     <div>
-                        <div class="user-card-title" id="user-card-title">用户名</div>
-                        <div class="lock-status" id="lock-status">请输入用户名后即可保存资料</div>
+                        <div class="user-card-title username-module-hidden" id="user-card-title" aria-hidden="true"></div>
+                        <div class="lock-status username-module-hidden" id="lock-status" aria-hidden="true"></div>
                     </div>
                 </div>
 
                 <input type="file" id="avatar-input" accept="image/*" hidden>
 
-                <div class="form-row">
-                    <div class="label-with-tip">
-                        <label for="login-username">用户名</label>
-                        <button type="button" class="info-tip" aria-label="用户名说明">
-                            <i class="fas fa-circle-info"></i>
-                            <span class="tooltip">
-                                用户名将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
-                                修改用户名将切换到另一份新的对话记忆。
-                            </span>
-                        </button>
-                    </div>
-                    <input id="login-username" type="text" placeholder="请输入用户名">
+                <div class="form-row username-module-hidden" aria-hidden="true">
+                    <input id="login-username" type="text" placeholder="" tabindex="-1">
                 </div>
 
                 <div class="user-card-actions">
@@ -1005,21 +999,11 @@
                         <img src="/static/avatars/default.svg" alt="用户头像" id="mobile-avatar-img">
                     </div>
                     <div>
-                        <div class="lock-status" id="mobile-lock-status">请输入用户名后即可保存资料</div>
+                        <div class="lock-status username-module-hidden" id="mobile-lock-status" aria-hidden="true"></div>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="label-with-tip">
-                        <label for="mobile-username">用户名</label>
-                        <button type="button" class="info-tip" aria-label="用户名说明">
-                            <i class="fas fa-circle-info"></i>
-                            <span class="tooltip">
-                                用户名将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
-                                修改用户名将切换到另一份新的对话记忆。
-                            </span>
-                        </button>
-                    </div>
-                    <input id="mobile-username" type="text" placeholder="请输入用户名">
+                <div class="form-row username-module-hidden" aria-hidden="true">
+                    <input id="mobile-username" type="text" placeholder="" tabindex="-1">
                 </div>
             </div>
         </div>

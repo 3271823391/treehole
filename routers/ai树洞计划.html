@@ -33,10 +33,44 @@
         .footer { text-align: center; color: #999; font-size: .9rem; margin-top: 60px; padding: 20px 0; }
         @media (max-width: 768px) { .header h1 { font-size: 2.2rem; } .header { margin: 20px 0 40px; } .versions { grid-template-columns: 1fr; gap: 20px; } .version-card { margin: 0 10px; } }
         .admin-console-link { position: fixed; top: 8px; right: 12px; opacity: 0.2; font-size: 14px; text-decoration: none; z-index: 99; }
+        .menu-trigger { position: fixed; top: 18px; left: 18px; width: 46px; height: 46px; border: none; border-radius: 12px; background: rgba(255,255,255,0.9); box-shadow: 0 6px 18px rgba(0,0,0,.12); color: #4c51bf; font-size: 1.5rem; cursor: pointer; z-index: 1200; }
+        .menu-drawer-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.35); opacity: 0; pointer-events: none; transition: opacity .25s ease; z-index: 1198; }
+        .menu-drawer { position: fixed; top: 0; left: 0; height: 100%; width: min(33vw, 420px); min-width: 280px; background: #fff; box-shadow: 8px 0 30px rgba(15,23,42,.18); transform: translateX(-100%); transition: transform .25s ease; z-index: 1199; padding: 22px 18px; display: flex; flex-direction: column; gap: 20px; }
+        body.drawer-open .menu-drawer { transform: translateX(0); }
+        body.drawer-open .menu-drawer-overlay { opacity: 1; pointer-events: auto; }
+        .drawer-section { border: 1px solid #e9eef8; border-radius: 12px; padding: 14px; }
+        .drawer-section h3 { font-size: 1rem; color: #4c51bf; margin-bottom: 10px; }
+        .drawer-input { width: 100%; border: 1px solid #d6def0; border-radius: 8px; padding: 10px 12px; font-size: .95rem; margin-bottom: 10px; }
+        .drawer-btn { border: none; border-radius: 8px; padding: 10px 12px; background: #5a67d8; color: #fff; cursor: pointer; }
+        .drawer-btn.secondary { background: #eef2ff; color: #4c51bf; }
+        .drawer-avatar { width: 68px; height: 68px; border-radius: 50%; border: 2px solid #e2e8f0; object-fit: cover; display: block; margin-bottom: 10px; }
+        .drawer-status { font-size: .86rem; color: #64748b; margin-top: 8px; min-height: 1.2em; }
+
     </style>
 </head>
 <body>
     {{ADMIN_CONSOLE_LINK}}
+    <button class="menu-trigger" id="menu-trigger" type="button" aria-label="菜单">☰</button>
+    <div class="menu-drawer-overlay" id="menu-drawer-overlay"></div>
+    <aside class="menu-drawer" id="menu-drawer" aria-label="菜单抽屉">
+        <section class="drawer-section">
+            <h3>修改用户名</h3>
+            <input id="drawer-username" class="drawer-input" type="text" placeholder="请输入用户名">
+            <button id="drawer-save-username" class="drawer-btn" type="button">保存</button>
+            <div class="drawer-status" id="drawer-username-status"></div>
+        </section>
+        <section class="drawer-section">
+            <h3>修改头像</h3>
+            <img src="/static/avatars/default.svg" class="drawer-avatar" id="drawer-avatar-preview" alt="用户头像">
+            <button id="drawer-upload-avatar" class="drawer-btn secondary" type="button">上传头像</button>
+            <input id="drawer-avatar-input" type="file" accept="image/*" hidden>
+            <div class="drawer-status" id="drawer-avatar-status"></div>
+        </section>
+        <section class="drawer-section">
+            <h3>退出登录</h3>
+            <button id="drawer-logout" class="drawer-btn" type="button">退出登录</button>
+        </section>
+    </aside>
     <div class="container">
         <div class="header">
             <h1>轻语信箱 - 版本介绍</h1>
@@ -101,16 +135,142 @@
     </div>
 
     <script>
+        const STORAGE_USERNAME_KEY = "treehole_username";
+        const STORAGE_USER_ID_KEY = "treehole_user_id";
+        const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
+
         function updateAppHeight() {
             const viewport = window.visualViewport;
             const height = viewport ? viewport.height : window.innerHeight;
             document.documentElement.style.setProperty('--app-height', `${height}px`);
         }
+
+        function safeLocalStorageGet(key) {
+            try { return localStorage.getItem(key) || ""; } catch (e) { return ""; }
+        }
+
+        function safeLocalStorageSet(key, value) {
+            try { localStorage.setItem(key, value); } catch (e) {}
+        }
+
+        function safeLocalStorageRemove(key) {
+            try { localStorage.removeItem(key); } catch (e) {}
+        }
+
+        async function fetchJson(url, options = {}) {
+            try {
+                const res = await fetch(url, options);
+                const data = await res.json();
+                return res.ok ? data : { ok: false, msg: data?.msg || "请求失败" };
+            } catch (e) {
+                return { ok: false, msg: "网络异常" };
+            }
+        }
+
+        async function sha1Hex(input) {
+            const data = new TextEncoder().encode(input);
+            const buffer = await crypto.subtle.digest("SHA-1", data);
+            return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
+        }
+
+        async function makeUserId(username) {
+            const norm = (username || "").trim().toLowerCase();
+            if (!norm) return "";
+            return `u_${await sha1Hex(norm)}`;
+        }
+
+        function toggleDrawer(force) {
+            const isOpen = document.body.classList.contains('drawer-open');
+            const next = typeof force === 'boolean' ? force : !isOpen;
+            document.body.classList.toggle('drawer-open', next);
+        }
+
+        async function loadProfile(userId) {
+            if (!userId) return;
+            const data = await fetchJson(`/profile?user_id=${encodeURIComponent(userId)}`);
+            if (!data?.ok) return;
+            const profile = data.profile || {};
+            document.getElementById('drawer-username').value = profile.username || safeLocalStorageGet(STORAGE_USERNAME_KEY);
+            document.getElementById('drawer-avatar-preview').src = profile.avatar_url || DEFAULT_AVATAR_URL;
+        }
+
+        async function saveUsername() {
+            const status = document.getElementById('drawer-username-status');
+            const username = document.getElementById('drawer-username').value.trim();
+            if (!username) {
+                status.textContent = '用户名不能为空';
+                return;
+            }
+            const userId = await makeUserId(username);
+            const payload = { user_id: userId, username };
+            const data = await fetchJson('/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (data?.ok) {
+                safeLocalStorageSet(STORAGE_USERNAME_KEY, username);
+                safeLocalStorageSet(STORAGE_USER_ID_KEY, userId);
+                status.textContent = '用户名已保存';
+                document.getElementById('drawer-avatar-preview').src = data.profile?.avatar_url || DEFAULT_AVATAR_URL;
+            } else {
+                status.textContent = data?.msg || '保存失败';
+            }
+        }
+
+        async function uploadAvatar(file) {
+            const avatarStatus = document.getElementById('drawer-avatar-status');
+            const username = document.getElementById('drawer-username').value.trim() || safeLocalStorageGet(STORAGE_USERNAME_KEY);
+            if (!username) {
+                avatarStatus.textContent = '请先保存用户名';
+                return;
+            }
+            const userId = await makeUserId(username);
+            safeLocalStorageSet(STORAGE_USER_ID_KEY, userId);
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('user_id', userId);
+            const data = await fetchJson('/avatar_upload', { method: 'POST', body: formData });
+            if (data?.ok) {
+                document.getElementById('drawer-avatar-preview').src = data.avatar_url || DEFAULT_AVATAR_URL;
+                avatarStatus.textContent = '头像已更新';
+            } else {
+                avatarStatus.textContent = data?.msg || '头像上传失败';
+            }
+        }
+
+        function logout() {
+            safeLocalStorageRemove(STORAGE_USER_ID_KEY);
+            safeLocalStorageRemove(STORAGE_USERNAME_KEY);
+            window.location.href = '/二级页面2第六版.html';
+        }
+
         updateAppHeight();
         window.addEventListener('resize', updateAppHeight);
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', updateAppHeight);
         }
+
+        const menuBtn = document.getElementById('menu-trigger');
+        const overlay = document.getElementById('menu-drawer-overlay');
+        const avatarInput = document.getElementById('drawer-avatar-input');
+        menuBtn.addEventListener('click', () => toggleDrawer());
+        overlay.addEventListener('click', () => toggleDrawer(false));
+        document.getElementById('drawer-save-username').addEventListener('click', saveUsername);
+        document.getElementById('drawer-upload-avatar').addEventListener('click', () => avatarInput.click());
+        avatarInput.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (file) uploadAvatar(file);
+            e.target.value = '';
+        });
+        document.getElementById('drawer-logout').addEventListener('click', logout);
+
+        const storedUserId = safeLocalStorageGet(STORAGE_USER_ID_KEY);
+        const storedUsername = safeLocalStorageGet(STORAGE_USERNAME_KEY);
+        if (storedUsername) {
+            document.getElementById('drawer-username').value = storedUsername;
+        }
+        loadProfile(storedUserId);
     </script>
 </body>
 </html>
