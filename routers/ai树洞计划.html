@@ -33,12 +33,47 @@
         .footer { text-align: center; color: #999; font-size: .9rem; margin-top: 60px; padding: 20px 0; }
         @media (max-width: 768px) { .header h1 { font-size: 2.2rem; } .header { margin: 20px 0 40px; } .versions { grid-template-columns: 1fr; gap: 20px; } .version-card { margin: 0 10px; } }
         .admin-console-link { position: fixed; top: 8px; right: 12px; opacity: 0.2; font-size: 14px; text-decoration: none; z-index: 99; }
-        .logout-btn { position: fixed; top: 12px; left: 12px; z-index: 99; background: #ffffff; color: #4c51bf; border: 1px solid #c7d2fe; border-radius: 8px; padding: 8px 12px; font-size: 14px; text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        .logout-btn:hover { background: #eef2ff; }
+        .menu-btn { position: fixed; top: 12px; left: 12px; z-index: 100; background: #ffffff; color: #4c51bf; border: 1px solid #c7d2fe; border-radius: 8px; padding: 8px 12px; font-size: 16px; line-height: 1; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .menu-btn:hover { background: #eef2ff; }
+        .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.34); opacity: 0; pointer-events: none; transition: opacity .28s ease; z-index: 110; }
+        .drawer { position: fixed; top: 0; left: 0; width: min(33vw, 420px); min-width: 280px; height: 100%; background: #fff; box-shadow: 12px 0 32px rgba(0,0,0,0.15); transform: translateX(-100%); transition: transform .28s ease; z-index: 120; padding: 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+        .drawer.open { transform: translateX(0); }
+        .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+        .drawer-header { display: flex; justify-content: space-between; align-items: center; color: #4c51bf; font-weight: bold; }
+        .drawer-close { border: 0; background: transparent; color: #4c51bf; font-size: 22px; cursor: pointer; }
+        .drawer-section { border: 1px solid #eef2ff; border-radius: 12px; padding: 12px; }
+        .drawer-section h3 { font-size: 15px; margin-bottom: 8px; color: #3f4aa0; }
+        .drawer-input { width: 100%; padding: 10px 12px; border: 1px solid #d8deff; border-radius: 8px; font-size: 14px; margin-bottom: 8px; }
+        .drawer-action { width: 100%; border: 0; border-radius: 8px; padding: 10px 12px; background: #5a67d8; color: #fff; cursor: pointer; }
+        .drawer-avatar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .drawer-avatar { width: 48px; height: 48px; border-radius: 999px; object-fit: cover; border: 2px solid #e6eaff; }
+        .drawer-action.logout { background: #e53e3e; }
+        .drawer-note { color: #666; font-size: 12px; min-height: 18px; }
+        @media (max-width: 768px) { .drawer { width: min(84vw, 360px); } }
     </style>
 </head>
 <body>
-    <a href="/logout" id="logoutBtn" class="logout-btn">退出登录</a>
+    <button type="button" id="menuBtn" class="menu-btn" aria-label="打开菜单">☰</button>
+    <div id="drawerOverlay" class="drawer-overlay" aria-hidden="true"></div>
+    <aside id="sideDrawer" class="drawer" aria-hidden="true">
+        <div class="drawer-header"><span>菜单</span><button type="button" class="drawer-close" id="drawerCloseBtn" aria-label="关闭菜单">×</button></div>
+        <section class="drawer-section">
+            <h3>修改用户名</h3>
+            <input id="drawerUsername" class="drawer-input" type="text" placeholder="请输入用户名">
+            <button id="saveUsernameBtn" class="drawer-action" type="button">保存用户名</button>
+        </section>
+        <section class="drawer-section">
+            <h3>修改头像</h3>
+            <div class="drawer-avatar-row"><img id="drawerAvatar" class="drawer-avatar" src="/static/avatars/default.svg" alt="用户头像"><span id="avatarHint">点击按钮上传头像</span></div>
+            <button id="uploadAvatarBtn" class="drawer-action" type="button">上传头像</button>
+            <input id="drawerAvatarInput" type="file" accept="image/*" hidden>
+        </section>
+        <section class="drawer-section">
+            <h3>退出登录</h3>
+            <button id="drawerLogoutBtn" class="drawer-action logout" type="button">退出登录</button>
+        </section>
+        <div id="drawerNote" class="drawer-note"></div>
+    </aside>
     {{ADMIN_CONSOLE_LINK}}
     <div class="container">
         <div class="header">
@@ -114,6 +149,111 @@
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', updateAppHeight);
         }
+    
+        (function () {
+            const STORAGE_USERNAME_KEY = "treehole_username";
+            const STORAGE_USER_ID_KEY = "treehole_user_id";
+            const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            const USER_ID_SHA1_PATTERN = /^u_[0-9a-f]{40}$/i;
+            const defaultAvatar = '/static/avatars/default.svg';
+            const note = document.getElementById('drawerNote');
+            const menuBtn = document.getElementById('menuBtn');
+            const overlay = document.getElementById('drawerOverlay');
+            const drawer = document.getElementById('sideDrawer');
+            const closeBtn = document.getElementById('drawerCloseBtn');
+            const usernameInput = document.getElementById('drawerUsername');
+            const saveUsernameBtn = document.getElementById('saveUsernameBtn');
+            const uploadAvatarBtn = document.getElementById('uploadAvatarBtn');
+            const avatarInput = document.getElementById('drawerAvatarInput');
+            const avatarImg = document.getElementById('drawerAvatar');
+            const logoutBtn = document.getElementById('drawerLogoutBtn');
+
+            const safeGet = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
+            const safeSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+            const safeRemove = (k) => { try { localStorage.removeItem(k); } catch {} };
+            const isValidUserId = (id) => typeof id === 'string' && (USER_ID_UUID_PATTERN.test(id) || USER_ID_SHA1_PATTERN.test(id));
+            const createAnonymousUserId = () => crypto?.randomUUID ? `u_${crypto.randomUUID()}` : `u_${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
+            const showNote = (msg, ok = true) => { note.textContent = msg; note.style.color = ok ? '#2f855a' : '#e53e3e'; };
+            const fetchJson = async (url, options = {}) => {
+                const res = await fetch(url, options);
+                const contentType = res.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) return { ok: false, msg: '服务暂不可用' };
+                const data = await res.json();
+                return res.ok ? data : { ok: false, msg: data?.msg || '请求失败' };
+            };
+            const sha1Hex = async (input) => {
+                const data = new TextEncoder().encode(input);
+                const hash = await crypto.subtle.digest('SHA-1', data);
+                return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
+            };
+            const makeUserId = async (username) => `u_${await sha1Hex((username || '').trim().toLowerCase())}`;
+
+            function openDrawer() { drawer.classList.add('open'); overlay.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); overlay.setAttribute('aria-hidden', 'false'); }
+            function closeDrawer() { drawer.classList.remove('open'); overlay.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); overlay.setAttribute('aria-hidden', 'true'); }
+
+            async function ensureUserId() {
+                const username = (safeGet(STORAGE_USERNAME_KEY) || '').trim();
+                if (username) {
+                    const uid = await makeUserId(username);
+                    safeSet(STORAGE_USER_ID_KEY, uid);
+                    return uid;
+                }
+                const stored = safeGet(STORAGE_USER_ID_KEY);
+                if (isValidUserId(stored)) return stored;
+                const uid = createAnonymousUserId();
+                safeSet(STORAGE_USER_ID_KEY, uid);
+                return uid;
+            }
+
+            async function refreshProfile() {
+                usernameInput.value = safeGet(STORAGE_USERNAME_KEY);
+                const userId = await ensureUserId();
+                const data = await fetchJson(`/profile?user_id=${encodeURIComponent(userId)}`);
+                if (data?.ok) {
+                    avatarImg.src = data.profile?.avatar_url || defaultAvatar;
+                    if (data.profile?.username) usernameInput.value = data.profile.username;
+                }
+            }
+
+            menuBtn.addEventListener('click', () => { openDrawer(); refreshProfile(); });
+            closeBtn.addEventListener('click', closeDrawer);
+            overlay.addEventListener('click', closeDrawer);
+
+            saveUsernameBtn.addEventListener('click', async () => {
+                const username = usernameInput.value.trim();
+                if (!username) { showNote('用户名不能为空', false); return; }
+                const userId = await makeUserId(username);
+                const data = await fetchJson('/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId, username }) });
+                if (!data?.ok) { showNote(data?.msg || '用户名保存失败', false); return; }
+                safeSet(STORAGE_USERNAME_KEY, username);
+                safeSet(STORAGE_USER_ID_KEY, userId);
+                showNote('用户名已更新');
+                location.reload();
+            });
+
+            uploadAvatarBtn.addEventListener('click', () => avatarInput.click());
+            avatarInput.addEventListener('change', async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const userId = await ensureUserId();
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('user_id', userId);
+                const data = await fetchJson('/avatar_upload', { method: 'POST', body: formData });
+                if (!data?.ok) { showNote(data?.msg || '头像上传失败', false); return; }
+                avatarImg.src = data.avatar_url || defaultAvatar;
+                showNote('头像已更新');
+                e.target.value = '';
+            });
+
+            logoutBtn.addEventListener('click', async () => {
+                safeRemove(STORAGE_USERNAME_KEY);
+                safeRemove(STORAGE_USER_ID_KEY);
+                try { sessionStorage.clear(); } catch {}
+                await fetch('/logout', { method: 'GET', credentials: 'include' });
+                window.location.href = '/login';
+            });
+        })();
     </script>
 </body>
 </html>
