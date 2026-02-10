@@ -7,7 +7,7 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
-from api import admin_logs, client_log, debug_relationship
+from api import admin, client_log, debug_relationship
 from config import HOST, PORT
 from core.log_buffer import add_log
 from core.log_handler import BufferLogHandler
@@ -95,7 +95,7 @@ app.include_router(chat.router)
 app.include_router(voice_clone.router)
 app.include_router(debug_relationship.router)
 app.include_router(client_log.router)
-app.include_router(admin_logs.router)
+app.include_router(admin.router)
 
 
 def run_api():
