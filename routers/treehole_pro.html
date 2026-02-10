@@ -1167,7 +1167,7 @@
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
-                    <button class="voice-clone-trigger primary" type="button" data-voice-clone-trigger>
+                    <button class="voice-clone-trigger primary" id="voice-clone-btn-main" type="button" data-action="voice-clone" data-voice-clone-trigger>
                         <i class="fas fa-microphone"></i>
                         语音克隆
                     </button>
@@ -1232,7 +1232,7 @@
                 <p class="voice-clone-desc">
                     TODO：移动端入口保留此按钮，桌面端请使用底部输入区的快捷入口。
                 </p>
-                <button class="voice-clone-trigger primary" type="button" data-voice-clone-trigger>
+                <button class="voice-clone-trigger primary" id="voice-clone-btn-sidebar" type="button" data-action="voice-clone" data-voice-clone-trigger>
                     语音克隆
                 </button>
             </div>
@@ -2236,7 +2236,6 @@
         const emotionTagsMobile = document.getElementById('emotion-tags-mobile');
         const emotionAnalysisMobile = document.getElementById('emotion-analysis-mobile');
         const emotionSuggestMobile = document.getElementById('emotion-suggest-mobile');
-        const voiceCloneTriggers = document.querySelectorAll('[data-voice-clone-trigger]');
         const voiceCloneModal = document.getElementById('voice-clone-modal');
         const voiceCloneAction = document.getElementById('voice-clone-action');
         const voiceCloneFile = document.getElementById('voice-clone-file');
@@ -2540,14 +2539,25 @@
             });
         }
 
-        if (voiceCloneTriggers.length) {
-            voiceCloneTriggers.forEach((btn) => {
+        let voiceCloneTriggerBound = false;
+        function bindVoiceCloneTriggers() {
+            if (voiceCloneTriggerBound) return;
+            const triggerButtons = document.querySelectorAll('[data-action="voice-clone"]');
+            if (!triggerButtons.length) return;
+            triggerButtons.forEach((btn) => {
                 btn.addEventListener('click', () => {
                     setVoiceCloneStatus("");
                     loadEmotionState();
                     openModal(voiceCloneModal);
                 });
             });
+            voiceCloneTriggerBound = true;
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bindVoiceCloneTriggers, { once: true });
+        } else {
+            bindVoiceCloneTriggers();
         }
 
         if (voiceCloneAction) {
