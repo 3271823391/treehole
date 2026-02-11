@@ -1,6 +1,7 @@
 (function () {
     const STORAGE_USERNAME_KEY = "treehole_username";
     const STORAGE_USER_ID_KEY = "treehole_user_id";
+    const STORAGE_AVATAR_KEY = "treehole_avatar_url";
     const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
     const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const USER_ID_SHA1_PATTERN = /^u_[0-9a-f]{40}$/i;
@@ -156,7 +157,7 @@
 
         currentUserId = resolvedId;
 
-        setUserIdentity({ username: username, avatarUrl: DEFAULT_AVATAR_URL });
+        setUserIdentity({ username: username, avatarUrl: safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL });
         await loadProfile();
         loadFavorability();
     }
@@ -184,7 +185,9 @@
         const profile = data.profile || {};
         currentBaseUsername = profile.base_username || "";
         currentBaseAvatar = profile.base_avatar || "";
-        setUserIdentity({ username: profile.username || currentBaseUsername, avatarUrl: profile.avatar_url || currentBaseAvatar || DEFAULT_AVATAR_URL });
+        const localAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY) || "";
+        const mergedAvatar = localAvatar || profile.avatar_url || currentBaseAvatar || DEFAULT_AVATAR_URL;
+        setUserIdentity({ username: profile.username || currentBaseUsername, avatarUrl: mergedAvatar });
         const ipInput = document.getElementById('ipDisplayUsername');
         const identityStatus = document.getElementById('identityStatusText');
         if (ipInput) {
@@ -240,6 +243,7 @@
             return;
         }
         await loadProfile();
+        safeLocalStorageSet(STORAGE_AVATAR_KEY, data.avatar_url || "");
         showToast('头像已同步到Treehole');
     }
 
@@ -420,6 +424,15 @@
         }
 
         window.addEventListener('resize', updateDeviceMode);
+
+        window.addEventListener('storage', (event) => {
+            if (event.key === STORAGE_USERNAME_KEY || event.key === STORAGE_AVATAR_KEY) {
+                setUserIdentity({
+                    username: (safeLocalStorageGet(STORAGE_USERNAME_KEY) || "").trim(),
+                    avatarUrl: safeLocalStorageGet(STORAGE_AVATAR_KEY) || currentAvatarUrl || DEFAULT_AVATAR_URL
+                });
+            }
+        });
     }
 
     function initConfigToDom() {

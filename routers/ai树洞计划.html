@@ -33,10 +33,40 @@
         .footer { text-align: center; color: #999; font-size: .9rem; margin-top: 60px; padding: 20px 0; }
         @media (max-width: 768px) { .header h1 { font-size: 2.2rem; } .header { margin: 20px 0 40px; } .versions { grid-template-columns: 1fr; gap: 20px; } .version-card { margin: 0 10px; } }
         .admin-console-link { position: fixed; top: 8px; right: 12px; opacity: 0.2; font-size: 14px; text-decoration: none; z-index: 99; }
+        .menu-btn { position: fixed; top: 12px; left: 12px; z-index: 120; border: none; border-radius: 10px; padding: 10px 14px; background: #5a67d8; color: #fff; cursor: pointer; font-weight: 600; }
+        .drawer-mask { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 110; }
+        .profile-drawer { position: fixed; top: 0; left: 0; width: min(30vw, 420px); min-width: 260px; height: 100vh; background: #fff; box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15); transform: translateX(-100%); transition: transform .25s ease; z-index: 130; padding: 20px 16px; }
+        .profile-drawer h3 { color: #333; margin-bottom: 18px; }
+        .drawer-form { display: flex; flex-direction: column; gap: 10px; }
+        .drawer-form label { font-size: 14px; color: #555; }
+        .drawer-form input[type="text"] { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 10px; }
+        .drawer-form input[type="file"] { font-size: 13px; }
+        .drawer-actions { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+        .drawer-action-btn { border: none; border-radius: 8px; padding: 10px; cursor: pointer; }
+        .drawer-save-btn { background: #5a67d8; color: #fff; }
+        .drawer-logout-btn { background: #f56565; color: #fff; }
+        body.drawer-open .drawer-mask { opacity: 1; pointer-events: auto; }
+        body.drawer-open .profile-drawer { transform: translateX(0); }
+        @media (max-width: 768px) { .profile-drawer { width: 78vw; min-width: 0; } }
     </style>
 </head>
 <body>
     {{ADMIN_CONSOLE_LINK}}
+    <button class="menu-btn" id="menuBtn" type="button">菜单</button>
+    <div class="drawer-mask" id="drawerMask"></div>
+    <aside class="profile-drawer" id="profileDrawer" aria-label="个人中心">
+        <h3>个人中心</h3>
+        <div class="drawer-form">
+            <label for="drawerUsername">修改用户名</label>
+            <input id="drawerUsername" type="text" placeholder="请输入用户名">
+            <label for="drawerAvatar">修改头像</label>
+            <input id="drawerAvatar" type="file" accept="image/*">
+        </div>
+        <div class="drawer-actions">
+            <button class="drawer-action-btn drawer-save-btn" id="drawerSaveBtn" type="button">保存</button>
+            <button class="drawer-action-btn drawer-logout-btn" id="drawerLogoutBtn" type="button">退出登录</button>
+        </div>
+    </aside>
     <div class="container">
         <div class="header">
             <h1>轻语信箱 - 版本介绍</h1>
@@ -101,6 +131,10 @@
     </div>
 
     <script>
+        const STORAGE_USERNAME_KEY = 'treehole_username';
+        const STORAGE_USER_ID_KEY = 'treehole_user_id';
+        const STORAGE_AVATAR_KEY = 'treehole_avatar_url';
+
         function updateAppHeight() {
             const viewport = window.visualViewport;
             const height = viewport ? viewport.height : window.innerHeight;
@@ -111,6 +145,60 @@
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', updateAppHeight);
         }
+
+        const menuBtn = document.getElementById('menuBtn');
+        const drawerMask = document.getElementById('drawerMask');
+        const drawerUsername = document.getElementById('drawerUsername');
+        const drawerAvatar = document.getElementById('drawerAvatar');
+        const drawerSaveBtn = document.getElementById('drawerSaveBtn');
+        const drawerLogoutBtn = document.getElementById('drawerLogoutBtn');
+
+        function openDrawer() { document.body.classList.add('drawer-open'); }
+        function closeDrawer() { document.body.classList.remove('drawer-open'); }
+
+        function syncDrawerFields() {
+            const username = localStorage.getItem(STORAGE_USERNAME_KEY) || '';
+            drawerUsername.value = username;
+        }
+
+        async function readFileAsDataUrl(file) {
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result || '');
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        menuBtn.addEventListener('click', () => {
+            syncDrawerFields();
+            openDrawer();
+        });
+        drawerMask.addEventListener('click', closeDrawer);
+
+        drawerSaveBtn.addEventListener('click', async () => {
+            const username = drawerUsername.value.trim();
+            localStorage.setItem(STORAGE_USERNAME_KEY, username);
+            const file = drawerAvatar.files && drawerAvatar.files[0];
+            if (file) {
+                const dataUrl = await readFileAsDataUrl(file);
+                if (dataUrl) {
+                    localStorage.setItem(STORAGE_AVATAR_KEY, dataUrl);
+                }
+                drawerAvatar.value = '';
+            }
+            closeDrawer();
+        });
+
+        drawerLogoutBtn.addEventListener('click', () => {
+            drawerLogoutBtn.disabled = true;
+            drawerLogoutBtn.textContent = '退出中...';
+            localStorage.removeItem(STORAGE_USERNAME_KEY);
+            localStorage.removeItem(STORAGE_USER_ID_KEY);
+            localStorage.removeItem(STORAGE_AVATAR_KEY);
+            closeDrawer();
+            window.location.assign('/?logout=1');
+        });
     </script>
 </body>
 </html>
