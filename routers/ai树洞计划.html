@@ -169,6 +169,72 @@
             try { localStorage.setItem(key, value || ''); } catch (e) {}
         }
 
+        function safeLocalStorageGetJson(key) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function syncUserInfoToLocal(userInfo = {}) {
+            const normalized = {
+                username: (userInfo.username || '').trim(),
+                user_id: (userInfo.user_id || '').trim(),
+                avatar_url: (userInfo.avatar_url || '').trim() || DEFAULT_AVATAR_URL
+            };
+            const previous = safeLocalStorageGetJson('treehole_user') || {};
+            const merged = {
+                username: normalized.username || (previous.username || '').trim(),
+                user_id: normalized.user_id || (previous.user_id || '').trim(),
+                avatar_url: normalized.avatar_url || (previous.avatar_url || '').trim() || DEFAULT_AVATAR_URL
+            };
+
+            safeLocalStorageSet(STORAGE_USERNAME_KEY, merged.username);
+            safeLocalStorageSet(STORAGE_USER_ID_KEY, merged.user_id);
+            safeLocalStorageSet(STORAGE_AVATAR_KEY, merged.avatar_url);
+            safeLocalStorageSet('treehole_user', JSON.stringify(merged));
+            window.treeholeUser = merged;
+
+            const nameSelectors = [
+                '[data-user-name]',
+                '.profile-name',
+                '.drawer-name',
+                '.user-info-name',
+                '.user-card-title',
+                '#userNameDisplay',
+                '#drawerNameDisplay',
+                '#mobile-user-card-title',
+                '#mobileUserNameDisplay'
+            ];
+            const avatarSelectors = [
+                '[data-user-avatar]',
+                '.user-avatar',
+                '.drawer-avatar-preview',
+                '.user-info-avatar',
+                '#user-avatar-img',
+                '#mobile-avatar-img',
+                '#drawerAvatarPreview'
+            ];
+
+            document.querySelectorAll(nameSelectors.join(',')).forEach((node) => {
+                if (!merged.username) return;
+                node.textContent = merged.username;
+                node.title = merged.username;
+            });
+            document.querySelectorAll(avatarSelectors.join(',')).forEach((node) => {
+                if (node.tagName === 'IMG') {
+                    node.src = merged.avatar_url;
+                    return;
+                }
+                node.style.backgroundImage = `url('${merged.avatar_url}')`;
+            });
+
+            window.dispatchEvent(new CustomEvent('treehole:user-updated', { detail: merged }));
+            return merged;
+        }
+
         async function sha1Hex(input) {
             const data = new TextEncoder().encode(input);
             const buffer = await crypto.subtle.digest('SHA-1', data);
@@ -194,11 +260,12 @@
         }
 
         function renderDrawerIdentity() {
-            const username = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
-            const avatarUrl = safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL;
+            const cached = safeLocalStorageGetJson('treehole_user') || {};
+            const username = ((cached.username || safeLocalStorageGet(STORAGE_USERNAME_KEY)) || '').trim();
+            const userId = ((cached.user_id || safeLocalStorageGet(STORAGE_USER_ID_KEY)) || '').trim();
+            const avatarUrl = (cached.avatar_url || safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL).trim() || DEFAULT_AVATAR_URL;
             drawerUsernameInput.value = username;
-            drawerNameDisplay.textContent = username || '用户名';
-            drawerAvatarPreview.src = avatarUrl;
+            syncUserInfoToLocal({ username, user_id: userId, avatar_url: avatarUrl });
         }
 
         function setStatus(text, isError = false) {
@@ -222,9 +289,6 @@
                 return;
             }
             const userId = await makeUserId(username);
-            safeLocalStorageSet(STORAGE_USERNAME_KEY, username);
-            safeLocalStorageSet(STORAGE_USER_ID_KEY, userId);
-            drawerNameDisplay.textContent = username;
             const data = await fetchJson('/profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -234,6 +298,12 @@
                 setStatus(data?.msg || '用户名保存失败', true);
                 return;
             }
+            const profile = data.profile || {};
+            syncUserInfoToLocal({
+                username: profile.base_username || profile.username || username,
+                user_id: userId,
+                avatar_url: profile.base_avatar || profile.avatar_url || safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL
+            });
             setStatus('用户名已更新');
         }
 
@@ -242,13 +312,13 @@
                 setStatus('请先选择头像文件', true);
                 return;
             }
-            const username = drawerUsernameInput.value.trim() || (safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
+            const cachedUser = safeLocalStorageGetJson('treehole_user') || {};
+            const username = drawerUsernameInput.value.trim() || (cachedUser.username || safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
             if (!username) {
                 setStatus('请先设置用户名', true);
                 return;
             }
             const userId = await makeUserId(username);
-            safeLocalStorageSet(STORAGE_USER_ID_KEY, userId);
 
             const formData = new FormData();
             formData.append('file', pendingAvatarFile);
@@ -259,8 +329,11 @@
                 return;
             }
             const avatarUrl = data.avatar_url || DEFAULT_AVATAR_URL;
-            safeLocalStorageSet(STORAGE_AVATAR_KEY, avatarUrl);
-            drawerAvatarPreview.src = avatarUrl;
+            syncUserInfoToLocal({
+                username,
+                user_id: userId,
+                avatar_url: avatarUrl
+            });
             pendingAvatarFile = null;
             drawerAvatarInput.value = '';
             setStatus('头像已更新');
