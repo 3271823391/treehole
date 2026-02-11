@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 import os
 from data_store import load_user_data, save_user_data
 from core.auth_utils import is_valid_user_id, make_user_id
@@ -25,6 +25,11 @@ async def intro_page():
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
     return _with_admin_logger(_with_admin_link(html))
+
+
+@router.get("/routers/login.html")
+async def legacy_login_page_redirect():
+    return RedirectResponse(url="/", status_code=307)
 
 @router.get("/ip", response_class=HTMLResponse)
 async def ip_page():
