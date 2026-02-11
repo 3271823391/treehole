@@ -263,3 +263,5 @@ body.drawer-open .drawer-backdrop { display: block; }
     }
     body.drawer-open .info-sidebar { transform: translateX(0); }
 }
+
+.profile-edit-controls { display: none !important; }
