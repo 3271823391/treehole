@@ -1188,7 +1188,7 @@
             </div>
             <div class="user-card">
                 <div class="user-card-header">
-                    <div class="user-avatar-box" id="user-avatar-box">
+                    <div class="user-avatar-box" >
                         <img src="/static/avatars/default.svg" alt="用户头像" id="user-avatar-img">
                     </div>
                     <div>
@@ -1199,30 +1199,9 @@
 
                 <input type="file" id="avatar-input" accept="image/*" hidden>
 
-                <div class="form-row">
-                    <div class="label-with-tip">
-                        <label for="login-username">用户名</label>
-                        <button type="button" class="info-tip" aria-label="用户名说明">
-                            <i class="fas fa-circle-info"></i>
-                            <span class="tooltip">
-                                用户名将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
-                                修改用户名将切换到另一份新的对话记忆。
-                            </span>
-                        </button>
-                    </div>
-                    <input id="login-username" type="text" placeholder="请输入用户名">
-                </div>
+                <input id="login-username" type="hidden">
 
-                <div class="user-card-actions">
-                    <button id="upload-avatar-btn" class="secondary">上传头像</button>
                 </div>
-
-                <!-- TODO: Pro 菜单新增语音输出开关 -->
-                <div class="setting-row">
-                    <span>语音输出</span>
-                    <button class="ios-switch off" id="voice-output-toggle" type="button" role="switch" aria-checked="false"></button>
-                </div>
-            </div>
 
             <!-- 情绪分析报告 -->
             <div class="emotion-report">
@@ -1285,26 +1264,14 @@
             </div>
             <div class="modal-body">
                 <div class="user-modal-profile">
-                    <div class="user-avatar-box" id="mobile-avatar-box">
+                    <div class="user-avatar-box" >
                         <img src="/static/avatars/default.svg" alt="用户头像" id="mobile-avatar-img">
                     </div>
                     <div>
                         <div class="lock-status" id="mobile-lock-status">请输入用户名后即可保存资料</div>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="label-with-tip">
-                        <label for="mobile-username">用户名</label>
-                        <button type="button" class="info-tip" aria-label="用户名说明">
-                            <i class="fas fa-circle-info"></i>
-                            <span class="tooltip">
-                                用户名将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
-                                修改用户名将切换到另一份新的对话记忆。
-                            </span>
-                        </button>
-                    </div>
-                    <input id="mobile-username" type="text" placeholder="请输入用户名">
-                </div>
+                <input id="mobile-username" type="hidden">
             </div>
         </div>
     </div>
@@ -1427,6 +1394,7 @@
     <script>
         const STORAGE_USERNAME_KEY = "treehole_username";
         const STORAGE_USER_ID_KEY = "treehole_user_id";
+        const STORAGE_AVATAR_KEY = "treehole_avatar_url";
         const STORAGE_VOICE_AUDIO_ID = "voice_audio_id"; // TODO: PRO 专用语音克隆缓存 key
         const STORAGE_VOICE_OUTPUT = "voice_output_enabled"; // TODO: PRO 语音输出开关
         const STORAGE_VOICE_EMOTION_EXT = "voice_emotion_ext";
@@ -1698,6 +1666,7 @@
         function updateAvatar(url) {
             const nextUrl = url || DEFAULT_AVATAR_URL;
             currentProfile.avatar_url = url || "";
+            safeLocalStorageSet(STORAGE_AVATAR_KEY, currentProfile.avatar_url || "");
             userAvatarImg.src = nextUrl;
             if (mobileAvatarImg) {
                 mobileAvatarImg.src = nextUrl;
@@ -2496,6 +2465,11 @@
                 syncUsernameInputs(lastUsername);
                 applyUsernameChange({ loadRemote: true });
             }
+        }
+
+        const localAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY);
+        if (localAvatar) {
+            updateAvatar(localAvatar);
         }
 
         function openModal(modal) {
