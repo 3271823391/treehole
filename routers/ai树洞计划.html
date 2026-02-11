@@ -64,7 +64,7 @@
         </div>
         <div class="drawer-actions">
             <button class="drawer-action-btn drawer-save-btn" id="drawerSaveBtn" type="button">保存</button>
-            <button class="drawer-action-btn drawer-logout-btn" id="drawerLogoutBtn" type="button">退出登录</button>
+            <button class="drawer-action-btn drawer-logout-btn" id="btnLogout" type="button">退出登录</button>
         </div>
     </aside>
     <div class="container">
@@ -150,7 +150,7 @@
         const drawerUsername = document.getElementById('drawerUsername');
         const drawerAvatar = document.getElementById('drawerAvatar');
         const drawerSaveBtn = document.getElementById('drawerSaveBtn');
-        const drawerLogoutBtn = document.getElementById('drawerLogoutBtn');
+        const btnLogout = document.getElementById('btnLogout');
 
         function openDrawer() { document.body.classList.add('drawer-open'); }
         function closeDrawer() { document.body.classList.remove('drawer-open'); }
@@ -189,10 +189,29 @@
             closeDrawer();
         });
 
-        drawerLogoutBtn.addEventListener('click', () => {
-            localStorage.removeItem(STORAGE_USERNAME_KEY);
-            localStorage.removeItem(STORAGE_AVATAR_KEY);
-            window.location.href = '/';
+        btnLogout?.addEventListener('click', async () => {
+            console.log('[logout] clicked');
+            try {
+                console.log('[logout] request POST /api/logout');
+                await fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                console.log('[logout] api request finished');
+            } catch (error) {
+                console.error('[logout] api request failed', error);
+            }
+
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                console.log('[logout] cleared local/session storage');
+            } catch (error) {
+                console.error('[logout] clear storage failed', error);
+            }
+
+            console.log('[logout] redirect to /routers/login.html');
+            window.location.href = '/routers/login.html';
         });
     </script>
 </body>

@@ -1,7 +1,7 @@
 import time
 from threading import Lock
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -136,3 +136,9 @@ def auth_verify(req: AuthRequest):
             "profile": profile_data,
         },
     )
+
+
+@router.post("/api/logout")
+def logout(response: Response):
+    response.delete_cookie("session")
+    return {"ok": True}
