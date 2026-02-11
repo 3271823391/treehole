@@ -132,6 +132,7 @@
 
     <script>
         const STORAGE_USERNAME_KEY = 'treehole_username';
+        const STORAGE_USER_ID_KEY = 'treehole_user_id';
         const STORAGE_AVATAR_KEY = 'treehole_avatar_url';
 
         function updateAppHeight() {
@@ -190,7 +191,13 @@
         });
 
         drawerLogoutBtn.addEventListener('click', () => {
-            window.location.href = '/routers/login.html';
+            drawerLogoutBtn.disabled = true;
+            drawerLogoutBtn.textContent = '退出中...';
+            localStorage.removeItem(STORAGE_USERNAME_KEY);
+            localStorage.removeItem(STORAGE_USER_ID_KEY);
+            localStorage.removeItem(STORAGE_AVATAR_KEY);
+            closeDrawer();
+            window.location.assign('/?logout=1');
         });
     </script>
 </body>
