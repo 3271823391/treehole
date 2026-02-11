@@ -2231,5 +2231,50 @@
       "base_avatar": "",
       "virtual_ip_overrides": {}
     }
+  },
+  "u_b9ad7fbfd630e9c83ee7bd510555d16c1441982f": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "username": "3271823391",
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": "pbkdf2_sha256$120000$tcyTAIRUpGj-8V18DNr24g$mMpvVO3MxYY0yjasHfIFY-OJCU2iRsMa29hVOaO6Zh0"
+    }
+  },
+  "u_f7c3bc1d808e04732adf679965ccc34ca7ae3441": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "username": "123456789",
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": "pbkdf2_sha256$120000$ATIdVa8ezxtAtpm76qOShA$wYwUjKyFI4RGW8I1q92vuyG2jRvLVL6rr0qnGc4zkw0"
+    }
+  },
+  "u_01b307acba4f54f55aafc33bb06bbbf6ca803e9a": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "username": "1234567890",
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": "pbkdf2_sha256$120000$dRGyb7iry_j1IUPowf_I6g$-ObcAVdrvB0JCh0zKJ2Byt-3MKvBvwl3EkSBCZq70sE"
+    }
   }
 }

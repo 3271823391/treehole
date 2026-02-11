@@ -33,9 +33,12 @@
         .footer { text-align: center; color: #999; font-size: .9rem; margin-top: 60px; padding: 20px 0; }
         @media (max-width: 768px) { .header h1 { font-size: 2.2rem; } .header { margin: 20px 0 40px; } .versions { grid-template-columns: 1fr; gap: 20px; } .version-card { margin: 0 10px; } }
         .admin-console-link { position: fixed; top: 8px; right: 12px; opacity: 0.2; font-size: 14px; text-decoration: none; z-index: 99; }
+        .logout-btn { position: fixed; top: 12px; left: 12px; z-index: 99; background: #ffffff; color: #4c51bf; border: 1px solid #c7d2fe; border-radius: 8px; padding: 8px 12px; font-size: 14px; text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .logout-btn:hover { background: #eef2ff; }
     </style>
 </head>
 <body>
+    <a href="/logout" id="logoutBtn" class="logout-btn">退出登录</a>
     {{ADMIN_CONSOLE_LINK}}
     <div class="container">
         <div class="header">

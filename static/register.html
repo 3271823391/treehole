@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>注册</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.7.2/css/all.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#7B61FF',
+            dark: '#1D2129',
+            'dark-2': '#4E5969',
+            'light-1': '#F2F3F5',
+            'light-2': '#E5E6EB',
+            danger: '#F53F3F'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .bg-gradient-primary { background: linear-gradient(135deg, #165DFF 0%, #7B61FF 100%); }
+      .text-shadow { text-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      .card-shadow { box-shadow: 0 10px 25px -5px rgba(22, 93, 255, 0.1), 0 8px 10px -6px rgba(22, 93, 255, 0.05); }
+      .input-focus { @apply focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none; }
+      .btn-hover { @apply hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300; }
+    }
+  </style>
+</head>
+<body class="font-inter bg-light-1 min-h-screen flex items-center justify-center p-3 md:p-4">
+  <div class="relative w-full max-w-md">
+    <div class="bg-white rounded-2xl p-6 md:p-8 card-shadow relative z-10" id="register-card">
+      <div class="text-center mb-6 md:mb-8">
+        <div class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-primary mb-3 md:mb-4">
+          <i class="fa-solid fa-user-plus text-white text-2xl md:text-3xl"></i>
+        </div>
+        <h1 class="text-[clamp(1.3rem,3vw,1.8rem)] font-bold text-dark mb-2">创建账户</h1>
+      </div>
+
+      <form id="registerForm" class="space-y-4 md:space-y-5">
+        <div class="space-y-2">
+          <label for="user" class="block text-sm font-medium text-dark-2">用户名</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fa fa-user text-dark-2/70"></i>
+            </div>
+            <input type="text" id="user" name="user" class="w-full pl-10 pr-4 py-2.5 md:py-3 rounded-lg border border-light-2 input-focus transition-all duration-300 text-sm" placeholder="建议填写QQ账号" required>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label for="pwd" class="block text-sm font-medium text-dark-2">登录密码</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fa fa-lock text-dark-2/70"></i>
+            </div>
+            <input type="password" id="pwd" name="pwd" class="w-full pl-10 pr-10 py-2.5 md:py-3 rounded-lg border border-light-2 input-focus transition-all duration-300 text-sm" placeholder="请输入密码" required>
+            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <i class="fa fa-eye-slash text-dark-2/70 text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label for="qq" class="block text-sm font-medium text-dark-2">QQ号</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fa-brands fa-qq text-dark-2/70"></i>
+            </div>
+            <input type="text" id="qq" name="qq" class="w-full pl-10 pr-4 py-2.5 md:py-3 rounded-lg border border-light-2 input-focus transition-all duration-300 text-sm" placeholder="请输入QQ号" required>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-gradient-primary text-white py-2.5 md:py-3 px-4 rounded-lg font-medium text-shadow btn-hover text-sm md:text-base">
+          <i class="fa fa-user-plus mr-2"></i>创建账户
+        </button>
+      </form>
+
+      <div class="mt-5 md:mt-6 text-center">
+        <p class="text-dark-2 text-xs md:text-sm">
+          已有账户? <a href="/login" class="text-primary font-medium hover:underline transition-colors">立即登录</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('togglePassword').addEventListener('click', function() {
+      const passwordInput = document.getElementById('pwd');
+      const icon = this.querySelector('i');
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      } else {
+        passwordInput.type = 'password';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      }
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('user').value.trim();
+      const password = document.getElementById('pwd').value;
+
+      if (!username) {
+        alert('请输入用户名');
+        return;
+      }
+
+      if (password.length < 6) {
+        alert('密码长度至少为6位');
+        return;
+      }
+
+      try {
+        const response = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user: username,
+            pass: password
+          })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+          throw new Error(result.msg || '注册失败');
+        }
+        alert('注册成功，请登录');
+        window.location.href = '/login';
+      } catch (error) {
+        alert(error.message || '注册失败，请稍后重试');
+      }
+    });
+  </script>
+</body>
+</html>

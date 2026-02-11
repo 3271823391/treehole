@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>登录 </title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.7.2/css/all.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#7B61FF',
+            success: '#00B42A',
+            warning: '#FF7D00',
+            danger: '#F53F3F',
+            dark: '#1D2129',
+            'dark-2': '#4E5969',
+            'light-1': '#F2F3F5',
+            'light-2': '#E5E6EB',
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          screen: {
+            'mobile': '320px',
+            'tablet': '768px',
+          }
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .bg-gradient-primary {
+        background: linear-gradient(135deg, #165DFF 0%, #7B61FF 100%);
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .card-shadow {
+        box-shadow: 0 10px 25px -5px rgba(22, 93, 255, 0.1), 0 8px 10px -6px rgba(22, 93, 255, 0.05);
+      }
+      .input-focus {
+        @apply focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none;
+      }
+      .btn-hover {
+        @apply hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300;
+      }
+      .social-icon {
+        @apply w-8 h-8 flex items-center justify-center rounded-full;
+      }
+      .social-icon-mobile {
+        @apply w-7 h-7 flex items-center justify-center rounded-full;
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-light-1 min-h-screen flex items-center justify-center p-3 md:p-4">
+  <div class="relative w-full max-w-md">
+    <div class="bg-white rounded-2xl p-6 md:p-8 card-shadow relative z-10 opacity-0 translate-y-8" id="login-card">
+      <div class="text-center mb-6 md:mb-8">
+          <div class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-primary mb-3 md:mb-4">
+            <img
+              src="/static/avatars/xiaxingmian.jpg"
+              alt="avatar"
+              class="w-full h-full object-cover rounded-full"
+            >
+          </div>
+          <h1 class="text-[clamp(1.3rem,3vw,1.8rem)] font-bold text-dark mb-2">欢迎回来</h1>
+<p id="demo" class="mt-3 text-gray-600 text-sm">「<a id="hitokoto">获取中...</a>」</p>
+<script>
+const defaultHitokoto = "生活中最美好的事情，往往不需要刻意追寻。";
+const hitokoto = document.getElementById('hitokoto');
+
+fetch('https://v1.hitokoto.cn')
+  .then(res => res.ok ? res.json() : Promise.reject('请求失败'))
+  .then(data => hitokoto.innerText = data.hitokoto || defaultHitokoto)
+  .catch(() => hitokoto.innerText = defaultHitokoto);
+</script>
+      </div>
+
+      <form id="loginForm" class="space-y-4 md:space-y-5">
+        <div class="space-y-2">
+          <label for="user" class="block text-sm font-medium text-dark-2">登录账号</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fa fa-user text-dark-2/70"></i>
+            </div>
+            <input type="text" id="user" name="user"
+                  class="w-full pl-10 pr-4 py-2.5 md:py-3 rounded-lg border border-light-2 input-focus transition-all duration-300 text-sm"
+                  value="" required>
+          </div>
+          <p id="userError" class="text-danger text-xs md:text-sm hidden">请输入登录账号</p>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex justify-between">
+            <label for="pass" class="block text-sm font-medium text-dark-2">密码</label>
+            <a href="javascript:void(0)" class="text-primary text-xs md:text-sm hover:underline transition-colors">忘记密码?</a>
+          </div>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fa fa-lock text-dark-2/70"></i>
+            </div>
+            <input type="password" id="pass" name="pass"
+                  class="w-full pl-10 pr-10 py-2.5 md:py-3 rounded-lg border border-light-2 input-focus transition-all duration-300 text-sm"
+                  required>
+            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <i class="fa fa-eye-slash text-dark-2/70 text-sm"></i>
+            </button>
+          </div>
+          <p id="passError" class="text-danger text-xs md:text-sm hidden">密码长度至少为6个字符</p>
+        </div>
+
+        <div class="flex items-center">
+          <input type="checkbox" id="remember" name="remember" class="w-3.5 h-3.5 md:w-4 md:h-4 text-primary rounded border-light-2 focus:ring-primary/30">
+          <label for="remember" class="ml-2 block text-xs md:text-sm text-dark-2">记住我的登录状态</label>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-gradient-primary text-white py-2.5 md:py-3 px-4 rounded-lg font-medium text-shadow btn-hover text-sm md:text-base">
+          <i class="fa fa-sign-in mr-2"></i>登录账户
+        </button>
+
+      </form>
+
+      <div class="mt-5 md:mt-6 text-center">
+        <p class="text-dark-2 text-xs md:text-sm">
+          还没有账户? <a href="/register" class="text-primary font-medium hover:underline transition-colors">立即注册</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-5 md:mt-6 text-center text-dark-2/70 text-xs md:text-sm">
+      <p>轻语信箱 © 2026 | 你的情绪，值得被认真对待 | 版权所有-JSHT捷思慧图科技公司 </p>
+    </div>
+  </div>
+  <script>
+    const togglePassword = document.getElementById('togglePassword');
+    const passInput = document.getElementById('pass');
+
+    togglePassword.addEventListener('click', function() {
+      const type = passInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passInput.setAttribute('type', type);
+
+      const icon = togglePassword.querySelector('i');
+      if (type === 'text') {
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      } else {
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      }
+    });
+
+    const loginForm = document.getElementById('loginForm');
+    loginForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      let isValid = true;
+
+      const userInput = document.getElementById('user');
+      const userError = document.getElementById('userError');
+      if (userInput.value.trim() === '') {
+        userError.classList.remove('hidden');
+        isValid = false;
+      } else {
+        userError.classList.add('hidden');
+      }
+
+      const passInput = document.getElementById('pass');
+      const passError = document.getElementById('passError');
+      if (passInput.value.length < 6) {
+        passError.classList.remove('hidden');
+        isValid = false;
+      } else {
+        passError.classList.add('hidden');
+      }
+
+      if (!isValid) {
+        return;
+      }
+
+      const submitButton = loginForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<i class="fa fa-circle-o-notch fa-spin mr-2"></i>登录中...';
+
+      try {
+        const response = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user: userInput.value.trim(),
+            pass: passInput.value,
+            remember: document.getElementById('remember').checked
+          })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+          throw new Error(result.msg || '登录失败');
+        }
+        window.location.href = '/ai树洞计划.html';
+      } catch (error) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<i class="fa fa-sign-in mr-2"></i>登录账户';
+        alert(error.message || '登录失败，请稍后重试');
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const loginCard = document.getElementById('login-card');
+      loginCard.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          loginCard.style.opacity = '1';
+          loginCard.style.transform = 'translateY(0)';
+        }, 100);
+      });
+    });
+  </script>
+</body>
+</html>

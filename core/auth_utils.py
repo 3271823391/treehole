@@ -11,8 +11,8 @@ from typing import Optional, Tuple
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-PIN_MIN_LEN = 4
-PIN_MAX_LEN = 6
+PASSWORD_MIN_LEN = 6
+PASSWORD_MAX_LEN = 128
 TOKEN_EXPIRE_SECONDS = 12 * 60 * 60
 PBKDF2_ITERATIONS = 120_000
 USER_ID_SHA1_PATTERN = re.compile(r"^u_[0-9a-f]{40}$", re.IGNORECASE)
@@ -40,21 +40,19 @@ def is_valid_user_id(user_id: str) -> bool:
     return bool(USER_ID_SHA1_PATTERN.match(user_id) or USER_ID_UUID_PATTERN.match(user_id))
 
 
-def validate_pin(pin: str) -> Tuple[bool, str]:
-    if not isinstance(pin, str):
-        return False, "pin_invalid"
-    if not pin.isdigit():
-        return False, "pin_digits_only"
-    if not (PIN_MIN_LEN <= len(pin) <= PIN_MAX_LEN):
-        return False, "pin_length"
+def validate_password(password: str) -> Tuple[bool, str]:
+    if not isinstance(password, str):
+        return False, "password_invalid"
+    if not (PASSWORD_MIN_LEN <= len(password) <= PASSWORD_MAX_LEN):
+        return False, "password_length"
     return True, ""
 
 
-def hash_pin(pin: str) -> str:
+def hash_password(password: str) -> str:
     salt = secrets.token_bytes(16)
     dk = hashlib.pbkdf2_hmac(
         "sha256",
-        pin.encode("utf-8"),
+        password.encode("utf-8"),
         salt,
         PBKDF2_ITERATIONS,
     )
@@ -65,7 +63,7 @@ def hash_pin(pin: str) -> str:
     )
 
 
-def verify_pin(pin: str, stored: str) -> bool:
+def verify_password(password: str, stored: str) -> bool:
     if not stored:
         return False
     try:
@@ -80,11 +78,23 @@ def verify_pin(pin: str, stored: str) -> bool:
 
     dk = hashlib.pbkdf2_hmac(
         "sha256",
-        pin.encode("utf-8"),
+        password.encode("utf-8"),
         salt,
         iterations,
     )
     return hmac.compare_digest(dk, expected)
+
+
+def validate_pin(pin: str) -> Tuple[bool, str]:
+    return validate_password(pin)
+
+
+def hash_pin(pin: str) -> str:
+    return hash_password(pin)
+
+
+def verify_pin(pin: str, stored: str) -> bool:
+    return verify_password(pin, stored)
 
 
 def _b64url_encode(raw: bytes) -> str:
@@ -96,10 +106,10 @@ def _b64url_decode(data: str) -> bytes:
     return base64.urlsafe_b64decode(data + padding)
 
 
-def create_token(user_id: str, secret: str) -> str:
+def create_token(user_id: str, secret: str, expire_seconds: int = TOKEN_EXPIRE_SECONDS) -> str:
     header = {"alg": "HS256", "typ": "JWT"}
     now = int(time.time())
-    payload = {"user_id": user_id, "iat": now, "exp": now + TOKEN_EXPIRE_SECONDS}
+    payload = {"user_id": user_id, "iat": now, "exp": now + int(expire_seconds)}
     header_b64 = _b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
     payload_b64 = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
