@@ -428,6 +428,8 @@
             color: #9aa9bf;
         }
 
+        .profile-edit-controls { display: none !important; }
+        .user-avatar-box.readonly { cursor: default; pointer-events: none; }
         .user-card-actions {
             display: flex;
             gap: 0.5rem;
@@ -928,13 +930,13 @@
                     </div>
                     <div>
                         <div class="user-card-title" id="user-card-title">用户名</div>
-                        <div class="lock-status" id="lock-status">请输入用户名后即可保存资料</div>
+                        <div class="lock-status" id="lock-status">资料修改请前往版本介绍页的菜单</div>
                     </div>
                 </div>
 
                 <input type="file" id="avatar-input" accept="image/*" hidden>
 
-                <div class="form-row">
+                <div class="form-row profile-edit-controls">
                     <div class="label-with-tip">
                         <label for="login-username">用户名</label>
                         <button type="button" class="info-tip" aria-label="用户名说明">
@@ -948,7 +950,7 @@
                     <input id="login-username" type="text" placeholder="请输入用户名">
                 </div>
 
-                <div class="user-card-actions">
+                <div class="user-card-actions profile-edit-controls">
                     <button id="upload-avatar-btn" class="secondary">上传头像</button>
                 </div>
             </div>
@@ -1005,10 +1007,10 @@
                         <img src="/static/avatars/default.svg" alt="用户头像" id="mobile-avatar-img">
                     </div>
                     <div>
-                        <div class="lock-status" id="mobile-lock-status">请输入用户名后即可保存资料</div>
+                        <div class="lock-status" id="mobile-lock-status">资料修改请前往版本介绍页的菜单</div>
                     </div>
                 </div>
-                <div class="form-row">
+                <div class="form-row profile-edit-controls">
                     <div class="label-with-tip">
                         <label for="mobile-username">用户名</label>
                         <button type="button" class="info-tip" aria-label="用户名说明">
@@ -1067,6 +1069,7 @@
     <script>
         const STORAGE_USERNAME_KEY = "treehole_username";
         const STORAGE_USER_ID_KEY = "treehole_user_id";
+        const STORAGE_AVATAR_KEY = "treehole_avatar_url";
         const APP_PLAN = "plus"; // 页面版本常量
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
         let currentUserId = null;
@@ -1268,6 +1271,7 @@
         function updateAvatar(url) {
             const nextUrl = url || DEFAULT_AVATAR_URL;
             currentProfile.avatar_url = url || "";
+            safeLocalStorageSet(STORAGE_AVATAR_KEY, currentProfile.avatar_url || "");
             userAvatarImg.src = nextUrl;
             if (mobileAvatarImg) {
                 mobileAvatarImg.src = nextUrl;
@@ -1467,6 +1471,8 @@
         const emotionModal = document.getElementById('emotion-modal');
         const mobileAvatarBox = document.getElementById('mobile-avatar-box');
         const mobileAvatarImg = document.getElementById('mobile-avatar-img');
+        if (userAvatarBox) userAvatarBox.classList.add('readonly');
+        if (mobileAvatarBox) mobileAvatarBox.classList.add('readonly');
         const mobileUsernameInput = document.getElementById('mobile-username');
         const mobileLockStatus = document.getElementById('mobile-lock-status');
         const emotionScoreNumMobile = document.getElementById('emotion-score-num-mobile');
@@ -1621,58 +1627,21 @@
             avatarInput.click();
         }
 
-        if (uploadAvatarBtn) {
-            uploadAvatarBtn.addEventListener('click', openAvatarPicker);
-        }
-        if (userAvatarBox) {
-            userAvatarBox.addEventListener('click', openAvatarPicker);
-        }
-        if (mobileAvatarBox) {
-            mobileAvatarBox.addEventListener('click', openAvatarPicker);
-        }
-        if (avatarInput) {
-            avatarInput.addEventListener('change', (e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                    uploadAvatar(file);
-                }
-                e.target.value = "";
-            });
-        }
+        // 次级页仅展示头像，不提供修改入口
 
         let usernameDebounceTimer = null;
         if (loginUsernameInput) {
-            loginUsernameInput.addEventListener('input', () => {
-                syncUsernameInputs(loginUsernameInput.value);
-                if (usernameDebounceTimer) {
-                    clearTimeout(usernameDebounceTimer);
-                }
-                usernameDebounceTimer = setTimeout(() => {
-                    applyUsernameChange({ loadRemote: true });
-                }, 250);
-            });
-
-            loginUsernameInput.addEventListener('blur', () => {
-                applyUsernameChange({ loadRemote: true });
-                restoreIOSViewport();
-            });
+            loginUsernameInput.readOnly = true;
+            loginUsernameInput.tabIndex = -1;
+        }
+        if (mobileUsernameInput) {
+            mobileUsernameInput.readOnly = true;
+            mobileUsernameInput.tabIndex = -1;
         }
 
-        if (mobileUsernameInput) {
-            mobileUsernameInput.addEventListener('input', () => {
-                syncUsernameInputs(mobileUsernameInput.value);
-                if (usernameDebounceTimer) {
-                    clearTimeout(usernameDebounceTimer);
-                }
-                usernameDebounceTimer = setTimeout(() => {
-                    applyUsernameChange({ loadRemote: true });
-                }, 250);
-            });
-
-            mobileUsernameInput.addEventListener('blur', () => {
-                applyUsernameChange({ loadRemote: true });
-                restoreIOSViewport();
-            });
+        const cachedAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY);
+        if (cachedAvatar) {
+            updateAvatar(cachedAvatar);
         }
 
         if (loginUsernameInput) {
@@ -1800,6 +1769,18 @@
         syncViewport();
         updateDeviceMode();
         setupTooltips();
+
+        window.addEventListener('storage', (event) => {
+            if (![STORAGE_USERNAME_KEY, STORAGE_AVATAR_KEY].includes(event.key)) return;
+            const nextUsername = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
+            const nextAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY) || '';
+            syncUsernameInputs(nextUsername);
+            updateProfileState({ username: nextUsername });
+            if (nextAvatar) updateAvatar(nextAvatar);
+            if (nextUsername) {
+                applyUsernameChange({ loadRemote: true });
+            }
+        });
 
         window.addEventListener('resize', syncViewport);
         window.addEventListener('orientationchange', syncViewport);

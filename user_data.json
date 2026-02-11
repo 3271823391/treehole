@@ -2218,17 +2218,26 @@
     "plan": "plus",
     "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
     "memories": [],
-    "history": [],
+    "history": [
+      {
+        "role": "user",
+        "content": "你好"
+      },
+      {
+        "role": "assistant",
+        "content": "你好呀，今天过得怎么样呢？（微笑）"
+      }
+    ],
     "has_greeted": false,
     "chat_count": 0,
     "relationships": {},
     "profile": {
       "username": "123",
       "display_name": "",
-      "avatar_url": "",
+      "avatar_url": "/static/avatars/u_40bd001563085fc35165329ea1ff5c5ecbdbbeef.png",
       "pin_hash": "",
       "base_username": "123",
-      "base_avatar": "",
+      "base_avatar": "/static/avatars/u_40bd001563085fc35165329ea1ff5c5ecbdbbeef.png",
       "virtual_ip_overrides": {}
     }
   },
@@ -2276,5 +2285,100 @@
       "avatar_url": "",
       "password_hash": "pbkdf2_sha256$120000$dRGyb7iry_j1IUPowf_I6g$-ObcAVdrvB0JCh0zKJ2Byt-3MKvBvwl3EkSBCZq70sE"
     }
+  },
+  "u_397c6cad5cb7e555c6f8856968c2ec85c8664bfc": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "username": "32718",
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": "pbkdf2_sha256$120000$57DY7YuWaWyxADWzGCDTbQ$anz8RmIq_mvxtnIJi7j-FVjcxo2jrLBtvY0YJHXi4co"
+    }
+  },
+  "u_56bcb46d-1e85-4298-9f00-945a0894d079": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "username": "",
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": ""
+    },
+    "ip_name": "linyu"
+  },
+  "u_712ddaf0-ae92-439e-b2ad-632410012e59": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "username": "",
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": ""
+    },
+    "ip_name": "jiangche"
+  },
+  "u_acf74673-4820-4806-a34d-bf71bdcf5ff3": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "username": "",
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": ""
+    },
+    "ip_name": "luchengyu"
+  },
+  "u_d375d420-2384-48fc-be91-b13f4396b8fc": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "username": "",
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": ""
+    },
+    "ip_name": "jiangche"
+  },
+  "u_3b631c54-41b5-45f1-a009-3ecdaa99def5": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "username": "",
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": ""
+    },
+    "ip_name": "luchengyu"
   }
 }

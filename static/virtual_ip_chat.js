@@ -1,6 +1,7 @@
 (function () {
     const STORAGE_USERNAME_KEY = "treehole_username";
     const STORAGE_USER_ID_KEY = "treehole_user_id";
+    const STORAGE_AVATAR_KEY = "treehole_avatar_url";
     const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
     const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const USER_ID_SHA1_PATTERN = /^u_[0-9a-f]{40}$/i;
@@ -96,6 +97,8 @@
                 node.style.backgroundImage = `url('${currentAvatarUrl}')`;
             }
         });
+        safeLocalStorageSet(STORAGE_USERNAME_KEY, currentUsername || '');
+        safeLocalStorageSet(STORAGE_AVATAR_KEY, currentAvatarUrl || DEFAULT_AVATAR_URL);
     }
 
     function applyFavoriteView(score) {
@@ -156,7 +159,8 @@
 
         currentUserId = resolvedId;
 
-        setUserIdentity({ username: username, avatarUrl: DEFAULT_AVATAR_URL });
+        const cachedAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL;
+        setUserIdentity({ username: username, avatarUrl: cachedAvatar });
         await loadProfile();
         loadFavorability();
     }
@@ -184,7 +188,11 @@
         const profile = data.profile || {};
         currentBaseUsername = profile.base_username || "";
         currentBaseAvatar = profile.base_avatar || "";
-        setUserIdentity({ username: profile.username || currentBaseUsername, avatarUrl: profile.avatar_url || currentBaseAvatar || DEFAULT_AVATAR_URL });
+        const resolvedUsername = profile.username || currentBaseUsername;
+        const resolvedAvatar = profile.avatar_url || currentBaseAvatar || DEFAULT_AVATAR_URL;
+        setUserIdentity({ username: resolvedUsername, avatarUrl: resolvedAvatar });
+        safeLocalStorageSet(STORAGE_USERNAME_KEY, currentBaseUsername || resolvedUsername || "");
+        safeLocalStorageSet(STORAGE_AVATAR_KEY, currentBaseAvatar || resolvedAvatar || "");
         const ipInput = document.getElementById('ipDisplayUsername');
         const identityStatus = document.getElementById('identityStatusText');
         if (ipInput) {
@@ -418,6 +426,17 @@
                 e.target.value = '';
             });
         }
+
+        window.addEventListener('storage', async (event) => {
+            if (![STORAGE_USERNAME_KEY, STORAGE_AVATAR_KEY].includes(event.key)) return;
+            const nextUsername = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
+            const nextAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL;
+            setUserIdentity({ username: nextUsername, avatarUrl: nextAvatar });
+            if (nextUsername) {
+                currentUserId = await resolveCurrentUserIdByUsername(nextUsername) || currentUserId;
+                await loadProfile();
+            }
+        });
 
         window.addEventListener('resize', updateDeviceMode);
     }
