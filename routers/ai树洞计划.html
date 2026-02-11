@@ -190,7 +190,9 @@
         });
 
         drawerLogoutBtn.addEventListener('click', () => {
-            window.location.href = '/routers/login.html';
+            localStorage.removeItem(STORAGE_USERNAME_KEY);
+            localStorage.removeItem(STORAGE_AVATAR_KEY);
+            window.location.href = '/';
         });
     </script>
 </body>
