@@ -38,7 +38,7 @@ IP_PROMPT_MAP = {
     "suwan": "苏晚.txt",
     "xiaxingmian": "夏星眠.txt",
     "jiangche": "江澈.txt",
-    "luchengyu": "陆承宇.txt",
+    "jiangan": "江安.txt",
 }
 
 CHARACTER_NAME_MAP = {
@@ -46,7 +46,7 @@ CHARACTER_NAME_MAP = {
     "suwan": "苏晚",
     "xiaxingmian": "夏星眠",
     "jiangche": "江澈",
-    "luchengyu": "陆承宇",
+    "ljiangan": "江安",
 }
 
 logger = logging.getLogger(__name__)

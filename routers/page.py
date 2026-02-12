@@ -309,15 +309,15 @@ async def jiangche_page(request: Request):
 
     return HTMLResponse(_with_admin_logger(open("routers/白月光江澈.html", encoding="utf-8").read()))
 
-@router.get("/ip/luchengyu", response_class=HTMLResponse)
-async def luchengyu_page(request: Request):
+@router.get("/ip/jiangan", response_class=HTMLResponse)
+async def jiangan_page(request: Request):
     unauthorized = _require_login_redirect(request)
     if unauthorized:
         return unauthorized
     user_id = resolve_ip_user_id(request)
     user_info = load_user_data(user_id)
 
-    user_info["ip_name"] = "luchengyu"
+    user_info["ip_name"] = "jiangan"
 
     save_user_data(user_id, user_info)
 
