@@ -236,18 +236,6 @@
             return merged;
         }
 
-        async function sha1Hex(input) {
-            const data = new TextEncoder().encode(input);
-            const buffer = await crypto.subtle.digest('SHA-1', data);
-            return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
-        }
-
-        async function makeUserId(username) {
-            const norm = (username || '').trim().toLowerCase();
-            if (!norm) return '';
-            return `u_${await sha1Hex(norm)}`;
-        }
-
         function openDrawer() {
             document.body.classList.add('drawer-open');
             drawer.setAttribute('aria-hidden', 'false');
@@ -275,12 +263,30 @@
         }
 
         async function fetchJson(url, options = {}) {
-            const res = await fetch(url, options);
+            const res = await fetch(url, { credentials: 'include', ...options });
             const contentType = res.headers.get('content-type') || '';
             if (!contentType.includes('application/json')) return { ok: false, msg: '服务暂不可用' };
             const data = await res.json();
             if (!res.ok) return { ok: false, msg: data?.msg || '服务暂不可用' };
             return data;
+        }
+
+        async function ensureUserIdByUsername(username) {
+            const cached = safeLocalStorageGetJson('treehole_user') || {};
+            if (cached.user_id) return cached.user_id;
+            const data = await fetchJson('/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            });
+            if (!data?.ok) throw new Error(data?.msg || '用户名保存失败');
+            const profile = data.profile || {};
+            syncUserInfoToLocal({
+                username: profile.base_username || profile.username || username,
+                user_id: data.user_id || profile.user_id || '',
+                avatar_url: profile.base_avatar || profile.avatar_url || DEFAULT_AVATAR_URL
+            });
+            return data.user_id || profile.user_id || '';
         }
 
         async function saveUsername() {
@@ -289,23 +295,12 @@
                 setStatus('用户名不能为空', true);
                 return;
             }
-            const userId = await makeUserId(username);
-            const data = await fetchJson('/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: userId, username })
-            });
-            if (!data?.ok) {
-                setStatus(data?.msg || '用户名保存失败', true);
-                return;
+            try {
+                await ensureUserIdByUsername(username);
+                setStatus('用户名已更新');
+            } catch (error) {
+                setStatus(error?.message || '用户名保存失败', true);
             }
-            const profile = data.profile || {};
-            syncUserInfoToLocal({
-                username: profile.base_username || profile.username || username,
-                user_id: userId,
-                avatar_url: profile.base_avatar || profile.avatar_url || safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL
-            });
-            setStatus('用户名已更新');
         }
 
         async function saveAvatar() {
@@ -313,13 +308,21 @@
                 setStatus('请先选择头像文件', true);
                 return;
             }
-            const cachedUser = safeLocalStorageGetJson('treehole_user') || {};
-            const username = drawerUsernameInput.value.trim() || (cachedUser.username || safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
-            if (!username) {
-                setStatus('请先设置用户名', true);
-                return;
+            const cached = safeLocalStorageGetJson('treehole_user') || {};
+            let userId = (cached.user_id || '').trim();
+            const username = drawerUsernameInput.value.trim() || (cached.username || '').trim();
+            if (!userId) {
+                if (!username) {
+                    setStatus('请先设置用户名', true);
+                    return;
+                }
+                try {
+                    userId = await ensureUserIdByUsername(username);
+                } catch (error) {
+                    setStatus(error?.message || '用户名保存失败', true);
+                    return;
+                }
             }
-            const userId = await makeUserId(username);
 
             const formData = new FormData();
             formData.append('file', pendingAvatarFile);
@@ -331,7 +334,7 @@
             }
             const avatarUrl = data.avatar_url || DEFAULT_AVATAR_URL;
             syncUserInfoToLocal({
-                username,
+                username: username || drawerUsernameInput.value.trim(),
                 user_id: userId,
                 avatar_url: avatarUrl
             });
