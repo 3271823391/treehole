@@ -1,6 +1,5 @@
 (function () {
     const STORAGE_USERNAME_KEY = "treehole_display_name";
-    const STORAGE_USER_ID_KEY = "treehole_user_id";
     const STORAGE_AVATAR_KEY = "treehole_avatar_url";
     const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
     const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -52,12 +51,6 @@
         return typeof userId === 'string' && (USER_ID_UUID_PATTERN.test(userId) || USER_ID_SHA1_PATTERN.test(userId));
     }
 
-    function createAnonymousUserId() {
-        if (crypto?.randomUUID) {
-            return `u_${crypto.randomUUID()}`;
-        }
-        return `u_${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
-    }
 
     function showToast(message) {
         const toast = document.getElementById('toast');
@@ -73,9 +66,10 @@
         currentAvatarUrl = avatarUrl || DEFAULT_AVATAR_URL;
         const userNameNodes = document.querySelectorAll('[data-user-name]');
         const userAvatarNodes = document.querySelectorAll('[data-user-avatar]');
+        const fallbackName = isValidUserId(currentUserId) ? currentUserId.slice(-6) : "用户";
         userNameNodes.forEach((node) => {
-            node.textContent = currentUsername || "昵称";
-            node.title = currentUsername || "昵称";
+            node.textContent = currentUsername || fallbackName;
+            node.title = currentUsername || fallbackName;
         });
         userAvatarNodes.forEach((node) => {
             if (node.tagName === 'IMG') {
@@ -111,31 +105,27 @@
         applyFavoriteView(Number.isFinite(value) ? value : 50);
     }
 
+    async function fetchProfile() {
+        const res = await fetch('/profile', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.ok) return null;
+        return data.profile;
+    }
+
     async function initUserIdentity() {
-        const display_name = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || "").trim();
-        let resolvedId = "";
-        if (!resolvedId) {
-            const fromParam = new URLSearchParams(window.location.search).get('user_id') || "";
-            if (isValidUserId(fromParam)) {
-                resolvedId = fromParam;
-                safeLocalStorageSet(STORAGE_USER_ID_KEY, resolvedId);
-            }
+        const profile = await fetchProfile();
+        if (!profile) {
+            showToast('身份失效，请重新登录');
+            return;
         }
-        if (!resolvedId) {
-            const fromStorage = safeLocalStorageGet(STORAGE_USER_ID_KEY);
-            if (isValidUserId(fromStorage)) {
-                resolvedId = fromStorage;
-            }
+        currentUserId = (profile.user_id || '').trim();
+        if (!isValidUserId(currentUserId)) {
+            showToast('身份信息异常，请重新登录');
+            return;
         }
-        if (!resolvedId) {
-            resolvedId = createAnonymousUserId();
-            safeLocalStorageSet(STORAGE_USER_ID_KEY, resolvedId);
-        }
-
-        currentUserId = resolvedId;
-
         const cachedAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL;
-        setUserIdentity({ display_name: display_name, avatarUrl: cachedAvatar });
+        const displayName = (profile.display_name || '').trim() || currentUserId.slice(-6);
+        setUserIdentity({ display_name: displayName, avatarUrl: profile.avatar_url || cachedAvatar });
         await loadProfile();
         loadFavorability();
     }
@@ -157,25 +147,26 @@
     }
 
     async function loadProfile() {
+        const profile = await fetchProfile();
+        if (!profile) return false;
+        currentUserId = (profile.user_id || '').trim();
         if (!isValidUserId(currentUserId)) return false;
-        const data = await fetchJson(`/profile`);
-        if (!data?.ok) return false;
-        const profile = data.profile || {};
-        const resolvedUsername = profile.display_name || "";
+        const resolvedDisplayName = (profile.display_name || '').trim();
+        const displayName = resolvedDisplayName || currentUserId.slice(-6);
         const resolvedAvatar = profile.avatar_url || DEFAULT_AVATAR_URL;
-        setUserIdentity({ display_name: resolvedUsername, avatarUrl: resolvedAvatar });
-        safeLocalStorageSet(STORAGE_USERNAME_KEY, resolvedUsername || "");
+        setUserIdentity({ display_name: displayName, avatarUrl: resolvedAvatar });
+        safeLocalStorageSet(STORAGE_USERNAME_KEY, resolvedDisplayName || "");
         safeLocalStorageSet(STORAGE_AVATAR_KEY, resolvedAvatar || "");
         const ipInput = document.getElementById('ipDisplayUsername');
         const identityStatus = document.getElementById('identityStatusText');
         if (ipInput) {
-            ipInput.value = profile.display_name || "";
+            ipInput.value = resolvedDisplayName;
             ipInput.placeholder = '当前使用 Treehole 昵称';
         }
         if (identityStatus) {
-            identityStatus.textContent = profile.display_name
-                ? `当前使用昵称：${profile.display_name}`
-                : '当前使用 Treehole 昵称';
+            identityStatus.textContent = resolvedDisplayName
+                ? `当前使用昵称：${resolvedDisplayName}`
+                : `当前昵称：${displayName}`;
         }
         return true;
     }
@@ -286,7 +277,7 @@
         const inputText = messageInput.value.trim();
         if (!inputText) return;
         if (!isValidUserId(currentUserId)) {
-            showToast("请输入昵称/初始化身份");
+            showToast("身份失效，请重新登录");
             return;
         }
 
@@ -398,10 +389,7 @@
             const nextUsername = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
             const nextAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL;
             setUserIdentity({ display_name: nextUsername, avatarUrl: nextAvatar });
-            if (nextUsername) {
-                currentUserId = await resolveCurrentUserIdByUsername(nextUsername) || currentUserId;
-                await loadProfile();
-            }
+            await loadProfile();
         });
 
         window.addEventListener('resize', updateDeviceMode);

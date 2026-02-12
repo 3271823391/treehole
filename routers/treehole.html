@@ -950,8 +950,7 @@
                         <button type="button" class="info-tip" aria-label="昵称说明">
                             <i class="fas fa-circle-info"></i>
                             <span class="tooltip">
-                                昵称将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
-                                修改昵称将切换到另一份新的对话记忆。
+                                昵称仅用于展示，不影响你的登录身份与聊天记录。
                             </span>
                         </button>
                     </div>
@@ -1017,8 +1016,7 @@
                         <button type="button" class="info-tip" aria-label="昵称说明">
                             <i class="fas fa-circle-info"></i>
                             <span class="tooltip">
-                                昵称将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
-                                修改昵称将切换到另一份新的对话记忆。
+                                昵称仅用于展示，不影响你的登录身份与聊天记录。
                             </span>
                         </button>
                     </div>
@@ -1073,11 +1071,9 @@
 
     <script>
         const STORAGE_USERNAME_KEY = "treehole_display_name";
-        const STORAGE_USER_ID_KEY = "treehole_user_id";
         const APP_PLAN = "plus"; // 页面版本常量
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
         let currentUserId = null;
-        let anonymousUserId = null;
         const chatHistory = [];
         let emotionLocked = false;
         let emotionDebounceTimer = null;
@@ -1099,13 +1095,6 @@
                 && (USER_ID_UUID_PATTERN.test(userId) || USER_ID_SHA1_PATTERN.test(userId));
         }
 
-        function createAnonymousUserId() {
-            if (crypto?.randomUUID) {
-                return `u_${crypto.randomUUID()}`;
-            }
-            // TODO: 兜底随机串（防止极老 Safari/无痕模式）
-            return `u_${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
-        }
 
         function safeLocalStorageGet(key) {
             try {
@@ -1124,16 +1113,12 @@
             }
         }
 
-        function initAnonymousUserId({ persist = true } = {}) {
-            const stored = persist ? safeLocalStorageGet(STORAGE_USER_ID_KEY) : "";
-            if (isValidUserId(stored)) {
-                return stored;
-            }
-            const created = createAnonymousUserId();
-            if (persist) {
-                safeLocalStorageSet(STORAGE_USER_ID_KEY, created);
-            }
-            return created;
+
+        async function fetchProfile() {
+            const res = await fetch('/profile', { credentials: 'include' });
+            const data = await res.json();
+            if (!data.ok) return null;
+            return data.profile;
         }
 
         function syncViewport() {
@@ -1254,7 +1239,8 @@
 
         function resolveTitleText() {
             const titleText = (currentProfile.display_name || "").trim();
-            userCardTitle.innerText = titleText || "昵称";
+            const fallbackName = isValidUserId(currentUserId) ? currentUserId.slice(-6) : "用户";
+            userCardTitle.innerText = titleText || fallbackName;
         }
 
         function updateAvatar(url) {
@@ -1468,8 +1454,6 @@
         const emotionSuggestMobile = document.getElementById('emotion-suggest-mobile');
                 const isProPlan = APP_PLAN === "pro";
 
-        anonymousUserId = initAnonymousUserId({ persist: true });
-        currentUserId = anonymousUserId;
 
         function clearChatWindow() {
             chatWindow.innerHTML = "";
@@ -1501,21 +1485,23 @@
         }
 
         async function loadProfile() {
-            if (!isValidUserId(currentUserId)) return false;
-            const data = await fetchJson(`/profile`);
-            if (!data || !data.ok) {
-                showErrorModal(data?.msg || "资料加载失败");
+            const profileData = await fetchProfile();
+            if (!profileData) {
+                showErrorModal("资料加载失败");
                 return false;
             }
-            const profileData = data.profile || {};
-            const nextUsername = profileData.display_name || loginUsernameInput.value.trim();
-            if (nextUsername) {
-                syncUsernameInputs(nextUsername);
+            currentUserId = (profileData.user_id || "").trim();
+            if (!isValidUserId(currentUserId)) {
+                showErrorModal("身份信息异常，请重新登录");
+                return false;
             }
+            const fallbackName = currentUserId.slice(-6) || "用户";
+            const nextDisplayName = (profileData.display_name || "").trim() || fallbackName;
+            syncUsernameInputs(nextDisplayName);
             updateProfileState({
-                display_name: profileData.display_name || loginUsernameInput.value.trim()
+                display_name: (profileData.display_name || "").trim()
             });
-            updateAvatar(data.profile?.avatar_url);
+            updateAvatar(profileData.avatar_url);
             await loadHistory();
             return true;
         }
@@ -1524,13 +1510,6 @@
         async function applyUsernameChange({ loadRemote = true } = {}) {
             if (!loginUsernameInput) return;
             const display_name = loginUsernameInput.value.trim();
-            if (!display_name) {
-                updateProfileState({ display_name: "" });
-                setLockStatus("请输入昵称后即可保存资料", "#d9534f");
-                sendBtn.disabled = msgInput.value.trim() === "";
-                return;
-            }
-
             const token = ++display_nameChangeToken;
             if (token !== display_nameChangeToken) return;
             safeLocalStorageSet(STORAGE_USERNAME_KEY, display_name);
@@ -1547,14 +1526,7 @@
             if (!loginUsernameInput) {
                 return false;
             }
-            if (!currentUserId) {
-                currentUserId = anonymousUserId || initAnonymousUserId({ persist: true });
-            }
             const display_name = loginUsernameInput.value.trim();
-            if (!display_name) {
-                setLockStatus("昵称不能为空", "#d9534f");
-                return false;
-            }
             const payload = {
                 display_name
             };
@@ -1600,9 +1572,7 @@
         }
 
         function openAvatarPicker() {
-                        if (!currentUserId) {
-                currentUserId = anonymousUserId || initAnonymousUserId({ persist: true });
-            }
+            if (!isValidUserId(currentUserId)) return;
             avatarInput.click();
         }
 
@@ -1658,14 +1628,6 @@
                 applyUsernameChange({ loadRemote: true });
                 restoreIOSViewport();
             });
-        }
-
-        if (loginUsernameInput) {
-            const lastUsername = safeLocalStorageGet(STORAGE_USERNAME_KEY);
-            if (lastUsername) {
-                syncUsernameInputs(lastUsername);
-                applyUsernameChange({ loadRemote: true });
-            }
         }
 
         function openModal(modal) {
@@ -1793,6 +1755,11 @@
             window.visualViewport.addEventListener('scroll', syncViewport);
         }
 
+        (async function bootstrapProfile() {
+            await loadProfile();
+            sendBtn.disabled = !isValidUserId(currentUserId) || msgInput.value.trim() === '';
+        })();
+
         // 监听输入框变化，控制发送按钮状态+自适应高度
         msgInput.addEventListener('input', () => {
             const content = msgInput.value.trim();
@@ -1815,8 +1782,8 @@
 
         async function sendMessage() {
         if (!isValidUserId(currentUserId)) {
-            setLockStatus("请先输入昵称", "#d9534f");
-            showErrorModal("请输入昵称/初始化身份");
+            setLockStatus("身份失效，请重新登录", "#d9534f");
+            showErrorModal("身份失效，请重新登录");
             return;
         }
         const content = msgInput.value.trim();
