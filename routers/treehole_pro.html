@@ -1194,7 +1194,7 @@
                         <img src="/static/avatars/default.svg" alt="用户头像" id="user-avatar-img">
                     </div>
                     <div>
-                        <div class="user-card-title" id="user-card-title">用户名</div>
+                        <div class="user-card-title" id="user-card-title">昵称</div>
                         <div class="lock-status" id="lock-status">资料修改请前往版本介绍页的菜单</div>
                     </div>
                 </div>
@@ -1203,16 +1203,16 @@
 
                 <div class="form-row profile-edit-controls">
                     <div class="label-with-tip">
-                        <label for="login-username">用户名</label>
-                        <button type="button" class="info-tip" aria-label="用户名说明">
+                        <label for="login-display_name">昵称</label>
+                        <button type="button" class="info-tip" aria-label="昵称说明">
                             <i class="fas fa-circle-info"></i>
                             <span class="tooltip">
-                                用户名将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
-                                修改用户名将切换到另一份新的对话记忆。
+                                昵称将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
+                                修改昵称将切换到另一份新的对话记忆。
                             </span>
                         </button>
                     </div>
-                    <input id="login-username" type="text" placeholder="请输入用户名">
+                    <input id="login-display_name" type="text" placeholder="请输入昵称">
                 </div>
 
                 <div class="user-card-actions profile-edit-controls">
@@ -1296,16 +1296,16 @@
                 </div>
                 <div class="form-row profile-edit-controls">
                     <div class="label-with-tip">
-                        <label for="mobile-username">用户名</label>
-                        <button type="button" class="info-tip" aria-label="用户名说明">
+                        <label for="mobile-display_name">昵称</label>
+                        <button type="button" class="info-tip" aria-label="昵称说明">
                             <i class="fas fa-circle-info"></i>
                             <span class="tooltip">
-                                用户名将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
-                                修改用户名将切换到另一份新的对话记忆。
+                                昵称将作为你在树洞中的身份标识，并与聊天记忆绑定。<br>
+                                修改昵称将切换到另一份新的对话记忆。
                             </span>
                         </button>
                     </div>
-                    <input id="mobile-username" type="text" placeholder="请输入用户名">
+                    <input id="mobile-display_name" type="text" placeholder="请输入昵称">
                 </div>
             </div>
         </div>
@@ -1427,7 +1427,7 @@
 
     <script src="/static/shared_shell.js"></script>
     <script>
-        const STORAGE_USERNAME_KEY = "treehole_username";
+        const STORAGE_USERNAME_KEY = "treehole_display_name";
         const STORAGE_USER_ID_KEY = "treehole_user_id";
         const STORAGE_AVATAR_KEY = "treehole_avatar_url";
         const STORAGE_VOICE_AUDIO_ID = "voice_audio_id"; // TODO: PRO 专用语音克隆缓存 key
@@ -1596,8 +1596,8 @@
         async function handleVoiceCloneUpload() {
             if (!voiceCloneFile || !voiceCloneAction) return;
             if (!isValidUserId(currentUserId)) {
-                setVoiceCloneStatus("请先输入用户名并完成用户绑定", "error");
-                showToast("请先输入用户名并完成用户绑定");
+                setVoiceCloneStatus("请先输入昵称并完成用户绑定", "error");
+                showToast("请先输入昵称并完成用户绑定");
                 return;
             }
             const file = voiceCloneFile.files?.[0];
@@ -1673,29 +1673,14 @@
             }
         }
 
-        async function sha1Hex(input) {
-            const data = new TextEncoder().encode(input);
-            const buffer = await crypto.subtle.digest("SHA-1", data);
-            return Array.from(new Uint8Array(buffer))
-                .map((b) => b.toString(16).padStart(2, "0"))
-                .join("");
-        }
-
-        async function makeUserId(username) {
-            const norm = (username || "").trim().toLowerCase();
-            if (!norm) return "";
-            const digest = await sha1Hex(norm);
-            return `u_${digest}`;
-        }
-
         let currentProfile = {
-            username: "",
+            display_name: "",
             avatar_url: ""
         };
 
         function resolveTitleText() {
-            const titleText = (currentProfile.username || "").trim();
-            userCardTitle.innerText = titleText || "用户名";
+            const titleText = (currentProfile.display_name || "").trim();
+            userCardTitle.innerText = titleText || "昵称";
         }
 
         function updateAvatar(url) {
@@ -2263,7 +2248,7 @@
         const emotionTags = document.getElementById('emotion-tags');
         const emotionAnalysis = document.getElementById('emotion-analysis');
         const emotionSuggest = document.getElementById('emotion-suggest');
-        const loginUsernameInput = document.getElementById('login-username');
+        const loginUsernameInput = document.getElementById('login-display_name');
         const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
         const avatarInput = document.getElementById('avatar-input');
         const userAvatarBox = document.getElementById('user-avatar-box');
@@ -2278,7 +2263,7 @@
         const mobileAvatarImg = document.getElementById('mobile-avatar-img');
         if (userAvatarBox) userAvatarBox.classList.add('readonly');
         if (mobileAvatarBox) mobileAvatarBox.classList.add('readonly');
-        const mobileUsernameInput = document.getElementById('mobile-username');
+        const mobileUsernameInput = document.getElementById('mobile-display_name');
         const mobileLockStatus = document.getElementById('mobile-lock-status');
         const emotionScoreNumMobile = document.getElementById('emotion-score-num-mobile');
         const scoreFillMobile = document.getElementById('score-fill-mobile');
@@ -2298,7 +2283,7 @@
                 const isProPlan = APP_PLAN === "pro";
 
         anonymousUserId = initAnonymousUserId({ persist: true });
-        currentUserId = null;
+        currentUserId = anonymousUserId;
 
         function clearChatWindow() {
             chatWindow.innerHTML = "";
@@ -2331,49 +2316,45 @@
 
         async function loadProfile() {
             if (!isValidUserId(currentUserId)) return false;
-            const data = await fetchJson(`/profile?user_id=${encodeURIComponent(currentUserId)}`);
+            const data = await fetchJson(`/profile`);
             if (!data || !data.ok) {
                 showErrorModal(data?.msg || "资料加载失败");
                 return false;
             }
             const profileData = data.profile || {};
-            const nextUsername = profileData.username || loginUsernameInput.value.trim();
+            const nextUsername = profileData.display_name || loginUsernameInput.value.trim();
             if (nextUsername) {
                 syncUsernameInputs(nextUsername);
             }
             updateProfileState({
-                username: profileData.username || loginUsernameInput.value.trim()
+                display_name: profileData.display_name || loginUsernameInput.value.trim()
             });
             updateAvatar(data.profile?.avatar_url);
             await loadHistory();
             return true;
         }
 
-        let usernameChangeToken = 0;
+        let display_nameChangeToken = 0;
         async function applyUsernameChange({ loadRemote = true } = {}) {
             if (!loginUsernameInput) return;
-            const username = loginUsernameInput.value.trim();
-            if (!username) {
-                currentUserId = null;
-                updateAvatar("");
-                updateProfileState({ username: "" });
-                setLockStatus("请输入用户名后即可保存资料", "#d9534f");
-                sendBtn.disabled = true;
+            const display_name = loginUsernameInput.value.trim();
+            if (!display_name) {
+                updateProfileState({ display_name: "" });
+                setLockStatus("请输入昵称后即可保存资料", "#d9534f");
+                sendBtn.disabled = msgInput.value.trim() === "";
                 return;
             }
 
-            const token = ++usernameChangeToken;
-            const nextUserId = await makeUserId(username);
-            if (token !== usernameChangeToken) return;
-            currentUserId = nextUserId;
-            safeLocalStorageSet(STORAGE_USERNAME_KEY, username);
-            updateProfileState({ username });
-            setLockStatus("用户名已就绪，资料将自动保存", "#3b6fb6");
+            const token = ++display_nameChangeToken;
+            if (token !== display_nameChangeToken) return;
+            safeLocalStorageSet(STORAGE_USERNAME_KEY, display_name);
+            updateProfileState({ display_name });
+            setLockStatus("昵称已更新，资料将自动保存", "#3b6fb6");
             if (loadRemote) {
                 await loadProfile();
             }
             await persistProfile();
-            sendBtn.disabled = !isValidUserId(currentUserId) || msgInput.value.trim() === "";
+            sendBtn.disabled = msgInput.value.trim() === "";
         }
 
         async function persistProfile({ avatarUrl } = {}) {
@@ -2381,17 +2362,15 @@
                 return false;
             }
             if (!currentUserId) {
-                setLockStatus("请先输入用户名", "#d9534f");
-                return false;
+                currentUserId = anonymousUserId || initAnonymousUserId({ persist: true });
             }
-            const username = loginUsernameInput.value.trim();
-            if (!username) {
-                setLockStatus("用户名不能为空", "#d9534f");
+            const display_name = loginUsernameInput.value.trim();
+            if (!display_name) {
+                setLockStatus("昵称不能为空", "#d9534f");
                 return false;
             }
             const payload = {
-                user_id: currentUserId,
-                username
+                display_name
             };
             if (avatarUrl !== undefined) {
                 payload.avatar_url = avatarUrl || "";
@@ -2403,7 +2382,7 @@
             });
             if (data?.ok) {
                 updateProfileState({
-                    username: data.profile?.username || username
+                    display_name: data.profile?.display_name || display_name
                 });
                 setLockStatus("资料已保存", "#3b6fb6");
                 return true;
@@ -2436,15 +2415,14 @@
 
         function openAvatarPicker() {
                         if (!currentUserId) {
-                setLockStatus("请先输入用户名", "#d9534f");
-                return;
+                currentUserId = anonymousUserId || initAnonymousUserId({ persist: true });
             }
             avatarInput.click();
         }
 
         // 次级页仅展示头像，不提供修改入口
 
-        let usernameDebounceTimer = null;
+        let display_nameDebounceTimer = null;
         if (loginUsernameInput) {
             loginUsernameInput.readOnly = true;
             loginUsernameInput.tabIndex = -1;
@@ -2638,7 +2616,7 @@
             const nextUsername = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
             const nextAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY) || '';
             syncUsernameInputs(nextUsername);
-            updateProfileState({ username: nextUsername });
+            updateProfileState({ display_name: nextUsername });
             if (nextAvatar) updateAvatar(nextAvatar);
             if (nextUsername) {
                 applyUsernameChange({ loadRemote: true });
@@ -2675,8 +2653,8 @@
 
         async function sendMessage() {
         if (!isValidUserId(currentUserId)) {
-            setLockStatus("请先输入用户名", "#d9534f");
-            showErrorModal("请输入用户名/初始化身份");
+            setLockStatus("请先输入昵称", "#d9534f");
+            showErrorModal("请输入昵称/初始化身份");
             return;
         }
         const content = msgInput.value.trim();

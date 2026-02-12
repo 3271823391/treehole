@@ -21,7 +21,6 @@ def load_user_data(user_id: str) -> dict:
         "chat_count": 0,
         "relationships": {},
         "profile": {
-            "username": "",
             "display_name": "",
             "avatar_url": "",
             "password_hash": ""

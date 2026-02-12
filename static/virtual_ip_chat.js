@@ -1,5 +1,5 @@
 (function () {
-    const STORAGE_USERNAME_KEY = "treehole_username";
+    const STORAGE_USERNAME_KEY = "treehole_display_name";
     const STORAGE_USER_ID_KEY = "treehole_user_id";
     const STORAGE_AVATAR_KEY = "treehole_avatar_url";
     const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
@@ -59,19 +59,6 @@
         return `u_${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
     }
 
-    async function sha1Hex(input) {
-        const data = new TextEncoder().encode(input);
-        const buffer = await crypto.subtle.digest("SHA-1", data);
-        return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
-    }
-
-    async function makeUserId(username) {
-        const norm = (username || "").trim().toLowerCase();
-        if (!norm) return "";
-        const digest = await sha1Hex(norm);
-        return `u_${digest}`;
-    }
-
     function showToast(message) {
         const toast = document.getElementById('toast');
         if (!toast) return;
@@ -81,14 +68,14 @@
         toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
     }
 
-    function setUserIdentity({ username, avatarUrl }) {
-        currentUsername = username || "";
+    function setUserIdentity({ display_name, avatarUrl }) {
+        currentUsername = display_name || "";
         currentAvatarUrl = avatarUrl || DEFAULT_AVATAR_URL;
         const userNameNodes = document.querySelectorAll('[data-user-name]');
         const userAvatarNodes = document.querySelectorAll('[data-user-avatar]');
         userNameNodes.forEach((node) => {
-            node.textContent = currentUsername || "用户名";
-            node.title = currentUsername || "用户名";
+            node.textContent = currentUsername || "昵称";
+            node.title = currentUsername || "昵称";
         });
         userAvatarNodes.forEach((node) => {
             if (node.tagName === 'IMG') {
@@ -124,21 +111,9 @@
         applyFavoriteView(Number.isFinite(value) ? value : 50);
     }
 
-    async function resolveCurrentUserIdByUsername(username) {
-        const userIdByName = await makeUserId(username);
-        if (isValidUserId(userIdByName)) {
-            safeLocalStorageSet(STORAGE_USER_ID_KEY, userIdByName);
-            return userIdByName;
-        }
-        return "";
-    }
-
     async function initUserIdentity() {
-        const username = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || "").trim();
+        const display_name = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || "").trim();
         let resolvedId = "";
-        if (username) {
-            resolvedId = await resolveCurrentUserIdByUsername(username);
-        }
         if (!resolvedId) {
             const fromParam = new URLSearchParams(window.location.search).get('user_id') || "";
             if (isValidUserId(fromParam)) {
@@ -160,7 +135,7 @@
         currentUserId = resolvedId;
 
         const cachedAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL;
-        setUserIdentity({ username: username, avatarUrl: cachedAvatar });
+        setUserIdentity({ display_name: display_name, avatarUrl: cachedAvatar });
         await loadProfile();
         loadFavorability();
     }
@@ -183,26 +158,24 @@
 
     async function loadProfile() {
         if (!isValidUserId(currentUserId)) return false;
-        const data = await fetchJson(`/profile?user_id=${encodeURIComponent(currentUserId)}&character_id=${encodeURIComponent(config.characterId)}`);
+        const data = await fetchJson(`/profile`);
         if (!data?.ok) return false;
         const profile = data.profile || {};
-        currentBaseUsername = profile.base_username || "";
-        currentBaseAvatar = profile.base_avatar || "";
-        const resolvedUsername = profile.username || currentBaseUsername;
-        const resolvedAvatar = profile.avatar_url || currentBaseAvatar || DEFAULT_AVATAR_URL;
-        setUserIdentity({ username: resolvedUsername, avatarUrl: resolvedAvatar });
-        safeLocalStorageSet(STORAGE_USERNAME_KEY, currentBaseUsername || resolvedUsername || "");
-        safeLocalStorageSet(STORAGE_AVATAR_KEY, currentBaseAvatar || resolvedAvatar || "");
+        const resolvedUsername = profile.display_name || "";
+        const resolvedAvatar = profile.avatar_url || DEFAULT_AVATAR_URL;
+        setUserIdentity({ display_name: resolvedUsername, avatarUrl: resolvedAvatar });
+        safeLocalStorageSet(STORAGE_USERNAME_KEY, resolvedUsername || "");
+        safeLocalStorageSet(STORAGE_AVATAR_KEY, resolvedAvatar || "");
         const ipInput = document.getElementById('ipDisplayUsername');
         const identityStatus = document.getElementById('identityStatusText');
         if (ipInput) {
-            ipInput.value = profile.ip_display_username || "";
-            ipInput.placeholder = currentBaseUsername ? `默认：${currentBaseUsername}` : '当前使用 Treehole 用户名';
+            ipInput.value = profile.display_name || "";
+            ipInput.placeholder = '当前使用 Treehole 昵称';
         }
         if (identityStatus) {
-            identityStatus.textContent = profile.ip_display_username
-                ? `当前使用角色显示名：${profile.ip_display_username}`
-                : '当前使用 Treehole 用户名';
+            identityStatus.textContent = profile.display_name
+                ? `当前使用昵称：${profile.display_name}`
+                : '当前使用 Treehole 昵称';
         }
         return true;
     }
@@ -210,12 +183,8 @@
     async function persistIpProfile() {
         const ipInput = document.getElementById('ipDisplayUsername');
         if (!ipInput || !isValidUserId(currentUserId)) return;
-        const username = ipInput.value.trim();
-        const payload = {
-            user_id: currentUserId,
-            character_id: config.characterId
-        };
-        if (username) payload.username = username;
+        const display_name = ipInput.value.trim();
+        const payload = { display_name };
         const data = await fetchJson('/profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -225,10 +194,8 @@
             showToast(data?.msg || '资料保存失败');
             return;
         }
-        safeLocalStorageSet(STORAGE_USERNAME_KEY, data.profile?.base_username || username);
-        setUserIdentity({ username: data.profile?.username, avatarUrl: data.profile?.avatar_url });
-        currentBaseUsername = data.profile?.base_username || "";
-        currentBaseAvatar = data.profile?.base_avatar || "";
+        safeLocalStorageSet(STORAGE_USERNAME_KEY, data.profile?.display_name || display_name);
+        setUserIdentity({ display_name: data.profile?.display_name, avatarUrl: data.profile?.avatar_url });
         showToast('资料已同步到Treehole');
     }
 
@@ -238,7 +205,6 @@
         const formData = new FormData();
         formData.append('file', file);
         formData.append('user_id', currentUserId);
-        formData.append('character_id', config.characterId);
         const data = await fetchJson('/avatar_upload', {
             method: 'POST',
             body: formData
@@ -320,7 +286,7 @@
         const inputText = messageInput.value.trim();
         if (!inputText) return;
         if (!isValidUserId(currentUserId)) {
-            showToast("请输入用户名/初始化身份");
+            showToast("请输入昵称/初始化身份");
             return;
         }
 
@@ -431,7 +397,7 @@
             if (![STORAGE_USERNAME_KEY, STORAGE_AVATAR_KEY].includes(event.key)) return;
             const nextUsername = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
             const nextAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL;
-            setUserIdentity({ username: nextUsername, avatarUrl: nextAvatar });
+            setUserIdentity({ display_name: nextUsername, avatarUrl: nextAvatar });
             if (nextUsername) {
                 currentUserId = await resolveCurrentUserIdByUsername(nextUsername) || currentUserId;
                 await loadProfile();
