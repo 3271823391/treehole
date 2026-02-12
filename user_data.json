@@ -2380,5 +2380,23 @@
       "password_hash": ""
     },
     "ip_name": "luchengyu"
+  },
+  "u_8d55ead9f9976fdd0ff57641189f163ca4599189": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "username": "123445",
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": "",
+      "base_username": "123445",
+      "base_avatar": "",
+      "virtual_ip_overrides": {}
+    }
   }
 }
