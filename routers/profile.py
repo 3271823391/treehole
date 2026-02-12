@@ -1,12 +1,13 @@
 import os
 import time
 
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, Request
 from fastapi.responses import JSONResponse
 from PIL import Image
 
-from core.auth_utils import is_valid_user_id
+from core.auth_utils import is_valid_user_id, make_user_id, normalize_username
 from data_store import load_user_data, save_user_data
+from routers.page import LOGIN_COOKIE_NAME, SESSION_SECONDS
 
 router = APIRouter()
 
@@ -55,7 +56,9 @@ def resolve_profile_payload(profile: dict, character_id: str = "") -> dict:
 
 
 @router.get("/profile")
-def get_profile(user_id: str = "", character_id: str = ""):
+def get_profile(request: Request, user_id: str = "", character_id: str = ""):
+    if not user_id:
+        user_id = (request.cookies.get(LOGIN_COOKIE_NAME) or "").strip()
     if not user_id:
         return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_user_id"})
     if not is_valid_user_id(user_id):
@@ -73,11 +76,15 @@ def get_profile(user_id: str = "", character_id: str = ""):
 
 
 @router.post("/profile")
-def update_profile(payload: dict):
+def update_profile(payload: dict, request: Request):
     payload = payload or {}
     user_id = (payload.get("user_id") or "").strip()
     if not user_id:
-        return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_user_id"})
+        username = (payload.get("username") or "").strip()
+        norm_username = normalize_username(username)
+        if not norm_username:
+            return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_user_id"})
+        user_id = make_user_id(norm_username)
     if not is_valid_user_id(user_id):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_user_id"})
 
@@ -119,10 +126,23 @@ def update_profile(payload: dict):
 
     save_user_data(user_id, user_info)
     profile_data = resolve_profile_payload(profile, character_id)
-    return {
-        "ok": True,
-        "profile": profile_data,
-    }
+    response = JSONResponse(
+        status_code=200,
+        content={
+            "ok": True,
+            "user_id": user_id,
+            "profile": profile_data,
+        },
+    )
+    response.set_cookie(
+        key=LOGIN_COOKIE_NAME,
+        value=user_id,
+        httponly=True,
+        path="/",
+        samesite="lax",
+        max_age=SESSION_SECONDS,
+    )
+    return response
 
 
 @router.post("/avatar_upload")
