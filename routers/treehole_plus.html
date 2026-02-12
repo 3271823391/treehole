@@ -1091,6 +1091,23 @@
                 && (USER_ID_UUID_PATTERN.test(userId) || USER_ID_SHA1_PATTERN.test(userId));
         }
 
+        function safeLocalStorageGet(key) {
+            try {
+                return localStorage.getItem(key);
+            } catch (e) {
+                // TODO: iOS Safari 无痕模式会拒绝 localStorage，需兜底
+                return "";
+            }
+        }
+
+        function safeLocalStorageSet(key, value) {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {
+                // TODO: iOS Safari 无痕模式写入失败时保持内存态即可
+            }
+        }
+
         async function fetchProfile() {
             const res = await fetch('/profile', { credentials: 'include' });
             const data = await res.json();
