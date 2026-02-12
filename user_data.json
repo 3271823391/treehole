@@ -2398,5 +2398,20 @@
       "base_avatar": "",
       "virtual_ip_overrides": {}
     }
+  },
+  "u_68d8a8b9d09dfe68d4ed6eabfea2f527a6fb7020": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "username": "327182339111",
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": "pbkdf2_sha256$120000$jKxkjwxa2YV7BeDp-cQfDQ$_YsYtqpAEHVo2cXWz8wksmo868VrPotJNrxMfx-8v28"
+    }
   }
 }

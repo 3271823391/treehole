@@ -236,18 +236,6 @@
             return merged;
         }
 
-        async function sha1Hex(input) {
-            const data = new TextEncoder().encode(input);
-            const buffer = await crypto.subtle.digest('SHA-1', data);
-            return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
-        }
-
-        async function makeUserId(username) {
-            const norm = (username || '').trim().toLowerCase();
-            if (!norm) return '';
-            return `u_${await sha1Hex(norm)}`;
-        }
-
         function openDrawer() {
             document.body.classList.add('drawer-open');
             drawer.setAttribute('aria-hidden', 'false');
@@ -275,12 +263,30 @@
         }
 
         async function fetchJson(url, options = {}) {
-            const res = await fetch(url, options);
+            const res = await fetch(url, { credentials: 'include', ...options });
             const contentType = res.headers.get('content-type') || '';
             if (!contentType.includes('application/json')) return { ok: false, msg: '服务暂不可用' };
             const data = await res.json();
             if (!res.ok) return { ok: false, msg: data?.msg || '服务暂不可用' };
             return data;
+        }
+
+        async function ensureUserIdByUsername(username) {
+            const cached = safeLocalStorageGetJson('treehole_user') || {};
+            if (cached.user_id) return cached.user_id;
+            const data = await fetchJson('/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            });
+            if (!data?.ok) throw new Error(data?.msg || '用户名保存失败');
+            const profile = data.profile || {};
+            syncUserInfoToLocal({
+                username: profile.base_username || profile.username || username,
+                user_id: data.user_id || profile.user_id || '',
+                avatar_url: profile.base_avatar || profile.avatar_url || DEFAULT_AVATAR_URL
+            });
+            return data.user_id || profile.user_id || '';
         }
 
         async function saveUsername() {
@@ -289,26 +295,12 @@
                 setStatus('用户名不能为空', true);
                 return;
             }
-
-            const data = await fetchJson('/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username })
-            });
-
-            if (!data?.ok) {
-                setStatus(data?.msg || '用户名保存失败', true);
-                return;
+            try {
+                await ensureUserIdByUsername(username);
+                setStatus('用户名已更新');
+            } catch (error) {
+                setStatus(error?.message || '用户名保存失败', true);
             }
-
-            const profile = data.profile || {};
-            syncUserInfoToLocal({
-                username: profile.base_username || profile.username || username,
-                user_id: profile.user_id || '',
-                avatar_url: profile.base_avatar || profile.avatar_url || DEFAULT_AVATAR_URL
-            });
-
-            setStatus('用户名已更新');
         }
 
         async function saveAvatar() {
@@ -316,13 +308,21 @@
                 setStatus('请先选择头像文件', true);
                 return;
             }
-            const cachedUser = safeLocalStorageGetJson('treehole_user') || {};
-            const username = drawerUsernameInput.value.trim() || (cachedUser.username || safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
-            if (!username) {
-                setStatus('请先设置用户名', true);
-                return;
+            const cached = safeLocalStorageGetJson('treehole_user') || {};
+            let userId = (cached.user_id || '').trim();
+            const username = drawerUsernameInput.value.trim() || (cached.username || '').trim();
+            if (!userId) {
+                if (!username) {
+                    setStatus('请先设置用户名', true);
+                    return;
+                }
+                try {
+                    userId = await ensureUserIdByUsername(username);
+                } catch (error) {
+                    setStatus(error?.message || '用户名保存失败', true);
+                    return;
+                }
             }
-            const userId = await makeUserId(username);
 
             const formData = new FormData();
             formData.append('file', pendingAvatarFile);
@@ -334,7 +334,7 @@
             }
             const avatarUrl = data.avatar_url || DEFAULT_AVATAR_URL;
             syncUserInfoToLocal({
-                username,
+                username: username || drawerUsernameInput.value.trim(),
                 user_id: userId,
                 avatar_url: avatarUrl
             });
@@ -346,331 +346,7 @@
         // 复用原退出登录逻辑（原本等价于访问 /logout）
         function performLogout() {
             window.location.href = '/logout';
-        }import os
-from datetime import datetime, timedelta, timezone
-
-from fastapi import APIRouter, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
-from pydantic import BaseModel, ConfigDict, Field
-
-from core.auth_utils import (
-    is_valid_user_id,
-    make_user_id,
-    normalize_username,
-    verify_password,
-    hash_password,
-    validate_password,
-)
-from data_store import load_user_data, save_user_data
-router = APIRouter()
-
-LOGIN_COOKIE_NAME = "auth_token"
-REMEMBER_SECONDS = 7 * 24 * 60 * 60
-SESSION_SECONDS = 12 * 60 * 60
-
-
-class LoginRequest(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
-    user: str
-    password: str = Field(alias="pass")
-    remember: bool = False
-
-
-class RegisterRequest(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
-    username: str = Field(alias="user")
-    password: str = Field(alias="pass")
-
-
-def _get_current_user_id(request: Request) -> str | None:
-    user_id = request.cookies.get(LOGIN_COOKIE_NAME, "").strip()
-    if not user_id:
-        return None
-
-    if not is_valid_user_id(user_id):
-        return None
-
-    user_info = load_user_data(user_id)
-    if not user_info.get("profile", {}).get("password_hash"):
-        return None
-    return user_id
-
-
-def _is_logged_in(request: Request) -> bool:
-    return _get_current_user_id(request) is not None
-
-
-def _require_login_redirect(request: Request):
-    if not _is_logged_in(request):
-        return RedirectResponse(url="/login", status_code=302)
-    return None
-
-
-def _render_html_file(filename: str) -> str:
-    base_dir = os.path.dirname(__file__)
-    html_path = os.path.join(base_dir, filename)
-    with open(html_path, "r", encoding="utf-8") as f:
-        return f.read()
-
-
-
-def _with_admin_logger(html: str) -> str:
-    script_tag = '<script src="/static/admin_console_logger.js"></script>'
-    if script_tag in html:
-        return html
-    return html.replace("</body>", f"    {script_tag}\n</body>")
-
-
-def _with_admin_link(html: str) -> str:
-    show_link = os.getenv("SHOW_ADMIN_LINK", "1") == "1"
-    return html.replace(
-        "{{ADMIN_CONSOLE_LINK}}",
-        '<a href="/static/admin_console.html" class="admin-console-link" onclick="window.location.href=\'/static/admin_console.html\'; return false;">🛠</a>' if show_link else "",
-    )
-
-@router.get("/", response_class=HTMLResponse)
-async def intro_page(request: Request):
-    if _is_logged_in(request):
-        return RedirectResponse(url="/ai树洞计划.html", status_code=302)
-    return RedirectResponse(url="/login", status_code=302)
-
-
-@router.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    if _is_logged_in(request):
-        return RedirectResponse(url="/ai树洞计划.html", status_code=302)
-    return HTMLResponse(_render_html_file("login.html"))
-
-
-
-
-@router.get("/register")
-async def register_page(request: Request):
-    if _is_logged_in(request):
-        return RedirectResponse(url="/ai树洞计划.html", status_code=302)
-    base_dir = os.path.dirname(os.path.dirname(__file__))
-    return FileResponse(os.path.join(base_dir, "static", "register.html"))
-@router.post("/register")
-async def register_action(payload: RegisterRequest):
-    username = (payload.username or "").strip()
-    password = payload.password or ""
-
-    norm = normalize_username(username)
-    if not norm:
-        return JSONResponse(status_code=400, content={"ok": False, "msg": "username_required"})
-
-    valid_password, password_msg = validate_password(password)
-    if not valid_password:
-        return JSONResponse(status_code=400, content={"ok": False, "msg": password_msg})
-
-    user_id = make_user_id(norm)
-    user_info = load_user_data(user_id)
-    profile = user_info.setdefault("profile", {})
-
-    if profile.get("password_hash"):
-        return JSONResponse(status_code=409, content={"ok": False, "msg": "user_already_exists"})
-
-    profile["username"] = username
-    profile.setdefault("display_name", "")
-    profile.setdefault("avatar_url", "")
-    profile["password_hash"] = hash_password(password)
-    profile.pop("pin_hash", None)
-
-    save_user_data(user_id, user_info)
-    return JSONResponse(status_code=200, content={"ok": True, "user_id": user_id})
-
-
-@router.post("/login")
-async def login_action(payload: LoginRequest):
-    user = (payload.user or "").strip()
-    password = payload.password or ""
-
-    norm = normalize_username(user)
-    if not norm:
-        return JSONResponse(status_code=400, content={"ok": False, "msg": "username_required"})
-
-    user_id = make_user_id(norm)
-    user_info = load_user_data(user_id)
-    profile = user_info.get("profile", {})
-    password_hash = profile.get("password_hash", "")
-
-    if not password_hash:
-        return JSONResponse(status_code=401, content={"ok": False, "msg": "invalid_credentials"})
-
-    if not verify_password(password, password_hash):
-        return JSONResponse(status_code=401, content={"ok": False, "msg": "invalid_credentials"})
-
-    token_expire_seconds = REMEMBER_SECONDS if payload.remember else SESSION_SECONDS
-
-    response = JSONResponse(status_code=200, content={"ok": True, "user_id": user_id})
-    cookie_kwargs = {
-        "key": LOGIN_COOKIE_NAME,
-        "value": user_id,
-        "httponly": True,
-        "path": "/",
-        "samesite": "lax",
-    }
-
-    if not payload.remember:
-        cookie_kwargs["max_age"] = token_expire_seconds
-
-    if payload.remember:
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=REMEMBER_SECONDS)
-        cookie_kwargs["max_age"] = REMEMBER_SECONDS
-        cookie_kwargs["expires"] = expires_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
-
-    response.set_cookie(**cookie_kwargs)
-    return response
-
-
-@router.get("/logout")
-async def logout_action():
-    response = RedirectResponse(url="/login", status_code=302)
-    response.delete_cookie(LOGIN_COOKIE_NAME, path="/")
-    return response
-
-
-@router.get("/ai树洞计划.html", response_class=HTMLResponse)
-async def ai_treehole_page(request: Request):
-    if not _is_logged_in(request):
-        return RedirectResponse(url="/login", status_code=302)
-    html = _render_html_file("ai树洞计划.html")
-    return HTMLResponse(_with_admin_logger(_with_admin_link(html)))
-
-@router.get("/ip", response_class=HTMLResponse)
-async def ip_page(request: Request):
-    unauthorized = _require_login_redirect(request)
-    if unauthorized:
-        return unauthorized
-    base_dir = os.path.dirname(__file__)
-    html_path = os.path.join(base_dir, "虚拟ip.html")
-
-    with open(html_path, "r", encoding="utf-8") as f:
-        return _with_admin_logger(f.read())
-
-@router.get("/二级页面2第六版.html", response_class=HTMLResponse)
-async def evolution_plus_page(request: Request):
-    unauthorized = _require_login_redirect(request)
-    if unauthorized:
-        return unauthorized
-    return render_html("二级页面2第六版.html")
-
-@router.get("/page", response_class=HTMLResponse)
-async def chat_page(request: Request):
-    unauthorized = _require_login_redirect(request)
-    if unauthorized:
-        return unauthorized
-    plan = request.query_params.get("plan", "plus")
-
-    base_dir = os.path.dirname(__file__)
-    html_path = os.path.join(base_dir, "treehole.html")
-
-    with open(html_path, "r", encoding="utf-8") as f:
-        html = f.read()
-
-    html = html.replace("{{DEFAULT_PLAN}}", plan)
-    return _with_admin_logger(html)
-
-
-@router.get("/treehole_plus", response_class=HTMLResponse)
-async def treehole_plus_page(request: Request):
-    unauthorized = _require_login_redirect(request)
-    if unauthorized:
-        return unauthorized
-    return render_html("treehole_plus.html")
-
-@router.get("/treehole_pro", response_class=HTMLResponse)
-async def treehole_pro_page(request: Request):
-    unauthorized = _require_login_redirect(request)
-    if unauthorized:
-        return unauthorized
-    return render_html("treehole_pro.html")
-
-def render_html(filename: str):
-    return _with_admin_logger(_render_html_file(filename))
-
-def resolve_ip_user_id(request: Request) -> str:
-    user_id = request.query_params.get("user_id", "")
-    if is_valid_user_id(user_id):
-        return user_id
-    return make_user_id("web_user")
-
-
-@router.get("/ip/linyu", response_class=HTMLResponse)
-async def linyu_page(request: Request):
-    unauthorized = _require_login_redirect(request)
-    if unauthorized:
-        return unauthorized
-    user_id = resolve_ip_user_id(request)
-    user_info = load_user_data(user_id)
-
-    user_info["ip_name"] = "linyu"   # ★ 必须
-
-    save_user_data(user_id, user_info)
-
-    return HTMLResponse(_with_admin_logger(open("routers/林屿哥哥.html", encoding="utf-8").read()))
-
-
-
-@router.get("/ip/suwan", response_class=HTMLResponse)
-async def suwan_page(request: Request):
-    unauthorized = _require_login_redirect(request)
-    if unauthorized:
-        return unauthorized
-    user_id = resolve_ip_user_id(request)
-    user_info = load_user_data(user_id)
-
-    user_info["ip_name"] = "suwan"
-
-    save_user_data(user_id, user_info)
-
-    return HTMLResponse(_with_admin_logger(open("routers/苏晚姐姐.html", encoding="utf-8").read()))
-
-
-@router.get("/ip/xiaxingmian", response_class=HTMLResponse)
-async def xiaxingmian_page(request: Request):
-    unauthorized = _require_login_redirect(request)
-    if unauthorized:
-        return unauthorized
-    user_id = resolve_ip_user_id(request)
-    user_info = load_user_data(user_id)
-
-    user_info["ip_name"] = "xiaxingmian"
-
-    save_user_data(user_id, user_info)
-
-    return HTMLResponse(_with_admin_logger(open("routers/病娇校花.html", encoding="utf-8").read()))
-
-@router.get("/ip/jiangche", response_class=HTMLResponse)
-async def jiangche_page(request: Request):
-    unauthorized = _require_login_redirect(request)
-    if unauthorized:
-        return unauthorized
-    user_id = resolve_ip_user_id(request)
-    user_info = load_user_data(user_id)
-
-    user_info["ip_name"] = "jiangche"
-
-    save_user_data(user_id, user_info)
-
-    return HTMLResponse(_with_admin_logger(open("routers/白月光江澈.html", encoding="utf-8").read()))
-
-@router.get("/ip/luchengyu", response_class=HTMLResponse)
-async def luchengyu_page(request: Request):
-    unauthorized = _require_login_redirect(request)
-    if unauthorized:
-        return unauthorized
-    user_id = resolve_ip_user_id(request)
-    user_info = load_user_data(user_id)
-
-    user_info["ip_name"] = "luchengyu"
-
-    save_user_data(user_id, user_info)
-
-    return HTMLResponse(_with_admin_logger(open("routers/学长.html", encoding="utf-8").read()))
-
+        }
 
         function updateAppHeight() {
             const viewport = window.visualViewport;
