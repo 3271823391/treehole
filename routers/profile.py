@@ -36,6 +36,7 @@ def get_profile(request: Request):
     return {
         "ok": True,
         "profile": {
+            "user_id": user_id,
             "display_name": profile.get("display_name", ""),
             "avatar_url": profile.get("avatar_url", ""),
         },

@@ -215,10 +215,11 @@
                 '#drawerAvatarPreview'
             ];
 
+            const fallbackName = (window.treeholeUserId || '').slice(-6) || '用户';
             document.querySelectorAll(nameSelectors.join(',')).forEach((node) => {
-                if (!merged.display_name) return;
-                node.textContent = merged.display_name;
-                node.title = merged.display_name;
+                const displayName = merged.display_name || fallbackName;
+                node.textContent = displayName;
+                node.title = displayName;
             });
             document.querySelectorAll(avatarSelectors.join(',')).forEach((node) => {
                 if (node.tagName === 'IMG') {
@@ -244,12 +245,16 @@
             drawerMask.setAttribute('aria-hidden', 'true');
         }
 
-        function renderDrawerIdentity() {
+        async function renderDrawerIdentity() {
+            const profile = await fetchProfile();
             const cached = safeLocalStorageGetJson('treehole_user') || {};
-            const display_name = ((cached.display_name || safeLocalStorageGet(STORAGE_USERNAME_KEY)) || '').trim();
-            const avatarUrl = (cached.avatar_url || safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL).trim() || DEFAULT_AVATAR_URL;
-            drawerUsernameInput.value = display_name;
-            syncUserInfoToLocal({ display_name, avatar_url: avatarUrl });
+            const userId = (profile?.user_id || '').trim();
+            if (userId) window.treeholeUserId = userId;
+            const resolvedDisplayName = ((profile?.display_name || cached.display_name || safeLocalStorageGet(STORAGE_USERNAME_KEY)) || '').trim();
+            const displayName = resolvedDisplayName || (userId.slice(-6) || '用户');
+            const avatarUrl = (profile?.avatar_url || cached.avatar_url || safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL).trim() || DEFAULT_AVATAR_URL;
+            drawerUsernameInput.value = resolvedDisplayName;
+            syncUserInfoToLocal({ display_name: resolvedDisplayName || displayName, avatar_url: avatarUrl });
         }
 
         function setStatus(text, isError = false) {
@@ -265,6 +270,13 @@
             if (!res.ok) return { ok: false, msg: data?.msg || '服务暂不可用' };
             return data;
         }
+        async function fetchProfile() {
+            const res = await fetch('/profile', { credentials: 'include' });
+            const data = await res.json();
+            if (!data.ok) return null;
+            return data.profile;
+        }
+
         async function saveNicknameRemote(display_name) {
             const data = await fetchJson('/profile', {
                 method: 'POST',
@@ -281,10 +293,6 @@
 
         async function saveUsername() {
             const display_name = drawerUsernameInput.value.trim();
-            if (!display_name) {
-                setStatus('昵称不能为空', true);
-                return;
-            }
             try {
                 await saveNicknameRemote(display_name);
                 setStatus('昵称已更新');
@@ -334,8 +342,8 @@
             window.visualViewport.addEventListener('resize', updateAppHeight);
         }
 
-        menuBtn.addEventListener('click', () => {
-            renderDrawerIdentity();
+        menuBtn.addEventListener('click', async () => {
+            await renderDrawerIdentity();
             openDrawer();
         });
         drawerMask.addEventListener('click', closeDrawer);
