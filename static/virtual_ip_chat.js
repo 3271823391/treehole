@@ -59,18 +59,6 @@
         return `u_${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
     }
 
-    async function sha1Hex(input) {
-        const data = new TextEncoder().encode(input);
-        const buffer = await crypto.subtle.digest("SHA-1", data);
-        return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
-    }
-
-    async function makeUserId(username) {
-        const norm = (username || "").trim().toLowerCase();
-        if (!norm) return "";
-        const digest = await sha1Hex(norm);
-        return `u_${digest}`;
-    }
 
     function showToast(message) {
         const toast = document.getElementById('toast');
@@ -124,27 +112,14 @@
         applyFavoriteView(Number.isFinite(value) ? value : 50);
     }
 
-    async function resolveCurrentUserIdByUsername(username) {
-        const userIdByName = await makeUserId(username);
-        if (isValidUserId(userIdByName)) {
-            safeLocalStorageSet(STORAGE_USER_ID_KEY, userIdByName);
-            return userIdByName;
-        }
-        return "";
-    }
 
     async function initUserIdentity() {
         const username = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || "").trim();
         let resolvedId = "";
-        if (username) {
-            resolvedId = await resolveCurrentUserIdByUsername(username);
-        }
-        if (!resolvedId) {
-            const fromParam = new URLSearchParams(window.location.search).get('user_id') || "";
-            if (isValidUserId(fromParam)) {
-                resolvedId = fromParam;
-                safeLocalStorageSet(STORAGE_USER_ID_KEY, resolvedId);
-            }
+        const fromParam = new URLSearchParams(window.location.search).get('user_id') || "";
+        if (isValidUserId(fromParam)) {
+            resolvedId = fromParam;
+            safeLocalStorageSet(STORAGE_USER_ID_KEY, resolvedId);
         }
         if (!resolvedId) {
             const fromStorage = safeLocalStorageGet(STORAGE_USER_ID_KEY);
@@ -167,7 +142,7 @@
 
 
     async function fetchJson(url, options = {}) {
-        const res = await fetch(url, options);
+        const res = await fetch(url, { credentials: "include", ...options });
         const contentType = res.headers.get('content-type') || "";
         if (!contentType.includes('application/json')) {
             return { ok: false, msg: '服务暂不可用' };
@@ -212,7 +187,6 @@
         if (!ipInput || !isValidUserId(currentUserId)) return;
         const username = ipInput.value.trim();
         const payload = {
-            user_id: currentUserId,
             character_id: config.characterId
         };
         if (username) payload.username = username;
@@ -428,14 +402,15 @@
         }
 
         window.addEventListener('storage', async (event) => {
-            if (![STORAGE_USERNAME_KEY, STORAGE_AVATAR_KEY].includes(event.key)) return;
+            if (![STORAGE_USERNAME_KEY, STORAGE_AVATAR_KEY, STORAGE_USER_ID_KEY].includes(event.key)) return;
             const nextUsername = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
             const nextAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY) || DEFAULT_AVATAR_URL;
-            setUserIdentity({ username: nextUsername, avatarUrl: nextAvatar });
-            if (nextUsername) {
-                currentUserId = await resolveCurrentUserIdByUsername(nextUsername) || currentUserId;
-                await loadProfile();
+            const nextUserId = safeLocalStorageGet(STORAGE_USER_ID_KEY) || '';
+            if (isValidUserId(nextUserId)) {
+                currentUserId = nextUserId;
             }
+            setUserIdentity({ username: nextUsername, avatarUrl: nextAvatar });
+            await loadProfile();
         });
 
         window.addEventListener('resize', updateDeviceMode);

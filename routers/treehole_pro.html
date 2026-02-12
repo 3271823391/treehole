@@ -1437,7 +1437,7 @@
         const APP_PLAN = "pro"; // 页面版本常量
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
         let currentUserId = null;
-        let anonymousUserId = null;
+        
         const chatHistory = [];
         let emotionLocked = false;
         let emotionDebounceTimer = null;
@@ -1466,44 +1466,6 @@
             return typeof userId === "string"
                 && (USER_ID_UUID_PATTERN.test(userId) || USER_ID_SHA1_PATTERN.test(userId));
         }
-
-        function createAnonymousUserId() {
-            if (crypto?.randomUUID) {
-                return `u_${crypto.randomUUID()}`;
-            }
-            // TODO: 兜底随机串（防止极老 Safari/无痕模式）
-            return `u_${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
-        }
-
-        function safeLocalStorageGet(key) {
-            try {
-                return localStorage.getItem(key);
-            } catch (e) {
-                // TODO: iOS Safari 无痕模式会拒绝 localStorage，需兜底
-                return "";
-            }
-        }
-
-        function safeLocalStorageSet(key, value) {
-            try {
-                localStorage.setItem(key, value);
-            } catch (e) {
-                // TODO: iOS Safari 无痕模式写入失败时保持内存态即可
-            }
-        }
-
-        function initAnonymousUserId({ persist = true } = {}) {
-            const stored = persist ? safeLocalStorageGet(STORAGE_USER_ID_KEY) : "";
-            if (isValidUserId(stored)) {
-                return stored;
-            }
-            const created = createAnonymousUserId();
-            if (persist) {
-                safeLocalStorageSet(STORAGE_USER_ID_KEY, created);
-            }
-            return created;
-        }
-
         function syncViewport() {
             const viewport = window.visualViewport;
             const height = viewport ? viewport.height : window.innerHeight;
@@ -1653,7 +1615,7 @@
         async function fetchJson(url, options = {}) {
             let res;
             try {
-                res = await fetch(url, options);
+                res = await fetch(url, { credentials: "include", ...options });
             } catch (e) {
                 return { ok: false, msg: "网络异常，请稍后再试", status: 0 };
             }
@@ -1671,21 +1633,6 @@
             } catch (e) {
                 return { ok: false, msg: "服务暂不可用", status: res.status };
             }
-        }
-
-        async function sha1Hex(input) {
-            const data = new TextEncoder().encode(input);
-            const buffer = await crypto.subtle.digest("SHA-1", data);
-            return Array.from(new Uint8Array(buffer))
-                .map((b) => b.toString(16).padStart(2, "0"))
-                .join("");
-        }
-
-        async function makeUserId(username) {
-            const norm = (username || "").trim().toLowerCase();
-            if (!norm) return "";
-            const digest = await sha1Hex(norm);
-            return `u_${digest}`;
         }
 
         let currentProfile = {
@@ -2297,8 +2244,7 @@
         const voiceStopBtn = document.getElementById('voice-stop-btn');
                 const isProPlan = APP_PLAN === "pro";
 
-        anonymousUserId = initAnonymousUserId({ persist: true });
-        currentUserId = null;
+        currentUserId = safeLocalStorageGet(STORAGE_USER_ID_KEY) || "";
 
         function clearChatWindow() {
             chatWindow.innerHTML = "";
@@ -2336,6 +2282,8 @@
                 showErrorModal(data?.msg || "资料加载失败");
                 return false;
             }
+            currentUserId = data.user_id || currentUserId;
+            safeLocalStorageSet(STORAGE_USER_ID_KEY, currentUserId || "");
             const profileData = data.profile || {};
             const nextUsername = profileData.username || loginUsernameInput.value.trim();
             if (nextUsername) {
@@ -2354,22 +2302,17 @@
             if (!loginUsernameInput) return;
             const username = loginUsernameInput.value.trim();
             if (!username) {
-                currentUserId = null;
-                updateAvatar("");
                 updateProfileState({ username: "" });
                 setLockStatus("请输入用户名后即可保存资料", "#d9534f");
-                sendBtn.disabled = true;
+                sendBtn.disabled = !isValidUserId(currentUserId) || msgInput.value.trim() === "";
                 return;
             }
 
             const token = ++usernameChangeToken;
-            const nextUserId = await makeUserId(username);
-            if (token !== usernameChangeToken) return;
-            currentUserId = nextUserId;
             safeLocalStorageSet(STORAGE_USERNAME_KEY, username);
             updateProfileState({ username });
             setLockStatus("用户名已就绪，资料将自动保存", "#3b6fb6");
-            if (loadRemote) {
+            if (loadRemote && token === usernameChangeToken) {
                 await loadProfile();
             }
             await persistProfile();
@@ -2381,7 +2324,7 @@
                 return false;
             }
             if (!currentUserId) {
-                setLockStatus("请先输入用户名", "#d9534f");
+                setLockStatus("请先登录", "#d9534f");
                 return false;
             }
             const username = loginUsernameInput.value.trim();
@@ -2390,7 +2333,6 @@
                 return false;
             }
             const payload = {
-                user_id: currentUserId,
                 username
             };
             if (avatarUrl !== undefined) {
@@ -2402,6 +2344,8 @@
                 body: JSON.stringify(payload)
             });
             if (data?.ok) {
+                currentUserId = data.user_id || currentUserId;
+                safeLocalStorageSet(STORAGE_USER_ID_KEY, currentUserId || "");
                 updateProfileState({
                     username: data.profile?.username || username
                 });
@@ -2414,7 +2358,10 @@
         }
 
         async function uploadAvatar(file) {
-                        if (!file || !currentUserId) return;
+                        if (!file || !currentUserId) {
+                setLockStatus("请先登录后再上传头像", "#d9534f");
+                return;
+            }
             const formData = new FormData();
             formData.append("file", file);
             formData.append("user_id", currentUserId);
@@ -2436,7 +2383,7 @@
 
         function openAvatarPicker() {
                         if (!currentUserId) {
-                setLockStatus("请先输入用户名", "#d9534f");
+                setLockStatus("请先登录", "#d9534f");
                 return;
             }
             avatarInput.click();
@@ -2675,7 +2622,7 @@
 
         async function sendMessage() {
         if (!isValidUserId(currentUserId)) {
-            setLockStatus("请先输入用户名", "#d9534f");
+            setLockStatus("请先登录", "#d9534f");
             showErrorModal("请输入用户名/初始化身份");
             return;
         }

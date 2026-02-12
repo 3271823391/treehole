@@ -5,9 +5,9 @@ from fastapi import APIRouter, UploadFile, File, Form, Request
 from fastapi.responses import JSONResponse
 from PIL import Image
 
-from core.auth_utils import is_valid_user_id, make_user_id, normalize_username
+from core.auth_utils import is_valid_user_id
 from data_store import load_user_data, save_user_data
-from routers.page import LOGIN_COOKIE_NAME, SESSION_SECONDS
+from routers.page import LOGIN_COOKIE_NAME
 
 router = APIRouter()
 
@@ -78,13 +78,9 @@ def get_profile(request: Request, user_id: str = "", character_id: str = ""):
 @router.post("/profile")
 def update_profile(payload: dict, request: Request):
     payload = payload or {}
-    user_id = (payload.get("user_id") or "").strip()
+    user_id = (request.cookies.get(LOGIN_COOKIE_NAME) or "").strip()
     if not user_id:
-        username = (payload.get("username") or "").strip()
-        norm_username = normalize_username(username)
-        if not norm_username:
-            return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_user_id"})
-        user_id = make_user_id(norm_username)
+        return JSONResponse(status_code=401, content={"ok": False, "msg": "not_logged_in"})
     if not is_valid_user_id(user_id):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_user_id"})
 
@@ -126,7 +122,7 @@ def update_profile(payload: dict, request: Request):
 
     save_user_data(user_id, user_info)
     profile_data = resolve_profile_payload(profile, character_id)
-    response = JSONResponse(
+    return JSONResponse(
         status_code=200,
         content={
             "ok": True,
@@ -134,15 +130,6 @@ def update_profile(payload: dict, request: Request):
             "profile": profile_data,
         },
     )
-    response.set_cookie(
-        key=LOGIN_COOKIE_NAME,
-        value=user_id,
-        httponly=True,
-        path="/",
-        samesite="lax",
-        max_age=SESSION_SECONDS,
-    )
-    return response
 
 
 @router.post("/avatar_upload")
