@@ -30,7 +30,6 @@ def get_users():
     for user_id, info in users.items():
         if not isinstance(info, dict):
             continue
-        relationships = info.get("relationships") if isinstance(info.get("relationships"), dict) else {}
         profile = info.get("profile") if isinstance(info.get("profile"), dict) else {}
         items.append(
             {
@@ -39,7 +38,6 @@ def get_users():
                 "chat_count": int(info.get("chat_count", 0) or 0),
                 "memory_count": len(info.get("memories", []) or []),
                 "history_count": len(info.get("history", []) or []),
-                "relationship_count": len(relationships),
                 "display_name": profile.get("display_name") or profile.get("username") or "",
                 "ip_name": info.get("ip_name", ""),
             }
@@ -52,7 +50,6 @@ def get_users():
 def get_user(user_id: str):
     user = load_user_data(user_id)
     profile = user.get("profile") if isinstance(user.get("profile"), dict) else {}
-    relationships = user.get("relationships") if isinstance(user.get("relationships"), dict) else {}
     return {
         "user_id": user_id,
         "plan": user.get("plan", "plus"),
@@ -66,60 +63,7 @@ def get_user(user_id: str):
             "display_name": profile.get("display_name", ""),
             "avatar_url": profile.get("avatar_url", ""),
         },
-        "relationship_count": len(relationships),
     }
-
-
-@router.get("/user/{user_id}/characters")
-def get_user_characters(user_id: str):
-    user = load_user_data(user_id)
-    relationships = user.get("relationships") if isinstance(user.get("relationships"), dict) else {}
-    items = []
-    for character_id, state in relationships.items():
-        if not isinstance(state, dict):
-            continue
-        risk = state.get("risk_buffer") if isinstance(state.get("risk_buffer"), dict) else {}
-        items.append(
-            {
-                "character_id": character_id,
-                "affinity_score": float(state.get("affinity_score", 50)),
-                "stable_streak": int(state.get("stable_streak", 0) or 0),
-                "last_affinity_eval_at": state.get("last_affinity_eval_at"),
-                "user_msg_count_since_last_eval": int(state.get("user_msg_count_since_last_eval", 0) or 0),
-                "risk_buffer": {
-                    "boundary_pressure": int(risk.get("boundary_pressure", 0) or 0),
-                    "dependency_attempt": int(risk.get("dependency_attempt", 0) or 0),
-                    "conflict_pattern": int(risk.get("conflict_pattern", 0) or 0),
-                    "updated_at": risk.get("updated_at"),
-                },
-                "affinity_eval_log": state.get("affinity_eval_log", [])[-10:],
-            }
-        )
-    return {"user_id": user_id, "count": len(items), "items": items}
-
-
-@router.get("/relationship")
-def get_relationship_overview():
-    users = _read_all_users()
-    rows = []
-    for user_id, info in users.items():
-        if not isinstance(info, dict):
-            continue
-        relationships = info.get("relationships") if isinstance(info.get("relationships"), dict) else {}
-        for character_id, state in relationships.items():
-            if not isinstance(state, dict):
-                continue
-            rows.append(
-                {
-                    "user_id": user_id,
-                    "character_id": character_id,
-                    "affinity_score": float(state.get("affinity_score", 50)),
-                    "stable_streak": int(state.get("stable_streak", 0) or 0),
-                    "last_affinity_eval_at": state.get("last_affinity_eval_at"),
-                }
-            )
-    rows.sort(key=lambda x: x["affinity_score"], reverse=True)
-    return {"count": len(rows), "items": rows}
 
 
 @router.get("/logs")

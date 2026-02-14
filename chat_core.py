@@ -2,8 +2,6 @@ import requests
 import json
 import time
 import os
-import logging
-from datetime import datetime, timedelta
 from typing import Generator, Optional
 
 from config import (
@@ -20,14 +18,7 @@ from data_store import (
     save_user_data,
     add_user_memory,
     get_user_memory_text,
-    append_affinity_eval_log,
-    get_relationship_state,
-    increment_user_msg_count,
-    reset_user_msg_count,
-    save_relationship_state,
 )
-from relationship.emotion_client import analyze_relationship
-from relationship.judge import evaluate_affinity_delta
 
 # =========================================================
 # 角色 prompt 映射（仅静态加载）
@@ -48,17 +39,6 @@ CHARACTER_NAME_MAP = {
     "jiangche": "江澈",
     "ljiangan": "江安",
 }
-
-logger = logging.getLogger(__name__)
-
-
-def _debug_enabled() -> bool:
-    return os.getenv("DEBUG_RELATIONSHIP", "0") == "1"
-
-
-def _test_fast_enabled() -> bool:
-    return _debug_enabled() and os.getenv("AFFINITY_TEST_FAST", "0") == "1"
-
 
 def build_character_history_key(user_id: str, character_id: str) -> str:
     return f"history:{user_id}:{character_id}"
@@ -122,71 +102,6 @@ def load_system_prompt(user_info: dict, character_id: Optional[str] = None) -> s
         return f.read()
 
 
-
-
-RISK_TRIGGER_WORDS = [
-    "离不开你", "只要你", "只能是你", "别离开我", "必须听我的",
-    "你只能", "控制", "威胁", "冷暴力", "吵架",
-]
-
-
-def _parse_iso_datetime(value: str | None):
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value)
-    except Exception:
-        return None
-
-
-def evaluate_affinity_trigger(state: dict, user_input: str) -> dict:
-    count = int(state.get("user_msg_count_since_last_eval", 0))
-    last_eval_at = _parse_iso_datetime(state.get("last_affinity_eval_at"))
-    now = datetime.now()
-
-    fast_mode = _test_fast_enabled()
-    count_threshold = 1 if fast_mode else 6
-    cooldown_seconds = 0 if fast_mode else 10 * 60
-
-    count_ready = count >= count_threshold
-    keyword_hit = any(word in user_input for word in RISK_TRIGGER_WORDS)
-
-    cooldown_remaining_seconds = 0
-    cooldown_ready = True
-    if cooldown_seconds > 0 and last_eval_at is not None:
-        elapsed = (now - last_eval_at).total_seconds()
-        cooldown_remaining_seconds = max(0, int(cooldown_seconds - elapsed))
-        cooldown_ready = elapsed >= cooldown_seconds
-
-    trigger_reason = None
-    should_eval = False
-    if keyword_hit:
-        trigger_reason = "risk_words"
-        should_eval = True
-    elif count_ready:
-        trigger_reason = "count>=6"
-        should_eval = cooldown_ready
-
-    return {
-        "should_eval": should_eval,
-        "trigger_reason": trigger_reason,
-        "cooldown_ready": cooldown_ready,
-        "cooldown_remaining_seconds": cooldown_remaining_seconds,
-    }
-
-
-def build_affinity_constraint(affinity_score: float) -> str:
-    if affinity_score >= 75:
-        level = "信赖"
-        rule = "允许更真诚和有温度的回应；避免占有、排他、越界承诺。"
-    elif affinity_score >= 60:
-        level = "亲近"
-        rule = "允许适度情感表达；避免依赖暗示、关系绑定、过度承诺。"
-    else:
-        level = "普通"
-        rule = "保持礼貌陪伴与倾听；禁止暧昧推进、禁止亲密承诺。"
-
-    return f"【关系状态：{level}】\n- 当前允许的表达范围如下：{rule}"
 
 
 def build_character_identity_constraint(character_id: str) -> str:
@@ -296,74 +211,12 @@ def stream_chat_with_deepseek(
     else:
         history = user_info.get("history", [])
 
-    # 3. system prompt + 关系约束
+    # 3. system prompt
     system_prompt = load_system_prompt(user_info, character_id)
-    if character_id:
-        state = get_relationship_state(user_id, character_id)
-        affinity_constraint = build_affinity_constraint(float(state.get("affinity_score", 50)))
-        system_prompt = f"{system_prompt}\n\n{affinity_constraint}"
 
     # 4. 构造 messages
     messages = build_messages(system_prompt, history, user_input, character_id)
 
-    # 4.5 关系评估（仅虚拟IP）
-    if character_id:
-        increment_user_msg_count(user_id, character_id)
-        state = get_relationship_state(user_id, character_id)
-        trigger_info = evaluate_affinity_trigger(state, user_input)
-        trigger_reason = trigger_info.get("trigger_reason")
-
-        if trigger_reason and not trigger_info.get("should_eval", False):
-            logger.info(json.dumps({
-                "event": "affinity_eval_skipped",
-                "user_id": user_id,
-                "character_id": character_id,
-                "trigger_reason": trigger_reason,
-                "cooldown_remaining_seconds": trigger_info.get("cooldown_remaining_seconds", 0),
-                "ts": datetime.now().isoformat(timespec="seconds"),
-            }, ensure_ascii=False))
-
-        if trigger_info.get("should_eval", False):
-            recent_history = history[-12:] if history else []
-            recent_messages = recent_history + [{"role": "user", "content": user_input}]
-            result = analyze_relationship(
-                character_id=character_id,
-                character_name=CHARACTER_NAME_MAP.get(character_id, character_id),
-                messages=recent_messages,
-            )
-            signals = result.get("signals", ["neutral_interaction"])
-            confidence = result.get("confidence", "low")
-            score_before = float(state.get("affinity_score", 50))
-            stable_streak_before = int(state.get("stable_streak", 0))
-            delta, note = evaluate_affinity_delta(state, signals, confidence)
-            state["affinity_score"] = max(0.0, min(100.0, score_before + delta))
-            score_after = float(state.get("affinity_score", 50))
-            stable_streak_after = int(state.get("stable_streak", 0))
-            save_relationship_state(user_id, character_id, state)
-            append_affinity_eval_log(user_id, character_id, signals, confidence, delta, note)
-            reset_user_msg_count(user_id, character_id)
-
-            risk_buffer = state.get("risk_buffer", {}) if isinstance(state, dict) else {}
-            logger.info(json.dumps({
-                "event": "affinity_eval",
-                "user_id": user_id,
-                "character_id": character_id,
-                "trigger_reason": trigger_reason or "manual",
-                "signals": signals,
-                "confidence": confidence,
-                "delta": delta,
-                "score_before": score_before,
-                "score_after": score_after,
-                "stable_streak_before": stable_streak_before,
-                "stable_streak_after": stable_streak_after,
-                "risk_buffer": {
-                    "boundary_pressure": int(risk_buffer.get("boundary_pressure", 0)),
-                    "dependency_attempt": int(risk_buffer.get("dependency_attempt", 0)),
-                    "conflict_pattern": int(risk_buffer.get("conflict_pattern", 0)),
-                },
-                "cooldown_skipped": False,
-                "ts": datetime.now().isoformat(timespec="seconds"),
-            }, ensure_ascii=False))
 
     # 5. 调模型
     full_reply = ""

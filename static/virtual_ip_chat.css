@@ -155,17 +155,6 @@ body {
     color: #9aa5ba;
 }
 
-.favorability-title { font-size: 0.95rem; color: #2f3a50; font-weight: 600; }
-.favorability-state { margin-top: 4px; font-size: 0.82rem; color: #667189; }
-.favorability-bar { margin-top: 10px; height: 10px; background: #edf2fc; border-radius: 999px; overflow: hidden; }
-.favorability-fill { height: 100%; width: 0; background: #7aa8ea; transition: width 0.25s ease; }
-.favorability-value { margin-top: 8px; font-size: 0.82rem; color: #667189; text-align: right; }
-
-.favorability-cold .favorability-fill { background: #b4bfce; }
-.favorability-distant .favorability-fill { background: #90a7c4; }
-.favorability-normal .favorability-fill { background: #7aa8ea; }
-.favorability-close .favorability-fill { background: #5d94e1; }
-.favorability-intimate .favorability-fill { background: #447fd6; }
 
 .drawer-header { display: none; }
 
