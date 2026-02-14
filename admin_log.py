@@ -4,7 +4,7 @@ from typing import Any
 
 from core.log_buffer import get_logs
 
-_ALLOWED_CATEGORIES = {"chat", "relationship", "user", "system", "error"}
+_ALLOWED_CATEGORIES = {"chat", "user", "system", "error"}
 _IGNORE_KEYWORDS = (
     "favicon",
     "/static/",
@@ -33,8 +33,6 @@ def _categorize(item: dict[str, Any]) -> str | None:
         return "error"
 
     lower_text = f"{message} {source} {meta}".lower()
-    if "relationship" in lower_text or "affinity" in lower_text:
-        return "relationship"
     if any(k in lower_text for k in ("/chat", "chat_stream", "character_id", "messages")):
         return "chat"
     if any(k in lower_text for k in ("/profile", "/auth", "user_id", "display_name", "pin")):

@@ -2150,22 +2150,6 @@
           "content": "（转身接过电脑）嗯。车在楼下，送你回去。"
         }
       ]
-    },
-    "relationships": {
-      "linyu": {
-        "affinity_score": 50,
-        "stable_streak": 0,
-        "last_affinity_eval_at": null,
-        "user_msg_count_since_last_eval": 0,
-        "last_streak_reward_at": null,
-        "risk_buffer": {
-          "boundary_pressure": 0,
-          "dependency_attempt": 0,
-          "conflict_pattern": 0,
-          "updated_at": null
-        },
-        "affinity_eval_log": []
-      }
     }
   },
   "u1": {
@@ -2175,22 +2159,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {
-      "linyu": {
-        "affinity_score": 50,
-        "stable_streak": 0,
-        "last_affinity_eval_at": null,
-        "user_msg_count_since_last_eval": 0,
-        "last_streak_reward_at": null,
-        "risk_buffer": {
-          "boundary_pressure": 0,
-          "dependency_attempt": 0,
-          "conflict_pattern": 0,
-          "updated_at": null
-        },
-        "affinity_eval_log": []
-      }
-    },
     "profile": {
       "username": "",
       "display_name": "",
@@ -2205,7 +2173,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "",
       "display_name": "",
@@ -2230,7 +2197,6 @@
     ],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "123",
       "display_name": "",
@@ -2239,6 +2205,37 @@
       "base_username": "123",
       "base_avatar": "/static/avatars/u_40bd001563085fc35165329ea1ff5c5ecbdbbeef.png",
       "virtual_ip_overrides": {}
+    },
+    "conversation_rounds": {
+      "u_40bd001563085fc35165329ea1ff5c5ecbdbbeef:linyu": 3
+    },
+    "character_histories": {
+      "history:u_40bd001563085fc35165329ea1ff5c5ecbdbbeef:linyu": [
+        {
+          "role": "user",
+          "content": "hi"
+        },
+        {
+          "role": "assistant",
+          "content": "对话服务暂时波动，我们继续聊刚才那件事。"
+        },
+        {
+          "role": "user",
+          "content": "hi"
+        },
+        {
+          "role": "assistant",
+          "content": "对话服务暂时波动，我们继续聊刚才那件事。"
+        },
+        {
+          "role": "user",
+          "content": "hi"
+        },
+        {
+          "role": "assistant",
+          "content": "对话服务暂时波动，我们继续聊刚才那件事。"
+        }
+      ]
     }
   },
   "u_b9ad7fbfd630e9c83ee7bd510555d16c1441982f": {
@@ -2248,7 +2245,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "3271823391",
       "display_name": "",
@@ -2263,7 +2259,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "123456789",
       "display_name": "",
@@ -2278,7 +2273,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "1234567890",
       "display_name": "",
@@ -2293,7 +2287,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "32718",
       "display_name": "",
@@ -2308,7 +2301,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "",
       "display_name": "",
@@ -2324,7 +2316,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "",
       "display_name": "",
@@ -2340,7 +2331,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "",
       "display_name": "",
@@ -2356,7 +2346,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "",
       "display_name": "",
@@ -2372,7 +2361,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "",
       "display_name": "",
@@ -2388,7 +2376,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "123445",
       "display_name": "",
@@ -2406,7 +2393,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "username": "327182339111",
       "display_name": "",
@@ -2421,7 +2407,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "display_name": "",
       "avatar_url": "",
@@ -2463,7 +2448,6 @@
     "history": [],
     "has_greeted": false,
     "chat_count": 0,
-    "relationships": {},
     "profile": {
       "display_name": "",
       "avatar_url": "",
