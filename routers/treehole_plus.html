@@ -1067,6 +1067,8 @@
     <script>
         const STORAGE_USERNAME_KEY = "treehole_display_name";
         const STORAGE_AVATAR_KEY = "treehole_avatar_url";
+        const TREEHOLE_CHARACTER_ID = "default";
+        const TREEHOLE_DEVICE_ID_KEY = "TREEHOLE_DEVICE_ID";
         const APP_PLAN = "plus"; // 页面版本常量
         const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
         let currentUserId = null;
@@ -1106,6 +1108,16 @@
             } catch (e) {
                 // TODO: iOS Safari 无痕模式写入失败时保持内存态即可
             }
+        }
+
+        function getTreeholeDeviceId() {
+            const cached = (safeLocalStorageGet(TREEHOLE_DEVICE_ID_KEY) || '').trim();
+            if (cached) return cached;
+            const next = (window.crypto && window.crypto.randomUUID)
+                ? window.crypto.randomUUID()
+                : `treehole_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+            safeLocalStorageSet(TREEHOLE_DEVICE_ID_KEY, next);
+            return next;
         }
 
         async function fetchProfile() {
@@ -1471,14 +1483,26 @@
 
         async function loadHistory() {
             if (!isValidUserId(currentUserId)) return;
-            const data = await fetchJson(`/load_history?user_id=${encodeURIComponent(currentUserId)}`);
-            if (!data || !data.ok) {
+            if (chatHistory.length > 0 || chatWindow.querySelector('.message.user-msg, .message.ai-msg')) return;
+            const deviceId = getTreeholeDeviceId();
+            const historyUrl = `/api/chat/history?user_id=${encodeURIComponent(currentUserId)}&character_id=${encodeURIComponent(TREEHOLE_CHARACTER_ID)}&device_id=${encodeURIComponent(deviceId)}&limit=50`;
+            console.log('[treehole history] request:', historyUrl);
+            const resp = await fetch(historyUrl, { credentials: 'include' });
+            console.log('[treehole history] status:', resp.status);
+            let data = null;
+            try {
+                data = await resp.json();
+            } catch (e) {
+                data = null;
+            }
+            if (!resp.ok || !data || !data.ok) {
                 showErrorModal(data?.msg || "加载历史失败");
                 return;
             }
             chatHistory.length = 0;
-            data.history.forEach((item) => chatHistory.push(item));
-            renderHistory(data.history);
+            const messages = Array.isArray(data.messages) ? data.messages : [];
+            messages.forEach((item) => chatHistory.push(item));
+            renderHistory(messages);
         }
 
         async function loadProfile() {
@@ -1799,6 +1823,8 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     user_id: currentUserId,   // ← 必须有
+                    character_id: TREEHOLE_CHARACTER_ID,
+                    device_id: getTreeholeDeviceId(),
                     history: chatHistory,
                     user_input: content,
                     round_id: currentRound
