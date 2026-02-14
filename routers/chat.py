@@ -24,6 +24,20 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+TREEHOLE_CHARACTER_ID = "treehole"
+TREEHOLE_REFERER_HINTS = ("/treehole", "/treehole_plus", "/treehole_pro")
+
+
+def _normalize_character_id(raw_character_id: str | None, request: Request) -> str | None:
+    character_id = (raw_character_id or "").strip() or None
+    if character_id:
+        return character_id
+    referer = (request.headers.get("referer") or "").lower()
+    if any(hint in referer for hint in TREEHOLE_REFERER_HINTS):
+        return TREEHOLE_CHARACTER_ID
+    return None
+
+
 @router.get("/greeting")
 def greeting(user_id: str, request: Request):
     if not user_id:
@@ -73,7 +87,7 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_user_id"})
 
     user_input = req.user_input.strip()
-    character_id = (req.character_id or "").strip() or None
+    character_id = _normalize_character_id(req.character_id, request)
     device_id = (req.device_id or "").strip() or "default"
     if character_id and character_id not in IP_PROMPT_MAP:
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_character_id"})

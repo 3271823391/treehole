@@ -25,6 +25,7 @@ from data_store import (
 # =========================================================
 
 IP_PROMPT_MAP = {
+    "treehole": "小盈.txt",
     "linyu": "林屿.txt",
     "suwan": "苏晚.txt",
     "xiaxingmian": "夏星眠.txt",
@@ -33,11 +34,12 @@ IP_PROMPT_MAP = {
 }
 
 CHARACTER_NAME_MAP = {
+    "treehole": "小盈",
     "linyu": "林屿",
     "suwan": "苏晚",
     "xiaxingmian": "夏星眠",
     "jiangche": "江澈",
-    "ljiangan": "江安",
+    "jiangan": "江安",
 }
 
 def build_character_history_key(user_id: str, character_id: str) -> str:
