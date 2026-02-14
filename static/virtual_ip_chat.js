@@ -31,6 +31,27 @@
         inputPlaceholder: root.dataset.inputPlaceholder || "请输入消息..."
     };
 
+    const WAITING_TITLE = '对方正在输入...';
+    let waitingDepth = 0;
+
+    function beginWaitingTitle() {
+        waitingDepth += 1;
+        if (waitingDepth !== 1) return;
+        const titleNode = document.getElementById('chatTitleText');
+        if (titleNode) titleNode.textContent = WAITING_TITLE;
+    }
+
+    function endWaitingTitle() {
+        if (waitingDepth <= 0) {
+            waitingDepth = 0;
+            return;
+        }
+        waitingDepth -= 1;
+        if (waitingDepth !== 0) return;
+        const titleNode = document.getElementById('chatTitleText');
+        if (titleNode) titleNode.textContent = config.characterName;
+    }
+
     function safeLocalStorageGet(key) {
         try {
             return localStorage.getItem(key);
@@ -283,6 +304,14 @@
 
         addUserMessage(inputText);
         messageInput.value = '';
+        beginWaitingTitle();
+
+        let waitingActive = true;
+        const stopWaiting = () => {
+            if (!waitingActive) return;
+            waitingActive = false;
+            endWaitingTitle();
+        };
 
         let contentDiv = null;
         let hasStarted = false;
@@ -301,10 +330,12 @@
             const contentType = res.headers.get('content-type') || "";
             if (!res.ok || contentType.includes('application/json') || contentType.includes('text/html')) {
                 showToast(await parseErrorMessage(res));
+                stopWaiting();
                 return;
             }
             if (!res.body) {
                 showToast('服务暂不可用');
+                stopWaiting();
                 return;
             }
 
@@ -316,16 +347,21 @@
                 if (done) break;
                 const text = decoder.decode(value, { stream: true });
                 if (!text) continue;
-                if (!hasStarted) {
+                if (!hasStarted && text.trim().length > 0) {
+                    stopWaiting();
                     hasStarted = true;
                     contentDiv = addRoleMessageShell();
                 }
+                if (!hasStarted) continue;
                 contentDiv.textContent += text;
                 const chatContent = document.getElementById('chatContent');
                 chatContent.scrollTop = chatContent.scrollHeight;
             }
         } catch (e) {
             showToast('连接失败，请稍后再试');
+            stopWaiting();
+        } finally {
+            stopWaiting();
         }
     }
 
