@@ -231,7 +231,7 @@ def call_deepseek_stream(messages):
         "model": DEEPSEEK_MODEL,
         "messages": messages,
         "stream": True,
-        "temperature": 0.75
+        "temperature": 1.3
     }
 
     headers = {

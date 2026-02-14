@@ -2413,5 +2413,62 @@
       "avatar_url": "",
       "password_hash": "pbkdf2_sha256$120000$jKxkjwxa2YV7BeDp-cQfDQ$_YsYtqpAEHVo2cXWz8wksmo868VrPotJNrxMfx-8v28"
     }
+  },
+  "u_1e53e4a14e9c73c137f899a1b654b96ecfad644c": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": "pbkdf2_sha256$120000$5_zyNa9ZryjAyyE0LNQxkA$Gn7EvcMuPhOf8PnX0i7_4PXgFvMTxIi2WmW0vdK4zg8"
+    },
+    "character_histories": {
+      "history:u_1e53e4a14e9c73c137f899a1b654b96ecfad644c:jiangan": [
+        {
+          "role": "user",
+          "content": "你好"
+        },
+        {
+          "role": "assistant",
+          "content": "你好，我是江安。今天过得怎么样？"
+        },
+        {
+          "role": "user",
+          "content": "不怎么样"
+        },
+        {
+          "role": "assistant",
+          "content": "听起来有点疲惫呢。愿意的话，可以和我聊聊发生了什么。"
+        },
+        {
+          "role": "user",
+          "content": "我说我很累你听不明白吗"
+        },
+        {
+          "role": "assistant",
+          "content": "（停顿片刻，语气温和）听明白了。累的时候确实不想多说话。那……要不要安静坐一会儿？我在这儿。"
+        }
+      ]
+    }
+  },
+  "u_c56525221f8434b87fb6ab00d0cc3ed8df9f8d2b": {
+    "plan": "plus",
+    "system_prompt": "你是一个温柔的倾听者，善于共情，不批判、不说教，回复简洁温暖",
+    "memories": [],
+    "history": [],
+    "has_greeted": false,
+    "chat_count": 0,
+    "relationships": {},
+    "profile": {
+      "display_name": "",
+      "avatar_url": "",
+      "password_hash": ""
+    },
+    "ip_name": "jiangan"
   }
 }
