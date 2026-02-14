@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 def _enabled() -> bool:
-    return os.getenv("DEBUG_RELATIONSHIP", "0") == "1" or os.getenv("ADMIN_CONSOLE", "0") == "1"
+    return os.getenv("DEBUG_ADMIN", "0") == "1" or os.getenv("ADMIN_CONSOLE", "0") == "1"
 
 
 def _assert_enabled() -> None:
@@ -62,7 +62,7 @@ def admin_clear_logs():
 @router.get("/admin/console", response_class=HTMLResponse)
 def admin_console_page():
     _assert_enabled()
-    debug_mode = os.getenv("DEBUG_RELATIONSHIP", "0") == "1"
+    debug_mode = os.getenv("DEBUG_ADMIN", "0") == "1"
     clear_button = "<button id='clearBtn'>清空日志</button>" if debug_mode else ""
     html = f"""
 <!doctype html>

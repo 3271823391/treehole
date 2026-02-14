@@ -4,13 +4,6 @@
     const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
     const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const USER_ID_SHA1_PATTERN = /^u_[0-9a-f]{40}$/i;
-    const FAVORABILITY_STATES = [
-        { max: 20, cls: "favorability-cold", label: "冷淡 / 抵触" },
-        { max: 40, cls: "favorability-distant", label: "疏离" },
-        { max: 60, cls: "favorability-normal", label: "普通" },
-        { max: 80, cls: "favorability-close", label: "亲近" },
-        { max: 100, cls: "favorability-intimate", label: "高度亲密" }
-    ];
 
     let currentAvatarUrl = DEFAULT_AVATAR_URL;
     let currentUserId = "";
@@ -82,29 +75,6 @@
         safeLocalStorageSet(STORAGE_AVATAR_KEY, currentAvatarUrl || DEFAULT_AVATAR_URL);
     }
 
-    function applyFavoriteView(score) {
-        const clamped = Math.max(0, Math.min(100, Number(score) || 0));
-        const state = FAVORABILITY_STATES.find((item) => clamped <= item.max) || FAVORABILITY_STATES[FAVORABILITY_STATES.length - 1];
-        const card = document.querySelector('[data-favorability-card]');
-        const stateEl = document.querySelector('[data-favorability-state]');
-        const fillEl = document.querySelector('[data-favorability-fill]');
-        const valueEl = document.querySelector('[data-favorability-value]');
-        if (!card || !stateEl || !fillEl || !valueEl) return;
-        card.classList.remove(...FAVORABILITY_STATES.map((item) => item.cls));
-        card.classList.add(state.cls);
-        stateEl.textContent = state.label;
-        fillEl.style.width = `${clamped}%`;
-        valueEl.textContent = `${clamped} / 100`;
-    }
-
-    function loadFavorability() {
-        const fallbackId = isValidUserId(currentUserId) ? currentUserId : 'anonymous';
-        const favorabilityKey = `favorability:${fallbackId}:${config.characterId}`;
-        const stored = safeLocalStorageGet(favorabilityKey);
-        const value = stored === null || stored === "" ? 50 : Number(stored);
-        applyFavoriteView(Number.isFinite(value) ? value : 50);
-    }
-
     async function fetchProfile() {
         const res = await fetch('/profile', { credentials: 'include' });
         const data = await res.json();
@@ -127,7 +97,6 @@
         const displayName = (profile.display_name || '').trim() || currentUserId.slice(-6);
         setUserIdentity({ display_name: displayName, avatarUrl: profile.avatar_url || cachedAvatar });
         await loadProfile();
-        loadFavorability();
     }
 
 
@@ -406,7 +375,6 @@
         document.getElementById('roleAvatar').style.backgroundImage = `url('${config.roleAvatar}')`;
         document.getElementById('messageInput').placeholder = config.inputPlaceholder;
         document.getElementById('sendBtn').textContent = root.dataset.sendIcon || '✈️';
-        document.getElementById('favorabilityTitle').textContent = `${config.characterName} · 好感度`;
     }
 
     (async function init() {

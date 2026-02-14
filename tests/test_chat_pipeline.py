@@ -20,7 +20,6 @@ def _seed_user(store: Path, user_id: str):
             "history": [],
             "has_greeted": False,
             "chat_count": 0,
-            "relationships": {},
             "profile": {"display_name": "", "avatar_url": "", "password_hash": ""},
         }
     }
