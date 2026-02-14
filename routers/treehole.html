@@ -1453,7 +1453,7 @@
         const emotionAnalysisMobile = document.getElementById('emotion-analysis-mobile');
         const emotionSuggestMobile = document.getElementById('emotion-suggest-mobile');
                 const isProPlan = APP_PLAN === "pro";
-
+        let historyLoaded = false;
 
         function clearChatWindow() {
             chatWindow.innerHTML = "";
@@ -1473,15 +1473,20 @@
         }
 
         async function loadHistory() {
-            if (!isValidUserId(currentUserId)) return;
-            const data = await fetchJson(`/load_history?user_id=${encodeURIComponent(currentUserId)}`);
+            if (!isValidUserId(currentUserId) || historyLoaded) return;
+            if (chatHistory.length > 0 || chatWindow.querySelector('.msg-container')) {
+                historyLoaded = true;
+                return;
+            }
+            const data = await fetchJson(`/api/chat/history?user_id=${encodeURIComponent(currentUserId)}&character_id=default&device_id=default&limit=50`);
             if (!data || !data.ok) {
                 showErrorModal(data?.msg || "加载历史失败");
                 return;
             }
             chatHistory.length = 0;
-            data.history.forEach((item) => chatHistory.push(item));
-            renderHistory(data.history);
+            data.messages.forEach((item) => chatHistory.push(item));
+            renderHistory(data.messages);
+            historyLoaded = true;
         }
 
         async function loadProfile() {

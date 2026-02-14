@@ -9,14 +9,15 @@ from pydantic import BaseModel
 from chat_core import IP_PROMPT_MAP, build_character_history_key, check_sensitive
 from core.auth_utils import is_valid_user_id
 from core.characters import get_character_bias, get_character_system_prompt
-from core.conv_state import build_conv_key, ensure_state, next_round_id, save_state
+from core.conv_state import build_conv_key, ensure_state, load_state, next_round_id, save_state
 from core.emotion_analyzer import EmotionAnalyzeError, analyze_emotion, default_analysis
 from core.guards import enforce_reply
 from core.llm_client import llm_stream
 from core.lock_manager import get_conv_lock
 from core.prompt_builder import build_messages
-from core.response_planner import compute_plan
+from core.response_planner import compute_plan, should_inject_topic
 from core.schemas import ConversationState, TurnRecord
+from core.topic_seeds import pick_topic_seed
 from data_store import load_user_data, save_user_data
 
 router = APIRouter()
@@ -137,7 +138,16 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
         )
         save_state(user_id, state)
         system_prompt = get_character_system_prompt(user_info, character_id)
-        messages = build_messages(system_prompt, plan, history_text, user_input)
+        topic_injection = should_inject_topic(conv_key, round_id, analysis.continuation_need)
+        topic_seed = pick_topic_seed(character_id, analysis.topic_seeds)
+        messages = build_messages(
+            system_prompt,
+            plan,
+            history_text,
+            user_input,
+            topic_injection=topic_injection,
+            topic_seed=topic_seed,
+        )
 
     async def pipeline_stream():
         raw_reply = ""
@@ -189,3 +199,30 @@ def load_history(request: Request, user_id: str, character_id: str = ""):
     else:
         history = user_info.get("history", [])
     return {"ok": True, "history": history}
+
+
+@router.get("/api/chat/history")
+def chat_history(user_id: str, character_id: str, device_id: str = "default", limit: int = 50):
+    user_id = user_id.strip()
+    if not user_id:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "missing_user_id"})
+    if not is_valid_user_id(user_id):
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_user_id"})
+
+    character_id = (character_id or "").strip() or "default"
+    if character_id != "default" and character_id not in IP_PROMPT_MAP:
+        return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_character_id"})
+
+    device_id = (device_id or "").strip() or "default"
+    max_turns = max(1, min(limit or 50, 200))
+
+    conv_key = build_conv_key(user_id, device_id, character_id)
+    state = load_state(user_id, conv_key)
+    turns = state.turns[-max_turns:] if state else []
+    messages = []
+    for turn in turns:
+        if turn.user_text:
+            messages.append({"role": "user", "content": turn.user_text})
+        if turn.assistant_text:
+            messages.append({"role": "assistant", "content": turn.assistant_text})
+    return {"ok": True, "messages": messages}

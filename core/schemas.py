@@ -16,6 +16,8 @@ class EmotionAnalysis(BaseModel):
     risk_self_harm: float = Field(default=0.0, ge=0.0, le=1.0)
     risk_violence: float = Field(default=0.0, ge=0.0, le=1.0)
     risk_abuse: float = Field(default=0.0, ge=0.0, le=1.0)
+    continuation_need: float = Field(default=0.0, ge=0.0, le=1.0)
+    topic_seeds: list[str] = Field(default_factory=list)
     notes: str = ""
 
 

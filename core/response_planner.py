@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import hashlib
+import os
+import random
+
 from core.schemas import EmotionAnalysis, ReplyPlan
 
 
 EMA_ALPHA = 0.65
+TOPIC_INJECTION_SALT = os.getenv("TOPIC_INJECTION_SALT", "treehole-topic-injection-v1")
 
 
 def _clamp(v: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -14,6 +19,18 @@ def _ema(current: float, prev: float | None) -> float:
     if prev is None:
         return current
     return prev * (1 - EMA_ALPHA) + current * EMA_ALPHA
+
+
+def _stable_random(conv_key: str, round_id: int, salt: str = TOPIC_INJECTION_SALT) -> float:
+    token = f"{conv_key}:{round_id}:{salt}".encode("utf-8")
+    digest = hashlib.sha256(token).hexdigest()
+    seed = int(digest[:16], 16)
+    return random.Random(seed).random()
+
+
+def should_inject_topic(conv_key: str, round_id: int, continuation_need: float) -> bool:
+    p = _clamp(0.10 + continuation_need * 0.75, 0.0, 0.85)
+    return _stable_random(conv_key, round_id) < p
 
 
 def compute_plan(
