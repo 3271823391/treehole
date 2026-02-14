@@ -24,9 +24,10 @@ def _extract_json_block(raw: str) -> str:
 
 def _build_messages(history_text: str, user_input: str) -> list[dict]:
     instruction = (
-        "你是对话分析器。只输出严格 JSON，不要 markdown，不要解释。"
+        "你是对话分析器。只输出严格 JSON，不要 markdown，不要解释、不要额外文本。"
         "字段: sentiment, intent, arousal, valence, anxiety, anger, sadness, "
-        "risk_self_harm, risk_violence, risk_abuse, notes。"
+        "risk_self_harm, risk_violence, risk_abuse, continuation_need, topic_seeds, notes。"
+        "continuation_need 取值 0~1。topic_seeds 必须为 2~4 条与最近对话相关的短词，单条不超过12字。"
     )
     return [
         {"role": "system", "content": instruction},

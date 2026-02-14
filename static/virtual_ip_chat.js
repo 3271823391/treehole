@@ -11,6 +11,7 @@
     let currentBaseUsername = "";
     let currentBaseAvatar = "";
     let toastTimer = null;
+    let historyLoaded = false;
 
     const root = document.getElementById('vip-chat-page');
     if (!root) return;
@@ -190,14 +191,21 @@
     }
 
     async function loadChatHistory() {
-        if (!isValidUserId(currentUserId)) return;
-        const data = await fetchJson(`/load_history?user_id=${encodeURIComponent(currentUserId)}&character_id=${encodeURIComponent(config.characterId)}`);
-        if (!data?.ok || !Array.isArray(data.history)) return;
-        if (data.history.length > 0) {
+        if (!isValidUserId(currentUserId) || historyLoaded) return;
+        const chatContent = document.getElementById('chatContent');
+        const existingMessages = chatContent ? chatContent.querySelectorAll('.message').length : 0;
+        if (existingMessages > 1) {
+            historyLoaded = true;
+            return;
+        }
+        const data = await fetchJson(`/api/chat/history?user_id=${encodeURIComponent(currentUserId)}&character_id=${encodeURIComponent(config.characterId)}&device_id=default&limit=50`);
+        if (!data?.ok || !Array.isArray(data.messages)) return;
+        if (data.messages.length > 0) {
             const initialMessage = document.querySelector('#chatContent #initialMessage')?.closest('.message');
             if (initialMessage) initialMessage.remove();
         }
-        data.history.forEach((item) => appendMessageByRole(item?.role, item?.content || ''));
+        data.messages.forEach((item) => appendMessageByRole(item?.role, item?.content || ''));
+        historyLoaded = true;
     }
 
     async function parseErrorMessage(res) {
