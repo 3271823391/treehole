@@ -59,6 +59,16 @@ FILLER_BLACKLIST = [
     "我会一直陪着你",
 ]
 
+NEGATIVE_USER_PATTERNS = [
+    r"我不太好",
+    r"我难受",
+    r"我崩了",
+    r"我很烦",
+    r"我想哭",
+]
+
+SELF_DISCLOSURE_OPENERS = ["我最近", "我压力大", "我也", "我这边"]
+
 SECRET_SALT = os.getenv("SECRET_SALT", "treehole_salt")
 _LOCKS: dict[str, threading.Lock] = {}
 _LOCKS_GUARD = threading.Lock()
@@ -210,7 +220,8 @@ def _pick_topic(character_id: str, analysis: EmotionAnalysis, user_input: str) -
 def plan_reply(analysis: EmotionAnalysis, character_id: Optional[str], conv_key: str, round_id: int, user_input: str) -> ReplyPlan:
     bias = ROLE_BIAS.get(character_id or "", ROLE_BIAS["suwan"])
     p = _clamp(0.12 + analysis.continuation_need * 0.75, 0, 0.88)
-    topic_injection = _stable_rand(conv_key, round_id) < p
+    negative_emotion = analysis.emotion.valence < -0.2 or analysis.risk.self_harm >= 0.35
+    topic_injection = (analysis.conversation_health.stall > 0.55) and (not negative_emotion) and (_stable_rand(conv_key, round_id) < p)
     topic_seed = _pick_topic(character_id or "", analysis, user_input)
 
     tone = ToneBlock(
@@ -235,7 +246,35 @@ def plan_reply(analysis: EmotionAnalysis, character_id: Optional[str], conv_key:
     )
 
 
-def generate_draft(system_prompt: str, history_text: str, user_input: str, plan: ReplyPlan, analysis: EmotionAnalysis) -> str:
+def _normalize_turns(history: list[dict]) -> list[dict]:
+    normalized: list[dict] = []
+    for item in history[-16:]:
+        role = item.get("role")
+        content = str(item.get("content", "")).strip()
+        if role in {"user", "assistant"} and content:
+            normalized.append({"role": role, "content": content})
+            continue
+        user_text = str(item.get("user_text", "")).strip()
+        assistant_text = str(item.get("assistant_text", "")).strip()
+        if user_text:
+            normalized.append({"role": "user", "content": user_text})
+        if assistant_text:
+            normalized.append({"role": "assistant", "content": assistant_text})
+    return normalized
+
+
+def _build_dialog_messages(history: list[dict], user_input: str) -> list[dict]:
+    messages = _normalize_turns(history)
+    messages.append({"role": "user", "content": user_input})
+    if os.getenv("DEBUG_CHAT") == "1":
+        print("[DEBUG_CHAT] last_messages=")
+        for m in messages[-5:]:
+            preview = m.get("content", "")[:30].replace("\n", " ")
+            print(f" - role={m.get('role')} content={preview}")
+    return messages
+
+
+def generate_draft(system_prompt: str, history: list[dict], user_input: str, plan: ReplyPlan, analysis: EmotionAnalysis) -> str:
     control = {
         "topic_injection": plan.topic_injection,
         "topic_seed": plan.topic_seed,
@@ -243,11 +282,12 @@ def generate_draft(system_prompt: str, history_text: str, user_input: str, plan:
         "question_type": plan.format.question_type,
         "do_not": analysis.do_not,
     }
+    dialog_messages = _build_dialog_messages(history, user_input)
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "system", "content": "先承接本轮输入；禁止括号动作；避免套话；120-180字。"},
+        {"role": "system", "content": "先承接本轮输入；禁止括号动作；避免套话；120-180字。主动提话题仅能放在末尾1句轻提问，不要自嗨开场。"},
         {"role": "system", "content": f"CONTROL={json.dumps(control, ensure_ascii=False)}"},
-        {"role": "user", "content": f"history:\n{history_text}\n\ninput:\n{user_input}"},
+        *dialog_messages,
     ]
     return _json_call(messages, temperature=0.7)
 
@@ -270,7 +310,11 @@ def rewrite_voice(draft_text: str, system_prompt: str, plan: ReplyPlan) -> str:
     return _json_call(messages, temperature=0.6)
 
 
-def post_guard(text: str, safety_mode: bool) -> str:
+def _is_negative_user_input(user_input: str) -> bool:
+    return any(re.search(pattern, user_input) for pattern in NEGATIVE_USER_PATTERNS)
+
+
+def post_guard(text: str, safety_mode: bool, user_input: str = "") -> str:
     out = re.sub(r"（[^）]*）", "", text)
     out = re.sub(r"\([^\)]*\)", "", out)
     sentences = re.split(r"(?<=[。！？!?])", out)
@@ -285,6 +329,12 @@ def post_guard(text: str, safety_mode: bool) -> str:
             s = s.replace("必须", "尽量").replace("只能", "可以先")
         cleaned.append(s)
     final = "".join(cleaned).strip()
+    if _is_negative_user_input(user_input):
+        final = final.lstrip("，。！？!? ")
+        if any(final.startswith(prefix) for prefix in SELF_DISCLOSURE_OPENERS) or not final.startswith("你"):
+            final = "你现在最难受的是哪一块？你愿意先从最卡住你的那件事说起吗？"
+        if "？" not in final and "?" not in final:
+            final = f"你现在最需要我先听哪一部分？{final}"
     return final or "我在听，你可以继续说。"
 
 
@@ -342,9 +392,9 @@ def stream_chat_with_deepseek(user_id: str, user_input: str, character_id: Optio
         save_user_data(user_id, user_info)
 
     try:
-        draft = generate_draft(system_prompt, history_text, user_input, plan, analysis)
+        draft = generate_draft(system_prompt, history, user_input, plan, analysis)
         rewritten = rewrite_voice(draft, system_prompt, plan)
-        final_text = post_guard(rewritten, plan.safety_mode)
+        final_text = post_guard(rewritten, plan.safety_mode, user_input)
     except Exception:
         final_text = "对话服务暂时波动，我们继续聊刚才那件事。"
 

@@ -32,7 +32,7 @@ def test_pipeline_order(monkeypatch):
             topic_seed="种子话题",
         )
 
-    def fake_draft(system_prompt, history_text, user_input, plan, analysis):
+    def fake_draft(system_prompt, history, user_input, plan, analysis):
         calls.append("draft")
         assert plan.topic_injection is True
         assert plan.topic_seed == "种子话题"
