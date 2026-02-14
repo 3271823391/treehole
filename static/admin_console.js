@@ -22,7 +22,7 @@
     const today = new Date().toISOString().slice(0, 10);
     const todayActive = users.filter((u) => String(u.last_active_at || u.updated_at || '').startsWith(today)).length;
     const chat7d = users.reduce((sum, u) => sum + Number(u.chat_count || 0), 0);
-    const relationCount = users.reduce((sum, u) => sum + Number(u.relationship_count || 0), 0);
+    const relationCount = users.reduce((sum, u) => sum + Number(u.state_count || 0), 0);
 
     app.innerHTML = `
       <section class="card"><div class="card-title">用户列表</div><p class="subtext">查看系统中已记录用户和会话概况。</p></section>
@@ -34,7 +34,7 @@
       </section>
       <section class="card"><h2>用户列表 (${userCount})</h2>
       <table class="table"><thead><tr><th>user_id</th><th>昵称</th><th>计划</th><th>聊天数</th><th>关系数</th><th>虚拟IP</th></tr></thead>
-      <tbody>${users.map((u) => `<tr><td>${u.user_id}</td><td>${u.display_name || '-'}</td><td>${u.plan}</td><td>${u.chat_count}</td><td>${u.relationship_count}</td><td>${u.ip_name || '-'}</td></tr>`).join('')}</tbody></table></section>`;
+      <tbody>${users.map((u) => `<tr><td>${u.user_id}</td><td>${u.display_name || '-'}</td><td>${u.plan}</td><td>${u.chat_count}</td><td>${u.state_count}</td><td>${u.ip_name || '-'}</td></tr>`).join('')}</tbody></table></section>`;
   }
 
   function renderUserDetailSelector() {
@@ -68,11 +68,11 @@
     });
   }
 
-  async function renderRelationship() {
-    const data = await getJson('/api/admin/relationship');
+  async function renderState() {
+    const data = await getJson('/api/admin/users');
     app.innerHTML = `
-      <section class="card"><div class="card-title">好感度总览</div><p class="subtext">查看全部用户与角色间的当前亲密度状态。</p></section>
-      <section class="card"><h2>好感度总览 (${data.count || 0})</h2>
+      <section class="card"><div class="card-title">状态总览</div><p class="subtext">查看全部用户与角色间的当前会话状态。</p></section>
+      <section class="card"><h2>状态总览 (${data.count || 0})</h2>
       <table class="table"><thead><tr><th>user_id</th><th>character_id</th><th>affinity</th><th>streak</th><th>last_eval</th></tr></thead>
       <tbody>${(data.items || []).map((r) => `<tr><td>${r.user_id}</td><td>${r.character_id}</td><td>${r.affinity_score}</td><td>${r.stable_streak}</td><td>${r.last_affinity_eval_at || '-'}</td></tr>`).join('')}</tbody></table></section>`;
   }
@@ -83,7 +83,7 @@
       <section class="card">
         <h2>日志</h2>
         <div class="row">
-          <select id="categorySel"><option value="">全部</option><option value="chat">chat</option><option value="relationship">relationship</option><option value="user">user</option><option value="system">system</option><option value="error">error</option></select>
+          <select id="categorySel"><option value="">全部</option><option value="chat">chat</option><option value="state">state</option><option value="user">user</option><option value="system">system</option><option value="error">error</option></select>
           <button id="refreshLogs">刷新</button>
         </div>
         <div id="logsWrap" class="muted">加载中...</div>
@@ -106,7 +106,7 @@
     try {
       if (activeView === 'users') return await renderUsers();
       if (activeView === 'user-detail') return renderUserDetailSelector();
-      if (activeView === 'relationship') return await renderRelationship();
+      if (activeView === 'state') return await renderState();
       if (activeView === 'logs') return await renderLogs();
     } catch (e) {
       app.innerHTML = `<section class="card">\n          <div class="card-title">加载失败</div>\n          <div class="error">${String(e)}</div>\n        </section>`;
