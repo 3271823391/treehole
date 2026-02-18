@@ -471,9 +471,13 @@ button.send{
         功能区域
     </div>
 </div>
+<script src="/static/js/pro_api_logic.js"></script>
 <script>
 let drawerOpen = false;
 let bottomOpen = false;
+let currentUserId = "";
+let currentRound = 0;
+const chatHistory = [];
 
 function toggleDrawer(){
     const drawer = document.querySelector(".drawer");
@@ -515,35 +519,66 @@ function closeDrawer(){
     drawerOpen = false;
 }
 
-function sendMessage(){
-    const input = document.getElementById("input");
+function appendMessage(text, side){
     const chat = document.getElementById("chat");
-    const text = input.value.trim();
-    if(!text) return;
-
-    // 用户消息
-    const userMsg = document.createElement("div");
-    userMsg.className = "msg right";
-    userMsg.innerHTML = `
+    const msg = document.createElement("div");
+    msg.className = `msg ${side}`;
+    if(side === "right"){
+        msg.innerHTML = `
         <div class="bubble">${text}</div>
         <div class="avatar-msg"></div>
     `;
-    chat.appendChild(userMsg);
+    }else{
+        msg.innerHTML = `
+        <div class="avatar-msg"></div>
+        <div class="bubble">${text}</div>
+    `;
+    }
+    chat.appendChild(msg);
+    return msg;
+}
 
+async function sendMessage(){
+    const input = document.getElementById("input");
+    const text = input.value.trim();
+    if(!text) return;
+    if(!ProApiLogic.isValidUserId(currentUserId)){
+        alert("身份失效，请重新登录");
+        return;
+    }
+
+    appendMessage(text, "right");
+    currentRound += 1;
+    chatHistory.push({ role: "user", content: text, round_id: currentRound });
     input.value = "";
     scrollToBottom();
 
-    // 自动回复
-    setTimeout(()=>{
-        const replyMsg = document.createElement("div");
-        replyMsg.className = "msg left";
-        replyMsg.innerHTML = `
-            <div class="avatar-msg"></div>
-            <div class="bubble">玩命加载中......</div>
-        `;
-        chat.appendChild(replyMsg);
-        scrollToBottom();
-    }, 600);
+    const replyMsg = appendMessage("", "left");
+    const bubble = replyMsg.querySelector(".bubble");
+
+    const result = await ProApiLogic.sendMessageAPI({
+        userId: currentUserId,
+        history: chatHistory,
+        userInput: text,
+        roundId: currentRound,
+        onChunk: (_, fullText) => {
+            bubble.textContent = fullText;
+            scrollToBottom();
+        }
+    });
+
+    if(!result.ok){
+        bubble.textContent = result.msg || "服务暂不可用";
+        return;
+    }
+
+    const finalText = (result.text || "").trim();
+    if(!finalText){
+        bubble.textContent = "服务暂不可用";
+        return;
+    }
+    chatHistory.push({ role: "assistant", content: finalText, round_id: currentRound });
+    loadEmotion(text);
 }
 
 function scrollToBottom(){
@@ -565,29 +600,45 @@ document.getElementById("input").addEventListener("keydown", function(e){
         sendMessage();
     }
 });
-    // 拉取用户信息（预留接口）
-async function loadProfile(){
-    // TODO: 后端接口
-    // const res = await fetch("/api/profile");
-    // const data = await res.json();
 
-    document.getElementById("nickname").textContent = "f298d8";
+async function loadProfile(){
+    const ctx = await ProApiLogic.getUserContext();
+    if(ctx.isValidUserId){
+        currentUserId = ctx.user_id;
+        document.getElementById("nickname").textContent = (ctx.profile?.display_name || "").trim() || currentUserId.slice(-6);
+    }
 }
 
-// 拉取情绪分析（预留接口）
-async function loadEmotion(){
-    // TODO: fetch("/api/emotion/latest")
+async function loadEmotion(currentInput = ""){
+    if(!ProApiLogic.isValidUserId(currentUserId)) return;
+    const result = await ProApiLogic.analyzeEmotionAPI({
+        userId: currentUserId,
+        history: chatHistory,
+        currentInput,
+        roundId: currentRound
+    });
 
-    const score = 60;
+    if(!result.ok){
+        return;
+    }
+
+    const score = Number(result.data.score || 0);
     document.getElementById("emotionScore").textContent = score;
     document.getElementById("emotionBar").style.width = score + "%";
 }
 
 // 语音克隆按钮
 document.getElementById("voiceCloneBtn")
-?.addEventListener("click", ()=>{
-    // TODO: 调用 /api/voice_clone
-    alert("语音克隆接口待接入");
+?.addEventListener("click", async ()=>{
+    if(!ProApiLogic.isValidUserId(currentUserId)){
+        alert("身份失效，请重新登录");
+        return;
+    }
+    const formData = new FormData();
+    formData.append("user_id", currentUserId);
+    formData.append("name", "我的声音");
+    const result = await ProApiLogic.voiceCloneAPI(formData);
+    alert(result.ok ? "语音克隆请求已提交" : (result.msg || "语音克隆失败"));
 });
 
 loadProfile();
