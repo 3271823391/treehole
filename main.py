@@ -17,6 +17,7 @@ app = FastAPI(title="DeepSeek虚拟树洞（精致版）")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
+ROUTERS_DIR = os.path.join(BASE_DIR, "routers")
 AVATAR_DIR = os.path.join(STATIC_DIR, "avatars")
 os.makedirs(AVATAR_DIR, exist_ok=True)
 
@@ -24,6 +25,7 @@ print("STATIC DIR EXISTS:", os.path.exists(STATIC_DIR))
 print("STATIC ABS PATH:", STATIC_DIR)
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/routers", StaticFiles(directory=ROUTERS_DIR), name="routers")
 
 
 def _ensure_buffer_logging() -> None:
