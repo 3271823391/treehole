@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>WeChat Mock</title>
+
+<style>
+*{
+    box-sizing:border-box;
+}
+
+html,body{
+    margin:0;
+    height:100%;
+    background:#ededed;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif;
+    overflow:hidden;
+}
+
+.app{
+    width:100%;
+    height:100%;
+    background:#fff;
+    display:flex;
+    flex-direction:column;
+}
+
+/* 顶部 */
+.header{
+    height:64px;
+    background:#f7f7f7;
+    border-bottom:1px solid #e5e5e5;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 40px;
+    font-size:18px;
+    font-weight:600;
+}
+
+/* 聊天区域 */
+.chat{
+    flex:1;
+    background:#f5f5f5;
+    padding-bottom:20px
+    padding:40px;
+    overflow-y:auto;
+}
+
+.msg{
+    display:flex;
+    margin-bottom:22px;
+}
+
+.msg.right{
+    justify-content:flex-end;
+}
+
+.bubble{
+    max-width:60%;
+    padding:12px 18px;
+    font-size:14px;
+    line-height:1.6;
+    border-radius:6px;
+    word-break:break-word;
+}
+
+.left .bubble{
+    background:#ffffff;
+}
+
+.right .bubble{
+    background:#95ec69;
+}
+
+/* ===== 输入区 ===== */
+
+.input-wrapper{
+    background:#f5f5f5;
+    border-top:1px solid #e5e5e5;
+    padding:8px 20px 15px 20px;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+    position:relative;
+}
+
+/* 工具栏 */
+.tool-row{
+    display:flex;
+    gap:11px;
+    font-size:22px;
+    color:#666;
+    margin-bottom:2px;
+}
+
+/* 编辑区域 */
+.editor-row{
+    position:relative;
+    display:flex;
+    align-items:flex-end;
+}
+
+textarea{
+    flex:1;
+    height:100px;
+    border:none;
+    resize:none;
+    outline:none;
+    font-size:15px;
+    line-height:1.6;
+    padding:5px 0;
+    background:transparent;
+}
+
+textarea:focus{
+    caret-color:#07c160;
+}
+
+/* 发送按钮 */
+.send{
+    position:absolute;
+    right:0;
+    bottom:20;
+    padding:8px 28px;
+    border:none;
+    border-radius:4px;
+    font-size:14px;
+    background:#e5e5e5;
+    color:#999;
+    cursor:not-allowed;
+    transition:0.2s;
+}
+
+.send.active{
+    background:#07c160;
+    color:#fff;
+    cursor:pointer;
+}
+
+.chat::-webkit-scrollbar{
+    width:6px;
+}
+.chat::-webkit-scrollbar-thumb{
+    background:#ccc;
+    border-radius:3px;
+}
+    .msg{
+    display:flex;
+    align-items:flex-start;
+    margin-bottom:22px;
+}
+
+.msg.right{
+    justify-content:flex-end;
+}
+
+.avatar{
+    width:36px;
+    height:36px;
+    border-radius:4px;
+    background:#ccc;
+    margin:0 10px;
+}
+
+.left .bubble{
+    background:#ffffff;
+    margin-left:0;
+}
+
+.right .bubble{
+    background:#95ec69;
+    margin-right:0;
+}
+    .chat{
+    padding:40px 40px 40px 40px;
+}
+
+.chat .msg:first-child{
+    margin-top:32px;
+}
+/* ===== 右上角菜单按钮 ===== */
+.menu-btn{
+    font-size:22px;
+    cursor:pointer;
+    padding:0 10px;
+}
+
+/* ===== 遮罩层 ===== */
+/* 打开状态 */
+.overlay{
+    position:absolute;
+    top:64px;
+    left:0;
+    width:100%;
+    height:calc(100% - 64px);
+    background:rgba(0,0,0,0.15);
+
+    opacity:0;
+    pointer-events:none;
+
+    transition:opacity 0.3s ease;
+    z-index:9;
+}
+
+.overlay.show{
+    opacity:1;
+    pointer-events:auto;
+}
+/* ===== 抽屉 ===== */
+.drawer{
+    position:absolute;
+    top:0;
+    right:0;
+    width:40%;
+    height:100%;
+    background:#ffffff;
+    border-left:1px solid #e5e5e5;
+    transform:translateX(100%);
+    transition:transform 0.3s ease;
+    box-shadow:-4px 0 20px rgba(0,0,0,0.1);
+}
+
+/* 打开 */
+.overlay.show .drawer{
+    transform:translateX(0);
+}
+    .drawer-content{
+    padding:20px;
+    overflow-y:auto;
+    height:100%;
+    background:#f5f5f5;
+}
+
+/* 卡片 */
+.card{
+    background:#ffffff;
+    border-radius:16px;
+    padding:20px;
+    margin-bottom:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.05);
+}
+
+/* 头像 */
+.avatar-large{
+    width:60px;
+    height:60px;
+    border-radius:50%;
+    background:#d8dde6;
+}
+
+.profile-top{
+    display:flex;
+    gap:15px;
+    align-items:center;
+}
+
+.username{
+    font-size:18px;
+    font-weight:600;
+    color:#4b6ea9;
+}
+
+.desc{
+    font-size:13px;
+    color:#c44;
+}
+
+.divider{
+    height:1px;
+    background:#e6e6e6;
+    margin:15px 0;
+}
+
+/* 开关 */
+.toggle-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.switch{
+    width:50px;
+    height:26px;
+    background:#ccc;
+    border-radius:20px;
+    position:relative;
+    cursor:pointer;
+}
+
+.switch::after{
+    content:"";
+    width:22px;
+    height:22px;
+    background:#fff;
+    border-radius:50%;
+    position:absolute;
+    top:2px;
+    left:2px;
+    transition:0.3s;
+}
+
+.switch.active{
+    background:#4b7bd6;
+}
+
+.switch.active::after{
+    left:26px;
+}
+
+/* 标题 */
+.section-title{
+    font-size:18px;
+    font-weight:600;
+    color:#4b7bd6;
+    margin-bottom:15px;
+}
+
+/* 分数 */
+.score-row{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:10px;
+}
+
+/* 进度条 */
+.progress{
+    height:10px;
+    background:#e3e6ef;
+    border-radius:10px;
+    overflow:hidden;
+    margin-bottom:15px;
+}
+
+.progress-bar{
+    width:60%;
+    height:100%;
+    background:linear-gradient(to right,#e88,#4b7bd6);
+}
+
+/* 标签 */
+.tag-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:15px;
+}
+
+.tag{
+    background:#dbe6f7;
+    color:#4b7bd6;
+    padding:6px 14px;
+    border-radius:20px;
+    font-size:13px;
+}
+
+/* 分析文本 */
+.sub-title{
+    font-weight:600;
+    color:#4b7bd6;
+    margin-top:10px;
+}
+
+.analysis p{
+    font-size:14px;
+    line-height:1.6;
+    color:#333;
+}
+
+/* 语音按钮 */
+.voice-btn{
+    width:100%;
+    padding:12px;
+    background:#5f83c6;
+    border:none;
+    border-radius:30px;
+    color:#fff;
+    font-size:16px;
+    cursor:pointer;
+}
+
+.todo{
+    font-size:13px;
+    color:#777;
+    margin-bottom:15px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <div class="header">
+        单聊模式
+        <div class="menu-btn" id="menuBtn">⋯</div>
+    </div>
+    <div class="overlay" id="overlay">
+        <div class="drawer" id="drawer">
+            <div class="drawer-content">
+
+    <!-- 个人信息卡 -->
+    <div class="card profile-card">
+        <div class="profile-top">
+            <div class="avatar-large"></div>
+                <div class="profile-info">
+                    <div class="username">f298d8</div>
+                    <div class="desc">资料修改请前往版本介绍页面的菜单</div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="toggle-row">
+                <span>语音输出</span>
+                <div class="switch active"></div>
+            </div>
+        </div>
+
+        <!-- 情绪分析 -->
+        <div class="card">
+            <div class="section-title">📊 情绪分析报告</div>
+
+            <div class="score-row">
+                <span>情绪指数</span>
+                <span>60 / 100</span>
+            </div>
+
+            <div class="progress">
+                <div class="progress-bar"></div>
+            </div>
+
+            <div class="tag-row">
+                <span class="tag">平静</span>
+                <span class="tag">期待</span>
+            </div>
+
+            <div class="analysis">
+                <div class="sub-title">情绪分析：</div>
+                <p>当前未检测到明显的负面情绪，心态处于平和的状态，对交流抱有轻微期待。</p>
+
+                <div class="sub-title">暖心建议：</div>
+                <p>保持这份平和的心情，大胆说出你的想法吧，我会一直在这里陪着你～</p>
+            </div>
+        </div>
+
+        <!-- 语音克隆 -->
+        <div class="card">
+            <div class="section-title">🎙 语音克隆</div>
+            <p class="todo">TODO：移动端入口保留此按钮，桌面端请使用底部输入区的快捷入口。</p>
+            <button class="voice-btn">语音克隆</button>
+        </div>
+
+    </div>
+        </div>
+    </div>
+    <div class="chat" id="chat"></div>
+
+    <div class="input-wrapper">
+
+        <div class="tool-row">
+            <span>😊</span>
+            <span>📦</span>
+            <span>📁</span>
+            <span>✂️</span>
+            <span>⌄</span>
+            <span>🎤</span>
+        </div>
+
+        <div class="editor-row">
+            <textarea id="input"></textarea>
+            <button class="send" id="sendBtn" disabled>发送(S)</button>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+const chat = document.getElementById("chat");
+
+/* 启用发送按钮 */
+input.addEventListener("input", () => {
+    if(input.value.trim().length > 0){
+        sendBtn.disabled = false;
+        sendBtn.classList.add("active");
+    }else{
+        sendBtn.disabled = true;
+        sendBtn.classList.remove("active");
+    }
+});
+
+/* 添加消息 */
+function appendMessage(text, side){
+    const msg = document.createElement("div");
+    msg.className = "msg " + side;
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.innerText = text;
+
+    if(side === "left"){
+        msg.appendChild(avatar);
+        msg.appendChild(bubble);
+    }else{
+        msg.appendChild(bubble);
+        msg.appendChild(avatar);
+    }
+
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+}
+/* 发送逻辑 */
+function sendMessage(){
+    const text = input.value.trim();
+    if(!text) return;
+
+    appendMessage(text, "right");
+    input.value = "";
+    sendBtn.disabled = true;
+    sendBtn.classList.remove("active");
+
+    setTimeout(() => {
+        appendMessage("玩命加载中......", "left");
+    }, 500);
+}
+
+sendBtn.addEventListener("click", sendMessage);
+
+/* Enter发送，Shift+Enter换行 */
+input.addEventListener("keydown", function(e){
+    if(e.key === "Enter" && !e.shiftKey){
+        e.preventDefault();
+        sendMessage();
+    }
+});
+const overlay = document.getElementById("overlay");
+const drawer = document.getElementById("drawer");
+const menuBtn = document.getElementById("menuBtn");
+
+menuBtn.addEventListener("click", (e) => {
+    e.stopPropagation();   // 阻止事件往 overlay 传
+    overlay.classList.toggle("show");
+});
+
+/* 点击遮罩关闭 */
+overlay.addEventListener("click", () => {
+    overlay.classList.remove("show");
+});
+
+/* 抽屉内部点击不关闭 */
+drawer.addEventListener("click", (e) => {
+    e.stopPropagation();
+});
+const voiceSwitch = document.querySelector(".switch");
+voiceSwitch.addEventListener("click", () => {
+    voiceSwitch.classList.toggle("active");
+});
+</script>
+
+</body>
+</html>
