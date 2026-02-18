@@ -1,598 +1,2872 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat UI</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>心灵避风港 - 小盈陪你说心里话</title>
+    <link rel="stylesheet" href="/static/shared_shell.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
 
-<style>
-    .drawer-inner{
-    flex:1;
-    overflow-y:auto;
-    padding:20px;
-    background:#ededed;
-}
+        :root {
+            --app-height: 100%;
+            --vv-top: 0px;
+            --footer-h: 56px;
+        }
 
-/* 头像区域 */
-.profile-section{
-    display:flex;
-    align-items:center;
-    margin-bottom:25px;
-}
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
 
-.avatar-large{
-    width:64px;
-    height:64px;
-    border-radius:12px;
-    background:#d8d8d8;
-    margin-right:15px;
-}
+        body {
+            background-color: #f0f7ff;
+            color: #333;
+            overflow: hidden; /* TODO: iOS Safari 键盘弹出时保持布局视口稳定 */
+        }
 
-.nickname{
-    font-size:18px;
-    font-weight:600;
-    margin-bottom:5px;
-}
+        /* 固定布局容器：避免键盘弹出导致 footer 跳动 */
+        #appShell {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+        }
 
-.profile-tip{
-    font-size:12px;
-    color:#999;
-}
+        /* 顶部导航栏 - 移除AI树洞，简化文字 */
+        .header {
+            background: linear-gradient(90deg, #4a90e2, #5ba0f2);
+            color: #fff;
+            padding: 1rem 2rem;
+            text-align: center;
+            box-shadow: 0 3px 15px rgba(74, 144, 226, 0.25);
+            position: relative;
+            z-index: 100;
+        }
 
-/* 设置行 */
-.setting-row{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:15px 0;
-    border-bottom:1px solid #eee;
-}
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
 
-/* 开关样式 */
-.switch{
-    position:relative;
-    display:inline-block;
-    width:42px;
-    height:22px;
-}
+        .header-text {
+            text-align: center;
+        }
 
-.switch input{
-    display:none;
-}
+        .header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
 
-.slider{
-    position:absolute;
-    cursor:pointer;
-    top:0; left:0;
-    right:0; bottom:0;
-    background:#ccc;
-    border-radius:22px;
-    transition:.3s;
-}
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.95;
+            margin-top: 0.4rem;
+        }
 
-.slider:before{
-    position:absolute;
-    content:"";
-    height:18px;
-    width:18px;
-    left:2px;
-    bottom:2px;
-    background:white;
-    border-radius:50%;
-    transition:.3s;
-}
+        .header-actions {
+            display: none;
+            gap: 0.6rem;
+            align-items: center;
+        }
 
-input:checked + .slider{
-    background:#07c160;
-}
+        .header-action-btn {
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 999px;
+            padding: 0.4rem 0.9rem;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
 
-input:checked + .slider:before{
-    transform:translateX(20px);
-}
+        .header-action-btn i {
+            font-size: 0.95rem;
+        }
 
-/* 卡片 */
-.card{
-    background:white;
-    border-radius:16px;
-    padding:15px;
-    margin-top:20px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.05);
-}
+        .header-action-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
 
-.card-title{
-    font-weight:600;
-    margin-bottom:15px;
-    color:#333;
-}
+        /* 主容器 - 重构布局，聊天框占主体 */
+        .main-container {
+            flex: 1;
+            display: flex;
+            max-width: 1400px;
+            margin: 1.2rem auto;
+            padding: 0 1rem;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+            min-height: 0;
+        }
 
-.emotion-score{
-    display:flex;
-    justify-content:space-between;
-    margin-bottom:10px;
-}
+        /* TODO: 主内容滚动容器，避免 footer 跟随滚动 */
+        #mainScroll {
+            flex: 1;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: calc(var(--footer-h, 56px) + env(safe-area-inset-bottom));
+        }
 
-.progress-bar{
-    height:8px;
-    background:#eee;
-    border-radius:8px;
-    overflow:hidden;
-    margin-bottom:10px;
-}
+        /* 聊天区域 - 提升占比，主体视觉 */
+        .chat-section {
+            flex: 4; /* 聊天区占4份，侧边栏占1份，主体更突出 */
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: 0;
+        }
 
-.progress-inner{
-    height:100%;
-    background:linear-gradient(90deg,#ff7a7a,#6b8cff);
-}
+        /* 聊天窗口 - 优化内边距和阴影 */
+        .chat-window {
+            flex: 1;
+            background-color: #fff;
+            border-radius: 16px;
+            padding: 1.2rem 1.5rem;
+            box-shadow: 0 0 25px rgba(74, 144, 226, 0.08);
+            overflow-y: auto;
+            min-height: 0;
+        }
 
-.emotion-tags span{
-    display:inline-block;
-    background:#eef2ff;
-    padding:5px 12px;
-    border-radius:20px;
-    font-size:12px;
-    margin-right:6px;
-    color:#4a6cff;
-}
+        /* 滚动条美化升级 */
+        .chat-window::-webkit-scrollbar {
+            width: 7px;
+        }
+        .chat-window::-webkit-scrollbar-thumb {
+            background-color: #c1d9ff;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        .chat-window::-webkit-scrollbar-thumb:hover {
+            background-color: #a3c1ff;
+        }
+        .chat-window::-webkit-scrollbar-track {
+            background-color: #f8fbff;
+        }
 
-.emotion-text{
-    font-size:13px;
-    color:#555;
-    margin-top:10px;
-}
+        /* 消息容器 - 包含头像+气泡，关键布局 */
+        .msg-container {
+            max-width: 80%;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: flex-end;
+            gap: 0.8rem;
+        }
 
-.primary-btn{
-    width:100%;
-    height:44px;
-    background:#4a6cff;
-    border:none;
-    color:white;
-    border-radius:22px;
-    font-size:14px;
-    cursor:pointer;
-}
-html, body{
-    margin:0;
-    padding:0;
-    height:100%;
-    background:#f5f5f5;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
-}
+        /* 头像样式 - 双方专属，圆形带边框 */
+        .msg-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            border: 2px solid #f0f7ff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
 
-.phone{
-    width:100%;
-    height:100dvh;
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
+        .msg-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
+        /* 用户头像 - 右侧消息，蓝色系 */
+        .user-avatar {
+            background-color: #4a90e2;
+            color: #fff;
+        }
+        /* 小盈头像 - 左侧消息，浅蓝系 */
+        .ai-avatar {
+            background-color: #e8f4ff;
+            color: #4a90e2;
+        }
 
-}
-.header{
-    height:60px;
-    background:#ffffff;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-weight:600;
-    border-bottom:1px solid #e5e5e5;
-    position:relative;
-}
+        /* 消息气泡通用 - 优化内边距和圆角 */
+        .message {
+            padding: 0.9rem 1.3rem;
+            border-radius: 20px;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            position: relative;
+            word-wrap: break-word;
+        }
 
-.back-btn{
-    position:absolute;
-    left:15px;
-    background:none;
-    border:none;
-    font-size:16px;
-    cursor:pointer;
-}
+        /* 用户消息 - 右对齐，蓝色气泡，头像在右 */
+        .user-msg-wrap {
+            margin-left: auto;
+            flex-direction: row-reverse; /* 头像在气泡右侧 */
+        }
+        .user-msg {
+            background-color: #4a90e2;
+            color: #fff;
+            border-bottom-right-radius: 6px;
+        }
 
-.menu-btn{
-    position:absolute;
-    right:15px;
-    background:none;
-    border:none;
-    font-size:24px;
-    cursor:pointer;
-    color:#333;
-}
+        /* 小盈消息 - 左对齐，浅蓝气泡，头像在左 */
+        .ai-msg-wrap {
+            margin-right: auto;
+        }
+        .ai-msg {
+            background-color: #e8f4ff;
+            color: #333;
+            border-bottom-left-radius: 6px;
+        }
 
-.chat{
-    flex:1;
-    padding:15px;
-    overflow-y:auto;
-}
+        /* 加载动画 - 适配头像布局 */
+        .loading-wrap {
+            margin-right: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        .loading {
+            display: flex;
+            gap: 4px;
+            padding: 0.9rem 1rem;
+            background-color: #e8f4ff;
+            border-radius: 20px;
+            border-bottom-left-radius: 6px;
+        }
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #4a90e2;
+            animation: bounce 1s infinite alternate;
+        }
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-6px); }
+        }
 
-.msg{
-    display:flex;
-    margin-bottom:15px;
-    align-items:flex-end;
-}
+        /* 输入框区域 - 优化圆角和阴影 */
+        .composer {
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+        }
 
-.msg.left{justify-content:flex-start;}
-.msg.right{justify-content:flex-end;}
+        .input-area {
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+            background-color: #fff;
+            padding: 0.9rem 1.4rem;
+            border-radius: 36px;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.08);
+            flex: 1;
+            min-height: 44px;
+        }
 
-.avatar-msg{
-    width:32px;
-    height:32px;
-    border-radius:6px;
-    background:#ccc;
-}
+        #msg-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 0.95rem;
+            color: #333;
+            resize: none;
+            min-height: 20px;
+            max-height: 120px;
+            overflow-y: auto;
+            padding: 0.3rem 0;
+        }
 
-.msg.left .avatar-msg{
-    margin-right:8px;
-}
+        #msg-input::placeholder {
+            color: #b0c4de;
+        }
 
-.msg.right .avatar-msg{
-    margin-left:8px;
-    order:2;
-}
+        .send-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background-color: #4a90e2;
+            color: #fff;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+        }
 
-.bubble{
-    max-width:70%;
-    padding:10px 14px;
-    border-radius:16px;
-    font-size:15px;
-    line-height:1.4;
-    word-break:break-word;
-}
+        .send-btn:disabled {
+            background-color: #d0e1ff;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
 
-.left .bubble{
-    background:white;
-}
+        .send-btn:hover:not(:disabled) {
+            background-color: #357bd8;
+            transform: scale(1.05);
+            box-shadow: 0 3px 10px rgba(74, 144, 226, 0.4);
+        }
 
-.right .bubble{
-    background:#9fe870;
-}
+        .voice-clone-trigger {
+            height: 44px;
+            border-radius: 999px;
+            padding: 0 1.2rem;
+            font-size: 0.9rem;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            background: #e8f1ff;
+            color: #3b6fb6;
+            flex: 0 0 auto;
+        }
 
-.input-area{
-    height:48px;
-    background:#ffffff;
-    display:flex;
-    align-items:center;
-    padding:6px 12px;
-    border-top:1px solid #ddd;
-    gap:6px;
-}
-input{
-    flex:1;
-    height:36px;
-    border-radius:4px;
-    border:1px solid #e0e0e0;
-    padding:0 14px;
-    font-size:15px;
-}
+        .voice-clone-trigger.primary {
+            background-color: #4a90e2;
+            color: #fff;
+        }
 
-button.send{
-    margin-left:10px;
-    height:36px;
-    border:none;
-    background:#4caf50;
-    color:white;
-    border-radius:18px;
-    padding:0 16px;
-    cursor:pointer;
-}
+        /* 侧边栏 - 收窄宽度，辅助布局 */
+        .sidebar {
+            flex: 1; /* 与聊天区4:1比例，更紧凑 */
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
 
-.drawer{
-    position:fixed;
-    top:0;
-    right:0;
-    width:100%;
-    height:100dvh;
-    background:#f5f5f5;
-    transform:translateX(100%);
-    transition:transform .32s cubic-bezier(.4,0,.2,1);
-    z-index:1000;
-    display:flex;
-    flex-direction:column;
-}
+        .user-card {
+            background-color: #fff;
+            border-radius: 16px;
+            padding: 1.4rem;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+            overflow: visible;
+        }
 
-.drawer.open{
-    transform:translateX(0);
-}
-.drawer-header{
-    height:60px;
-    background:#ffffff;
-    display:flex;
-    align-items:center;
-    padding:0 15px;
-    font-weight:600;
-    border-bottom:1px solid #eee;
-    flex-shrink:0;
-}
+        .user-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
 
-.drawer-back{
-    background:none;
-    border:none;
-    font-size:18px;
-    margin-right:10px;
-    cursor:pointer;
-}
-.more-btn{
-    height:32px;
-    width:32px;
-    border:none;
-    background:#eee;
-    border-radius:6px;
-    font-size:18px;
-    cursor:pointer;
-}
-.overlay{
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100dvh;
-    background:rgba(0,0,0,0.3);
-    opacity:0;
-    pointer-events:none;
-    transition:0.3s;
-    z-index:998;
-}
+        .user-card-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #3b6fb6;
+        }
 
-.overlay.show{
-    opacity:1;
-    pointer-events:auto;
-}
-    /* ===== 底部功能面板（和 drawer 平级） ===== */
-.bottom-panel{
-    position:fixed;
-    bottom:0;
-    left:0;
-    width:100%;
-    height:30vh;
-    background:#fff;
-    border-top-left-radius:16px;
-    border-top-right-radius:16px;
-    box-shadow:0 -2px 8px rgba(0,0,0,0.05);
-    transform:translateY(100%);
-    transition:transform .32s cubic-bezier(.4,0,.2,1);
-    z-index:1001;   /* 比 drawer 高 */
-    display:flex;
-    flex-direction:column;
-}
+        .user-avatar-box {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #e1ecff;
+            flex-shrink: 0;
+            cursor: pointer;
+            background-color: #f0f7ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-.bottom-panel.open{
-    transform:translateY(0);
-}
+        .user-avatar-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
 
-.bottom-content{
-    flex:1;
-    padding:15px;
-}
-    .bottom-overlay{
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100dvh;
-    background:rgba(0,0,0,0.3);
-    opacity:0;
-    pointer-events:none;
-    transition:0.2s;
-    z-index:1000;
-}
+        .user-card .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
 
-.bottom-overlay.show{
-    opacity:1;
-    pointer-events:auto;
-}
-</style>
+        .user-card label {
+            font-size: 0.82rem;
+            color: #6b7c93;
+        }
+
+        .label-with-tip {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .info-tip {
+            position: relative;
+            border: none;
+            background: transparent;
+            color: #8aa4cf;
+            cursor: pointer;
+            padding: 0;
+            font-size: 0.85rem;
+            line-height: 1;
+        }
+
+        .info-tip .tooltip {
+            position: absolute;
+            right: 0;
+            top: 1.4rem;
+            padding: 0.6rem 0.7rem;
+            border-radius: 10px;
+            background: #2f3b52;
+            color: #fff;
+            font-size: 0.78rem;
+            line-height: 1.4;
+            text-align: left;
+            box-shadow: 0 8px 16px rgba(15, 25, 40, 0.2);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-6px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 1200;
+            max-width: 90vw;
+            width: max-content;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .info-tip:hover .tooltip,
+        .info-tip:focus .tooltip,
+        .info-tip:focus-within .tooltip {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        .info-tip.tooltip-open .tooltip {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        .user-card input {
+            border: 1px solid #d6e3f8;
+            border-radius: 10px;
+            padding: 0.55rem 0.7rem;
+            font-size: 0.9rem;
+        }
+
+        .user-card input:disabled {
+            background-color: #f5f7fb;
+            color: #9aa9bf;
+        }
+
+        .profile-edit-controls { display: none !important; }
+        .user-avatar-box.readonly { cursor: default; pointer-events: none; }
+        .user-card-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .user-card button {
+            border: none;
+            border-radius: 10px;
+            padding: 0.55rem 0.8rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            background-color: #4a90e2;
+            color: #fff;
+            transition: background-color 0.2s ease;
+        }
+
+        .user-card button.secondary {
+            background-color: #e8f1ff;
+            color: #3b6fb6;
+        }
+
+        .voice-clone-card button.primary,
+        .modal-body button.primary {
+            background-color: #4a90e2;
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            padding: 0.6rem 1.4rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .user-card button:disabled {
+            background-color: #cbd9f0;
+            cursor: not-allowed;
+        }
+
+        .lock-status {
+            font-size: 0.82rem;
+            color: #d9534f;
+        }
+
+        /* 小盈形象卡片 - 优化渐变和阴影 */
+        .ai-card {
+            background: linear-gradient(135deg, #e8f4ff, #d0e1ff);
+            border-radius: 20px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.12);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        .ai-card-avatar {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background-color: #fff;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            color: #4a90e2;
+            border: 4px solid #4a90e2;
+            box-shadow: 0 3px 10px rgba(74, 144, 226, 0.2);
+        }
+
+        .ai-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #4a90e2;
+            margin-bottom: 0.6rem;
+            letter-spacing: 0.5px;
+        }
+
+        .ai-desc {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        /* 情绪分析报告模块 - 优化内边距和圆角 */
+        .emotion-report {
+            background-color: #fff;
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.08);
+            flex: 1;
+            border: 1px solid rgba(240,247,255,0.8);
+        }
+
+        .voice-clone-card {
+            background-color: #fff;
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.08);
+            border: 1px solid rgba(240,247,255,0.8);
+            margin-top: 1rem;
+        }
+
+        .voice-clone-desc {
+            color: #5f6b7a;
+            font-size: 0.9rem;
+            margin: 0.8rem 0 1rem;
+            line-height: 1.6;
+        }
+
+        .voice-clone-card .voice-clone-trigger {
+            display: none;
+        }
+
+        .report-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #4a90e2;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .report-title i {
+            font-size: 1.3rem;
+        }
+
+        /* 情绪指数进度条 - 优化样式 */
+        .emotion-score {
+            margin-bottom: 1.5rem;
+        }
+
+        .score-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.6rem;
+        }
+
+        .score-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #f0f5ff;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff8a8a, #4a90e2);
+            border-radius: 5px;
+            width: 60%;
+            transition: width 0.8s ease-in-out;
+            box-shadow: 0 0 5px rgba(74, 144, 226, 0.3);
+        }
+
+        /* 情绪标签 - 优化圆角和配色 */
+        .emotion-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .emotion-tag {
+            padding: 0.4rem 1rem;
+            background-color: #e8f4ff;
+            color: #4a90e2;
+            border-radius: 24px;
+            font-size: 0.85rem;
+            border: 1px solid #d0e1ff;
+        }
+
+        /* 分析和建议 - 优化行高 */
+        .emotion-analysis, .emotion-suggest {
+            margin-bottom: 1.2rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .analysis-label, .suggest-label {
+            font-weight: 700;
+            color: #4a90e2;
+            margin-bottom: 0.4rem;
+            display: block;
+        }
+
+        /* 空状态提示 - 优化样式 */
+        .empty-tip {
+            text-align: center;
+            color: #999;
+            font-size: 1rem;
+            padding: 4rem 0;
+            line-height: 1.8;
+        }
+
+        .empty-tip i {
+            font-size: 2.5rem;
+            margin-bottom: 0.8rem;
+            display: block;
+            color: #c1d9ff;
+        }
+
+        /* 底部版权 - 固定底部，小字标明 */
+        #copyrightBar {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            color: #999;
+            border-top: 1px solid #f0f7ff;
+            z-index: 9999;
+            padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        /* TODO: iOS 风格滑块，用于语音输出开关 */
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 0.2rem;
+            border-top: 1px dashed #e6efff;
+            font-size: 0.9rem;
+            color: #3b6fb6;
+        }
+
+        .ios-switch {
+            position: relative;
+            width: 46px;
+            height: 26px;
+            border-radius: 999px;
+            border: none;
+            background: #d8e5fb;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            padding: 0;
+        }
+
+        .ios-switch::after {
+            content: "";
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .ios-switch.on {
+            background: #4a90e2;
+        }
+
+        .ios-switch.on::after {
+            transform: translateX(20px);
+        }
+
+        .voice-stop-btn {
+            border: none;
+            background: #ffe6e6;
+            color: #d9534f;
+            border-radius: 999px;
+            padding: 0.55rem 0.9rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .voice-stop-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            top: var(--vv-top);
+            left: 0;
+            right: 0;
+            background: rgba(15, 25, 40, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 1100;
+            height: var(--app-height);
+        }
+
+        .modal-backdrop.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #fff;
+            border-radius: 18px;
+            width: min(520px, 92vw);
+            max-height: calc(var(--app-height) * 0.8);
+            box-shadow: 0 20px 40px rgba(15, 25, 40, 0.25);
+            display: flex;
+            flex-direction: column;
+            overflow: visible;
+        }
+
+        .modal-header {
+            padding: 1rem 1.2rem 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #eef3fb;
+        }
+
+        .modal-header h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #3b6fb6;
+        }
+
+        .modal-close {
+            border: none;
+            background: #e8f1ff;
+            color: #3b6fb6;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 1rem 1.2rem 1.4rem;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* TODO: 语音克隆表单样式，保持移动端可读性 */
+        .voice-clone-form {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .voice-emotion-card {
+            margin-top: 1rem;
+            padding: 0.9rem 1rem;
+            border: 1px solid #e4edf9;
+            border-radius: 12px;
+            background: #f9fbff;
+        }
+
+        .voice-emotion-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.8rem;
+        }
+
+        .voice-emotion-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #3b6fb6;
+        }
+
+        .voice-emotion-reset {
+            border: none;
+            background: #e8f1ff;
+            color: #3b6fb6;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            padding: 0.3rem 0.7rem;
+            cursor: pointer;
+        }
+
+        .voice-emotion-sliders {
+            display: grid;
+            gap: 0.7rem;
+        }
+
+        .voice-emotion-item {
+            display: grid;
+            grid-template-columns: 3.5rem 1fr 2.5rem;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.85rem;
+            color: #4b5c72;
+        }
+
+        .voice-emotion-item input[type="range"] {
+            width: 100%;
+        }
+
+        .voice-emotion-value {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            color: #3b6fb6;
+        }
+
+        .voice-clone-form label {
+            font-size: 0.85rem;
+            color: #6b7c93;
+        }
+
+        .voice-clone-form input,
+        .voice-clone-form textarea {
+            border: 1px solid #d6e3f8;
+            border-radius: 10px;
+            padding: 0.55rem 0.7rem;
+            font-size: 0.9rem;
+        }
+
+        .voice-clone-status {
+            min-height: 1.2rem;
+            font-size: 0.85rem;
+            color: #6b7c93;
+        }
+
+        .voice-clone-status.success {
+            color: #2f8d46;
+        }
+
+        .voice-clone-status.error {
+            color: #d9534f;
+        }
+
+        .user-modal-profile {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .user-modal-profile .lock-status {
+            margin-top: 0.2rem;
+        }
+
+        .emotion-modal-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        body.modal-open {
+            position: fixed;
+            left: 0;
+            right: 0;
+            overflow: hidden;
+        }
+
+        body.is-mobile.modal-open {
+            transform: none;
+            filter: none;
+        }
+
+        /* 移动端菜单抽屉 */
+        .drawer-header {
+            display: none;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 1rem 1.2rem 0.5rem;
+            border-bottom: 1px solid #e6efff;
+        }
+
+        .drawer-close {
+            border: none;
+            background: transparent;
+            font-size: 1.1rem;
+            color: #4a90e2;
+            cursor: pointer;
+        }
+
+        .drawer-title {
+            font-weight: 600;
+            color: #2f4b7c;
+        }
+
+        .mobile-toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(20px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            background: rgba(28, 37, 59, 0.92);
+            color: #fff;
+            padding: 0.6rem 1rem;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1200;
+        }
+
+        .mobile-toast.show {
+            opacity: 1;
+        }
+
+        /* 响应式适配 - 全尺寸兼容 */
+        @media (max-width: 768px) {
+            input,
+            textarea,
+            select {
+                font-size: 16px !important;
+            }
+
+            .main-container {
+                flex-direction: column;
+                margin: 0.8rem auto;
+                gap: 1rem;
+            }
+
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+            }
+
+            .chat-window {
+                padding: 1rem 1.2rem;
+            }
+
+            .msg-container {
+                max-width: 85%;
+                gap: 0.6rem;
+            }
+
+            .msg-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 1rem;
+            }
+
+            .message {
+                padding: 0.8rem 1.2rem;
+                font-size: 0.9rem;
+            }
+
+            .header h1 {
+                font-size: 1.4rem;
+            }
+
+            .ai-card-avatar {
+                width: 80px;
+                height: 80px;
+                font-size: 2rem;
+            }
+
+            #copyrightBar {
+                font-size: 0.8rem;
+                padding: 0 1rem;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 1023px) {
+            .composer {
+                flex-wrap: wrap;
+            }
+
+            .composer .voice-clone-trigger {
+                display: none;
+            }
+
+            .voice-clone-card .voice-clone-trigger {
+                display: inline-flex;
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .msg-container {
+                max-width: 90%;
+            }
+
+            .input-area {
+                padding: 0.8rem 1.2rem;
+            }
+
+            .send-btn {
+                width: 36px;
+                height: 36px;
+            }
+        }
+
+        body.is-mobile .header-content {
+            justify-content: space-between;
+        }
+
+        body.is-mobile .header-text {
+            text-align: left;
+        }
+
+        body.is-mobile .header-actions {
+            display: flex;
+        }
+
+        body.is-mobile .sidebar {
+            display: block;
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100vh;
+            width: min(80vw, 320px);
+            max-width: 320px;
+            background: #fff;
+            padding: 1.2rem;
+            overflow-y: auto;
+            box-shadow: -12px 0 30px rgba(15, 25, 40, 0.15);
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+            z-index: 1050;
+            padding-bottom: calc(1.2rem + env(safe-area-inset-bottom));
+        }
+
+        body.is-mobile.drawer-open .sidebar {
+            transform: translateX(0);
+        }
+
+        body.is-mobile .drawer-header {
+            display: flex;
+        }
+
+        body.is-mobile .info-tip:hover .tooltip {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        body.is-mobile .info-tip .tooltip {
+            left: 50%;
+            right: auto;
+            top: 1.8rem;
+            transform: translate(-50%, -6px);
+        }
+
+        body.is-mobile .info-tip.tooltip-open .tooltip {
+            transform: translate(-50%, 0);
+        }
+    </style>
+    <!-- 引入字体图标 -->
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-
 <body>
+    <!-- TODO: 固定布局容器，避免 iOS 键盘弹出时 footer 抖动 -->
+    <div id="appShell">
+        <!-- 顶部导航栏 - 移除AI树洞文字 -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-text">
+                    <h1>心灵避风港</h1>
+                    <p>小盈陪你倾诉所有心事，做你最温暖的倾听者</p>
+                </div>
+                <div class="header-actions">
+                    <button class="header-action-btn" id="mobile-menu-btn" type="button" aria-label="打开菜单">
+                        <i class="fas fa-bars"></i>
+                        菜单
+                    </button>
+                </div>
+            </div>
+        </header>
 
-<div class="phone">
-    <div class="header">
-        <button class="back-btn">←</button>
-        聊天窗口
-        <button class="menu-btn" onclick="toggleDrawer()">···</button>
-    </div>
+        <div id="mainScroll" class="scroll-area">
+        <!-- 主容器 - 聊天框占主体 -->
+        <main class="main-container">
+            <!-- 聊天区域 - 主体占比 -->
+            <section class="chat-section">
+                <!-- 聊天窗口 - 显示双方头像 -->
+                <div class="chat-window" id="chat-window">
+                    <div class="empty-tip" id="empty-tip">
+                        <i class="fas fa-comments"></i>
+                        你好呀～我是小盈 😊<br>
+                        有什么心事想和我说吗？我会认真倾听的
+                    </div>
+                </div>
 
-    <div class="chat" id="chat">
-        <div class="msg left">
-            <div class="avatar-msg"></div>
-            <div class="bubble">你好。</div>
+                <!-- 输入框区域 -->
+                <div class="composer">
+                    <div class="input-area">
+                        <textarea id="msg-input" placeholder="输入想倾诉的内容，按回车发送..." rows="1"></textarea>
+                        <button class="send-btn" id="send-btn" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <button class="voice-clone-trigger primary" type="button" data-voice-clone-trigger>
+                        <i class="fas fa-microphone"></i>
+                        语音克隆
+                    </button>
+                    <button class="voice-stop-btn" id="voice-stop-btn" type="button" disabled>
+                        <i class="fas fa-volume-mute"></i>
+                        停止播报
+                    </button>
+                </div>
+            </section>
+
+            <!-- 侧边栏：用户卡片 + 小盈形象 + 情绪分析报告（辅助布局） -->
+            <aside class="sidebar">
+            <div class="drawer-header">
+                <button class="drawer-close" id="drawer-close-btn" type="button" aria-label="关闭菜单">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <span class="drawer-title">菜单</span>
+            </div>
+            <div class="user-card">
+                <div class="user-card-header">
+                    <div class="user-avatar-box" id="user-avatar-box">
+                        <img src="/static/avatars/default.svg" alt="用户头像" id="user-avatar-img">
+                    </div>
+                    <div>
+                        <div class="user-card-title" id="user-card-title">昵称</div>
+                        <div class="lock-status" id="lock-status">资料修改请前往版本介绍页的菜单</div>
+                    </div>
+                </div>
+
+                <input type="file" id="avatar-input" accept="image/*" hidden>
+
+                <div class="form-row profile-edit-controls">
+                    <div class="label-with-tip">
+                        <label for="login-display_name">昵称</label>
+                        <button type="button" class="info-tip" aria-label="昵称说明">
+                            <i class="fas fa-circle-info"></i>
+                            <span class="tooltip">
+                                昵称仅用于展示，不影响你的登录身份与聊天记录。
+                            </span>
+                        </button>
+                    </div>
+                    <input id="login-display_name" type="text" placeholder="请输入昵称">
+                </div>
+
+                <div class="user-card-actions profile-edit-controls">
+                    <button id="upload-avatar-btn" class="secondary">上传头像</button>
+                </div>
+
+                <!-- TODO: Pro 菜单新增语音输出开关 -->
+                <div class="setting-row">
+                    <span>语音输出</span>
+                    <button class="ios-switch off" id="voice-output-toggle" type="button" role="switch" aria-checked="false"></button>
+                </div>
+            </div>
+
+            <!-- 情绪分析报告 -->
+            <div class="emotion-report">
+                <h3 class="report-title">
+                    <i class="fas fa-chart-line"></i>
+                    情绪分析报告
+                </h3>
+                <div class="emotion-score">
+                    <div class="score-label">
+                        <span>情绪指数</span>
+                        <span id="emotion-score-num">60</span>/100
+                    </div>
+                    <div class="score-bar">
+                        <div class="score-fill" id="score-fill"></div>
+                    </div>
+                </div>
+                <div class="emotion-tags" id="emotion-tags">
+                    <span class="emotion-tag">平静</span>
+                    <span class="emotion-tag">期待</span>
+                </div>
+                <div class="emotion-analysis">
+                    <span class="analysis-label">情绪分析：</span>
+                    <span id="emotion-analysis">当前未检测到明显的负面情绪，心态处于平和的状态，对交流抱有轻微期待。</span>
+                </div>
+                <div class="emotion-suggest">
+                    <span class="suggest-label">暖心建议：</span>
+                    <span id="emotion-suggest">保持这份平和的心情，大胆说出你的想法吧，我会一直在这里陪着你～</span>
+                </div>
+            </div>
+
+            <div class="voice-clone-card">
+                <h3 class="report-title">
+                    <i class="fas fa-microphone"></i>
+                    语音克隆
+                </h3>
+                <p class="voice-clone-desc">
+                    TODO：移动端入口保留此按钮，桌面端请使用底部输入区的快捷入口。
+                </p>
+                <button class="voice-clone-trigger primary" type="button" data-voice-clone-trigger>
+                    语音克隆
+                </button>
+            </div>
+            </aside>
+        </main>
         </div>
     </div>
 
-    <div class="input-area">
-        <input id="input" placeholder="输入消息...">
-        <button class="send" onclick="sendMessage()">发送</button>
-        <button class="more-btn" onclick="toggleBottomPanel()">＋</button>
-    </div>
-</div>
+    <!-- 底部版权 - 固定底部，小字标明 -->
+    <footer class="copyright" id="copyrightBar">
+        版权所有-JSHT捷思慧图科技 翻版必究
+    </footer>
 
-<div class="drawer">
-
-    <div class="drawer-header">
-        <button class="drawer-back" onclick="toggleDrawer()">←</button>
-        <span>个人中心</span>
-    </div>
-
-    <div class="drawer-inner">
-
-        <!-- 头像区域 -->
-        <div class="profile-section">
-            <div class="avatar-large"></div>
-            <div class="profile-info">
-                <div class="nickname" id="nickname">f298d8</div>
-                <div class="profile-tip">资料修改请前往版本介绍页菜单</div>
+    <div class="modal-backdrop" id="user-modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+            <div class="modal-header">
+                <h3 id="user-modal-title">用户身份</h3>
+                <button class="modal-close" type="button" data-modal-close>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="user-modal-profile">
+                    <div class="user-avatar-box" id="mobile-avatar-box">
+                        <img src="/static/avatars/default.svg" alt="用户头像" id="mobile-avatar-img">
+                    </div>
+                    <div>
+                        <div class="lock-status" id="mobile-lock-status">资料修改请前往版本介绍页的菜单</div>
+                    </div>
+                </div>
+                <div class="form-row profile-edit-controls">
+                    <div class="label-with-tip">
+                        <label for="mobile-display_name">昵称</label>
+                        <button type="button" class="info-tip" aria-label="昵称说明">
+                            <i class="fas fa-circle-info"></i>
+                            <span class="tooltip">
+                                昵称仅用于展示，不影响你的登录身份与聊天记录。
+                            </span>
+                        </button>
+                    </div>
+                    <input id="mobile-display_name" type="text" placeholder="请输入昵称">
+                </div>
             </div>
         </div>
-
-        <!-- 语音开关 -->
-        <div class="setting-row">
-            <span>语音输出</span>
-            <label class="switch">
-                <input type="checkbox" id="voiceToggle">
-                <span class="slider"></span>
-            </label>
-        </div>
-
-        <!-- 情绪分析卡片 -->
-        <div class="card">
-            <div class="card-title">📊 情绪分析报告</div>
-
-            <div class="emotion-score">
-                <span>情绪指数</span>
-                <span id="emotionScore">60</span>/100
-            </div>
-
-            <div class="progress-bar">
-                <div class="progress-inner" id="emotionBar" style="width:60%;"></div>
-            </div>
-
-            <div class="emotion-tags">
-                <span>平静</span>
-                <span>期待</span>
-            </div>
-
-            <div class="emotion-text">
-                当前未检测到明显的负面情绪，心态平稳。
-            </div>
-        </div>
-
-        <!-- 语音克隆 -->
-        <div class="card">
-            <div class="card-title">🎙 语音克隆</div>
-            <button class="primary-btn" id="voiceCloneBtn">
-                语音克隆
-            </button>
-        </div>
-
     </div>
-</div>
-<!-- 底部功能面板 -->
-<div class="bottom-overlay" id="bottomOverlay" onclick="closeBottomPanel()"></div>
-<div class="bottom-panel" id="bottomPanel">
 
-    <div class="bottom-content">
-        功能区域
+    <div class="modal-backdrop" id="emotion-modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="emotion-modal-title">
+            <div class="modal-header">
+                <h3 id="emotion-modal-title">情绪分析报告</h3>
+                <button class="modal-close" type="button" data-modal-close>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="emotion-modal-content">
+                    <div class="emotion-score">
+                        <div class="score-label">
+                            <span>情绪指数</span>
+                            <span><span id="emotion-score-num-mobile">60</span>/100</span>
+                        </div>
+                        <div class="score-bar">
+                            <div class="score-fill" id="score-fill-mobile"></div>
+                        </div>
+                    </div>
+                    <div class="emotion-tags" id="emotion-tags-mobile">
+                        <span class="emotion-tag">平静</span>
+                        <span class="emotion-tag">期待</span>
+                    </div>
+                    <div class="emotion-analysis">
+                        <span class="analysis-label">情绪分析：</span>
+                        <span id="emotion-analysis-mobile">当前未检测到明显的负面情绪，心态处于平和的状态，对交流抱有轻微期待。</span>
+                    </div>
+                    <div class="emotion-suggest">
+                        <span class="suggest-label">暖心建议：</span>
+                        <span id="emotion-suggest-mobile">保持这份平和的心情，大胆说出你的想法吧，我会一直在这里陪着你～</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
-<script>
-let drawerOpen = false;
-let bottomOpen = false;
 
-function toggleDrawer(){
-    const drawer = document.querySelector(".drawer");
+    <div class="modal-backdrop" id="voice-clone-modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="voice-clone-title">
+            <div class="modal-header">
+                <h3 id="voice-clone-title">语音克隆</h3>
+                <button class="modal-close" type="button" data-modal-close>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- TODO: 上传参考音频，创建音色模型 -->
+                <div class="voice-clone-form">
+                    <label for="voice-clone-file">参考音频</label>
+                    <input type="file" id="voice-clone-file" accept="audio/*">
 
-    if(!drawerOpen){
-        drawer.classList.add("open");
-        document.body.style.overflow = "hidden";
+                    <label for="voice-clone-name">名称</label>
+                    <input type="text" id="voice-clone-name" value="我的声音" maxlength="32">
 
-        history.pushState({drawer:true}, "");
-        drawerOpen = true;
-    }else{
-        closeDrawer();
-    }
-}
-function toggleBottomPanel(){
-    const panel = document.getElementById("bottomPanel");
-    const overlay = document.getElementById("bottomOverlay");
+                    <label for="voice-clone-desc">描述（可选）</label>
+                    <textarea id="voice-clone-desc" rows="2" placeholder="如：情绪平稳、无背景音"></textarea>
 
-    if(!bottomOpen){
-        panel.classList.add("open");
-        overlay.classList.add("show");
-        history.pushState({bottom:true}, "");
-        bottomOpen = true;
-    }else{
-        closeBottomPanel();
-    }
-}
+                    <div class="voice-clone-status" id="voice-clone-status" role="status" aria-live="polite"></div>
+                    <button class="primary" id="voice-clone-action" type="button">上传/创建</button>
+                </div>
 
-function closeBottomPanel(){
-    document.getElementById("bottomPanel").classList.remove("open");
-    document.getElementById("bottomOverlay").classList.remove("show");
-    bottomOpen = false;
-}
+                <div class="voice-emotion-card">
+                    <div class="voice-emotion-header">
+                        <div class="voice-emotion-title">设定情感参数</div>
+                        <button class="voice-emotion-reset" id="voice-emotion-reset" type="button">重置</button>
+                    </div>
+                    <div class="voice-emotion-sliders">
+                        <div class="voice-emotion-item">
+                            <span>开心</span>
+                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="happy">
+                            <span class="voice-emotion-value" data-voice-emotion-value="happy">0</span>
+                        </div>
+                        <div class="voice-emotion-item">
+                            <span>愤怒</span>
+                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="angry">
+                            <span class="voice-emotion-value" data-voice-emotion-value="angry">0</span>
+                        </div>
+                        <div class="voice-emotion-item">
+                            <span>悲伤</span>
+                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="sad">
+                            <span class="voice-emotion-value" data-voice-emotion-value="sad">0</span>
+                        </div>
+                        <div class="voice-emotion-item">
+                            <span>恐惧</span>
+                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="afraid">
+                            <span class="voice-emotion-value" data-voice-emotion-value="afraid">0</span>
+                        </div>
+                        <div class="voice-emotion-item">
+                            <span>厌恶</span>
+                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="disgusted">
+                            <span class="voice-emotion-value" data-voice-emotion-value="disgusted">0</span>
+                        </div>
+                        <div class="voice-emotion-item">
+                            <span>忧郁</span>
+                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="melancholic">
+                            <span class="voice-emotion-value" data-voice-emotion-value="melancholic">0</span>
+                        </div>
+                        <div class="voice-emotion-item">
+                            <span>惊讶</span>
+                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="surprised">
+                            <span class="voice-emotion-value" data-voice-emotion-value="surprised">0</span>
+                        </div>
+                        <div class="voice-emotion-item">
+                            <span>平静</span>
+                            <input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="calm">
+                            <span class="voice-emotion-value" data-voice-emotion-value="calm">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-function closeDrawer(){
-    const drawer = document.querySelector(".drawer");
-    drawer.classList.remove("open");
-    document.body.style.overflow = "";
-    drawerOpen = false;
-}
+    <div class="mobile-toast" id="mobile-toast" role="status" aria-live="polite"></div>
 
-function sendMessage(){
-    const input = document.getElementById("input");
-    const chat = document.getElementById("chat");
-    const text = input.value.trim();
-    if(!text) return;
+    <script src="/static/shared_shell.js"></script>
+    <script>
+        const STORAGE_USERNAME_KEY = "treehole_display_name";
+        const STORAGE_AVATAR_KEY = "treehole_avatar_url";
+        const STORAGE_VOICE_AUDIO_ID = "voice_audio_id"; // TODO: PRO 专用语音克隆缓存 key
+        const STORAGE_VOICE_OUTPUT = "voice_output_enabled"; // TODO: PRO 语音输出开关
+        const STORAGE_VOICE_EMOTION_EXT = "voice_emotion_ext";
+        const STORAGE_LIPVOICE_TTS_EXT = "lipvoice_tts_ext";
+        const APP_PLAN = "pro"; // 页面版本常量
+        const DEFAULT_AVATAR_URL = "/static/avatars/default.svg";
+        let currentUserId = null;
+        const chatHistory = [];
+        let emotionLocked = false;
+        let emotionDebounceTimer = null;
+        // ✅【新增：情绪分析轮次控制】
+        let currentRound = 0;
+        let lastEmotionRound = -1;
+        const EMOTION_DEBOUNCE_MS = 450;
+        const EMOTION_HISTORY_LIMIT = 24;
+        let isMobile = false;
+        let scrollLockY = 0;
+        let voiceOutputEnabled = false;
+        let ttsActive = false;
+        let ttsAudio = null;
+        let ttsAudioUrl = null;
+        let ttsAbortControllers = new Set();
+        let ttsToken = 0;
+        let ttsUnlocked = false;
+        let ttsUnlockHinted = false;
+        const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    // 用户消息
-    const userMsg = document.createElement("div");
-    userMsg.className = "msg right";
-    userMsg.innerHTML = `
-        <div class="bubble">${text}</div>
-        <div class="avatar-msg"></div>
-    `;
-    chat.appendChild(userMsg);
+        const USER_ID_UUID_PATTERN = /^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const USER_ID_SHA1_PATTERN = /^u_[0-9a-f]{40}$/i;
 
-    input.value = "";
-    scrollToBottom();
+        function isValidUserId(userId) {
+            return typeof userId === "string"
+                && (USER_ID_UUID_PATTERN.test(userId) || USER_ID_SHA1_PATTERN.test(userId));
+        }
 
-    // 自动回复
-    setTimeout(()=>{
-        const replyMsg = document.createElement("div");
-        replyMsg.className = "msg left";
-        replyMsg.innerHTML = `
-            <div class="avatar-msg"></div>
-            <div class="bubble">玩命加载中......</div>
-        `;
-        chat.appendChild(replyMsg);
-        scrollToBottom();
-    }, 600);
-}
 
-function scrollToBottom(){
-    const chat = document.getElementById("chat");
-    chat.scrollTop = chat.scrollHeight;
-}
-window.addEventListener("popstate", function(){
-    if(bottomOpen){
-        closeBottomPanel();
-        return;
-    }
-    if(drawerOpen){
-        closeDrawer();
-    }
-});
-// 回车发送
-document.getElementById("input").addEventListener("keydown", function(e){
-    if(e.key === "Enter"){
-        sendMessage();
-    }
-});
-    // 拉取用户信息（预留接口）
-async function loadProfile(){
-    // TODO: 后端接口
-    // const res = await fetch("/api/profile");
-    // const data = await res.json();
+        function safeLocalStorageGet(key) {
+            try {
+                return localStorage.getItem(key);
+            } catch (e) {
+                // TODO: iOS Safari 无痕模式会拒绝 localStorage，需兜底
+                return "";
+            }
+        }
 
-    document.getElementById("nickname").textContent = "f298d8";
-}
+        function safeLocalStorageSet(key, value) {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {
+                // TODO: iOS Safari 无痕模式写入失败时保持内存态即可
+            }
+        }
 
-// 拉取情绪分析（预留接口）
-async function loadEmotion(){
-    // TODO: fetch("/api/emotion/latest")
 
-    const score = 60;
-    document.getElementById("emotionScore").textContent = score;
-    document.getElementById("emotionBar").style.width = score + "%";
-}
+        async function fetchProfile() {
+            const res = await fetch('/profile', { credentials: 'include' });
+            const data = await res.json();
+            if (!data.ok) return null;
+            return data.profile;
+        }
 
-// 语音克隆按钮
-document.getElementById("voiceCloneBtn")
-?.addEventListener("click", ()=>{
-    // TODO: 调用 /api/voice_clone
-    alert("语音克隆接口待接入");
-});
+        function syncViewport() {
+            const viewport = window.visualViewport;
+            const height = viewport ? viewport.height : window.innerHeight;
+            const offsetTop = viewport ? viewport.offsetTop : 0;
+            document.documentElement.style.setProperty('--app-height', `${height}px`);
+            document.documentElement.style.setProperty('--vv-top', `${offsetTop}px`);
+        }
 
-loadProfile();
-loadEmotion();
-</script>
+        function lockBodyScroll() {
+            scrollLockY = window.scrollY || window.pageYOffset || 0;
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollLockY}px`;
+            document.body.style.width = '100%';
+            document.body.style.left = '0';
+            document.body.style.right = '0';
+            document.body.classList.add('modal-open');
+        }
 
+        function unlockBodyScroll() {
+            document.body.classList.remove('modal-open');
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            document.body.style.left = '';
+            document.body.style.right = '';
+            window.scrollTo(0, scrollLockY);
+            if (isiOS) {
+                requestAnimationFrame(() => {
+                    document.body.style.transform = 'translateZ(0)';
+                    requestAnimationFrame(() => {
+                        document.body.style.transform = '';
+                    });
+                });
+            }
+        }
+
+        function restoreIOSViewport() {
+            if (!isiOS) return;
+            requestAnimationFrame(() => {
+                window.scrollTo(0, window.scrollY || 0);
+                document.body.style.transform = 'translateZ(0)';
+                requestAnimationFrame(() => {
+                    document.body.style.transform = '';
+                });
+            });
+        }
+
+        function updateDeviceMode() {
+            isMobile = window.innerWidth < 768;
+            document.body.classList.toggle('is-mobile', isMobile);
+            if (!isMobile) {
+                closeAllTooltips();
+                closeDrawer();
+            }
+        }
+
+        let toastTimer = null;
+        function showToast(message = "系统错误", { duration = 2200 } = {}) {
+            const toast = document.getElementById('mobile-toast');
+            if (!toast) return;
+            toast.innerText = message;
+            toast.classList.add('show');
+            if (toastTimer) {
+                clearTimeout(toastTimer);
+                toastTimer = null;
+            }
+            if (duration > 0) {
+                toastTimer = setTimeout(() => {
+                    toast.classList.remove('show');
+                    toastTimer = null;
+                }, duration);
+            }
+        }
+
+        function hideToast() {
+            const toast = document.getElementById('mobile-toast');
+            if (!toast) return;
+            toast.classList.remove('show');
+            if (toastTimer) {
+                clearTimeout(toastTimer);
+                toastTimer = null;
+            }
+        }
+
+        function showErrorModal(message) {
+            // TODO: 统一错误提示入口（暂用 toast，避免把错误塞进聊天记录）
+            showToast(message || "服务暂不可用");
+        }
+
+        async function handleVoiceCloneUpload() {
+            if (!voiceCloneFile || !voiceCloneAction) return;
+            if (!isValidUserId(currentUserId)) {
+                setVoiceCloneStatus("身份失效，请重新登录", "error");
+                showToast("身份失效，请重新登录");
+                return;
+            }
+            const file = voiceCloneFile.files?.[0];
+            if (!file) {
+                setVoiceCloneStatus("请先选择音频文件", "error");
+                showToast("请先选择音频文件");
+                return;
+            }
+            const name = (voiceCloneName?.value || "").trim() || "我的声音";
+            const describe = (voiceCloneDesc?.value || "").trim();
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("name", name);
+            formData.append("describe", describe);
+            formData.append("user_id", currentUserId);
+            formData.append("emotion_params", JSON.stringify(buildVoiceCloneEmotionParams()));
+
+            voiceCloneAction.disabled = true;
+            setVoiceCloneStatus("上传中，请稍候...");
+
+            try {
+                const data = await requestVoiceClone(formData);
+                if (data?.ok && data.data?.audioId) {
+                    const audioId = data.data.audioId;
+                    setVoiceCloneStatus(`上传成功：audioId=${audioId}`, "success");
+                    if (isProPlan) {
+                        safeLocalStorageSet(STORAGE_VOICE_AUDIO_ID, audioId);
+                    }
+                    showToast("语音克隆上传成功");
+                    return;
+                }
+                const errorMsg = data?.msg || "上传失败";
+                setVoiceCloneStatus(errorMsg, "error");
+                showErrorModal(errorMsg);
+            } finally {
+                voiceCloneAction.disabled = false;
+            }
+        }
+
+        function openDrawer() {
+            if (!isMobile) return;
+            document.body.classList.add('drawer-open');
+            lockBodyScroll();
+        }
+
+        function closeDrawer() {
+            document.body.classList.remove('drawer-open');
+            if (!document.querySelector('.modal-backdrop.active')) {
+                unlockBodyScroll();
+            }
+        }
+
+        async function fetchJson(url, options = {}) {
+            let res;
+            try {
+                res = await fetch(url, options);
+            } catch (e) {
+                return { ok: false, msg: "网络异常，请稍后再试", status: 0 };
+            }
+            const contentType = res.headers.get("content-type") || "";
+            if (!contentType.includes("application/json")) {
+                const text = await res.text();
+                return { ok: false, msg: "服务暂不可用", status: res.status, raw: text, nonJson: true };
+            }
+            try {
+                const data = await res.json();
+                if (!res.ok) {
+                    return { ok: false, msg: data?.msg || "服务暂不可用", status: res.status, raw: data };
+                }
+                return data;
+            } catch (e) {
+                return { ok: false, msg: "服务暂不可用", status: res.status };
+            }
+        }
+
+        let currentProfile = {
+            display_name: "",
+            avatar_url: ""
+        };
+
+        function resolveTitleText() {
+            const titleText = (currentProfile.display_name || "").trim();
+            const fallbackName = isValidUserId(currentUserId) ? currentUserId.slice(-6) : "用户";
+            userCardTitle.innerText = titleText || fallbackName;
+        }
+
+        function updateAvatar(url) {
+            const nextUrl = url || DEFAULT_AVATAR_URL;
+            currentProfile.avatar_url = url || "";
+            safeLocalStorageSet(STORAGE_AVATAR_KEY, currentProfile.avatar_url || "");
+            userAvatarImg.src = nextUrl;
+            if (mobileAvatarImg) {
+                mobileAvatarImg.src = nextUrl;
+            }
+        }
+
+        function getUserAvatarUrl() {
+            return currentProfile.avatar_url || DEFAULT_AVATAR_URL;
+        }
+
+        function updateProfileState(profile) {
+            currentProfile = { ...currentProfile, ...profile };
+            resolveTitleText();
+        }
+
+        function setLockStatus(message, color) {
+            lockStatus.innerText = message;
+            lockStatus.style.color = color;
+            if (mobileLockStatus) {
+                mobileLockStatus.innerText = message;
+                mobileLockStatus.style.color = color;
+            }
+        }
+
+        function syncUsernameInputs(value) {
+            if (loginUsernameInput) {
+                loginUsernameInput.value = value;
+            }
+            if (mobileUsernameInput) {
+                mobileUsernameInput.value = value;
+            }
+        }
+
+        async function safeParseEmotionResponse(res) {
+            const contentType = res.headers.get("content-type") || "";
+            const cloned = res.clone();
+            if (!res.ok) {
+                const text = await cloned.text();
+                console.warn("情绪分析响应非 200", res.status, text);
+                return null;
+            }
+            if (!contentType.includes("application/json")) {
+                const text = await cloned.text();
+                console.warn("情绪分析响应非 JSON", text);
+                return null;
+            }
+            try {
+                return await res.json();
+            } catch (e) {
+                const text = await cloned.text();
+                console.warn("情绪分析 JSON 解析失败", e, text);
+                return null;
+            }
+        }
+
+        async function parseErrorMessage(res) {
+            const contentType = res.headers.get("content-type") || "";
+            if (contentType.includes("application/json")) {
+                try {
+                    const data = await res.json();
+                    return data?.msg || "服务暂不可用";
+                } catch (e) {
+                    return "服务暂不可用";
+                }
+            }
+            try {
+                const text = await res.text();
+                if (text) {
+                    return text.length > 160 ? `${text.slice(0, 160)}...` : text;
+                }
+            } catch (e) {
+                // ignore
+            }
+            return "服务暂不可用";
+        }
+
+        async function parseErrorPayload(res) {
+            const contentType = res.headers.get("content-type") || "";
+            if (contentType.includes("application/json")) {
+                try {
+                    const data = await res.json();
+                    return {
+                        msg: data?.msg || "服务暂不可用",
+                        detail: data?.detail
+                    };
+                } catch (e) {
+                    return { msg: "服务暂不可用", detail: null };
+                }
+            }
+            try {
+                const text = await res.text();
+                if (text) {
+                    return {
+                        msg: text.length > 160 ? `${text.slice(0, 160)}...` : text,
+                        detail: null
+                    };
+                }
+            } catch (e) {
+                // ignore
+            }
+            return { msg: "服务暂不可用", detail: null };
+        }
+
+        function requestVoiceClone(payload) {
+            // TODO: 封装语音克隆上传请求，避免错误写入聊天记录
+            return fetchJson("/api/voice_clone/reference/upload", {
+                method: "POST",
+                body: payload
+            });
+        }
+
+        function setVoiceCloneStatus(message, type = "") {
+            if (!voiceCloneStatus) return;
+            voiceCloneStatus.textContent = message || "";
+            voiceCloneStatus.className = "voice-clone-status";
+            if (type) {
+                voiceCloneStatus.classList.add(type);
+            }
+        }
+
+        function initVoiceOutputToggle() {
+            if (!voiceOutputToggle) return;
+            const stored = safeLocalStorageGet(STORAGE_VOICE_OUTPUT);
+            voiceOutputEnabled = stored === "1";
+            voiceOutputToggle.classList.toggle('on', voiceOutputEnabled);
+            voiceOutputToggle.classList.toggle('off', !voiceOutputEnabled);
+            voiceOutputToggle.setAttribute('aria-checked', voiceOutputEnabled ? 'true' : 'false');
+        }
+
+        function setVoiceOutputEnabled(nextValue) {
+            voiceOutputEnabled = Boolean(nextValue);
+            safeLocalStorageSet(STORAGE_VOICE_OUTPUT, voiceOutputEnabled ? "1" : "0");
+            if (voiceOutputToggle) {
+                voiceOutputToggle.classList.toggle('on', voiceOutputEnabled);
+                voiceOutputToggle.classList.toggle('off', !voiceOutputEnabled);
+                voiceOutputToggle.setAttribute('aria-checked', voiceOutputEnabled ? 'true' : 'false');
+            }
+            if (!voiceOutputEnabled) {
+                resetTtsQueue();
+            }
+            showToast(voiceOutputEnabled ? "语音输出已开启" : "语音输出已关闭");
+        }
+
+        function resetTtsQueue() {
+            ttsToken += 1;
+            ttsActive = false;
+            if (ttsAbortControllers.size) {
+                ttsAbortControllers.forEach((controller) => controller.abort());
+                ttsAbortControllers.clear();
+            }
+            if (ttsAudio) {
+                ttsAudio.pause();
+                ttsAudio.removeAttribute('src');
+                ttsAudio.load();
+            }
+            if (ttsAudioUrl) {
+                URL.revokeObjectURL(ttsAudioUrl);
+                ttsAudioUrl = null;
+            }
+            hideToast();
+            if (voiceStopBtn) {
+                voiceStopBtn.disabled = true;
+            }
+        }
+
+        function ensureTtsAudio() {
+            if (ttsAudio) return;
+            ttsAudio = new Audio();
+            ttsAudio.preload = "auto";
+            ttsAudio.setAttribute("playsinline", "");
+            ttsAudio.setAttribute("webkit-playsinline", "");
+        }
+
+        function unlockTtsForIOS() {
+            if (!voiceOutputEnabled || ttsUnlocked) return;
+            ensureTtsAudio();
+            if (!ttsAudio) return;
+            // TODO: iOS Safari 需要用户手势解锁音频播放
+            const silentWav = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
+            ttsAudio.muted = true;
+            ttsAudio.src = silentWav;
+            const playPromise = ttsAudio.play();
+            if (playPromise && typeof playPromise.then === "function") {
+                playPromise.then(() => {
+                    ttsAudio.pause();
+                    ttsAudio.currentTime = 0;
+                    ttsAudio.muted = false;
+                    ttsUnlocked = true;
+                }).catch(() => {
+                    ttsAudio.muted = false;
+                });
+            } else {
+                ttsAudio.muted = false;
+                ttsUnlocked = true;
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function requestVoiceCloneTts(text, token) {
+            if (!isValidUserId(currentUserId)) {
+                throw new Error("user_id_invalid");
+            }
+            const ext = buildVoiceEmotionExt();
+            const extPayload = Object.keys(ext).length ? ext : {};
+            console.log("[TTS] extPayload =", extPayload);
+            const { speed: extSpeed, ...extWithoutSpeed } = extPayload;
+            const requestPayload = {
+                user_id: currentUserId,
+                text: text,
+                ext: extWithoutSpeed
+            };
+            if (Number.isFinite(extSpeed)) {
+                requestPayload.speed = extSpeed;
+            }
+            const controller = new AbortController();
+            ttsAbortControllers.add(controller);
+            try {
+                const createRes = await fetch("/api/voice_clone/tts/create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        ...requestPayload
+                    }),
+                    signal: controller.signal
+                });
+                if (token !== ttsToken) {
+                    const cancelError = new Error("tts_cancelled");
+                    cancelError.name = "AbortError";
+                    throw cancelError;
+                }
+                if (!createRes.ok) {
+                    const msg = await parseErrorMessage(createRes);
+                    throw new Error(msg || "语音合成失败");
+                }
+
+                const createPayload = await createRes.json();
+                if (!createPayload.ok || !createPayload.taskId) {
+                    throw new Error(createPayload.msg || "语音合成失败");
+                }
+
+                const taskId = createPayload.taskId;
+                const timeoutMs = 60000;
+                const start = Date.now();
+                let voiceUrl = "";
+                let waitMs = 400;
+                while (Date.now() - start < timeoutMs) {
+                    if (token !== ttsToken) {
+                        const cancelError = new Error("tts_cancelled");
+                        cancelError.name = "AbortError";
+                        throw cancelError;
+                    }
+                    const resultRes = await fetch(`/api/voice_clone/tts/result?user_id=${encodeURIComponent(currentUserId)}&taskId=${encodeURIComponent(taskId)}`, {
+                        method: "GET",
+                        signal: controller.signal
+                    });
+                    if (!resultRes.ok) {
+                        const msg = await parseErrorMessage(resultRes);
+                        throw new Error(msg || "语音合成失败");
+                    }
+                    const resultPayload = await resultRes.json();
+                    if (!resultPayload.ok) {
+                        throw new Error(resultPayload.msg || "语音合成失败");
+                    }
+                    const status = resultPayload.status;
+                    if (status === 1) {
+                        // 先快后慢的轮询，减少首包等待。
+                        await sleep(waitMs);
+                        waitMs = Math.min(waitMs + 200, 1000);
+                        continue;
+                    }
+                    if (status === 2 && resultPayload.voiceUrl) {
+                        voiceUrl = resultPayload.voiceUrl;
+                        break;
+                    }
+                    if (status === 3) {
+                        throw new Error("语音合成失败");
+                    }
+                }
+
+                if (!voiceUrl) {
+                    throw new Error("生成较慢，可稍后重试");
+                }
+
+                const audioRes = await fetch(`/api/voice_clone/tts/audio?voiceUrl=${encodeURIComponent(voiceUrl)}`, {
+                    method: "GET",
+                    signal: controller.signal
+                });
+                if (!audioRes.ok) {
+                    const msg = await parseErrorMessage(audioRes);
+                    throw new Error(msg || "语音合成失败");
+                }
+                const contentType = audioRes.headers.get("content-type") || "";
+                if (!contentType.startsWith("audio/") && contentType !== "application/octet-stream") {
+                    const { msg, detail } = await parseErrorPayload(audioRes);
+                    showToast(msg || "语音合成失败");
+                    if (detail) {
+                        console.warn("语音合成返回非音频", detail);
+                    } else {
+                        console.warn("语音合成返回非音频");
+                    }
+                    const err = new Error(msg || "语音合成失败");
+                    err.name = "TtsNonAudioError";
+                    throw err;
+                }
+                return audioRes;
+            } finally {
+                ttsAbortControllers.delete(controller);
+            }
+        }
+
+        function createDefaultEmotionState() {
+            return {
+                happy: 0,
+                angry: 0,
+                sad: 0,
+                afraid: 0,
+                disgusted: 0,
+                melancholic: 0,
+                surprised: 0,
+                calm: 0
+            };
+        }
+
+        let voiceEmotionState = createDefaultEmotionState();
+
+        function clampEmotionValue(value) {
+            if (!Number.isFinite(value)) return 0;
+            return Math.min(1, Math.max(0, Math.round(value * 10) / 10));
+        }
+
+        function syncEmotionValueDisplay(key, value) {
+            const display = document.querySelector(`[data-voice-emotion-value="${key}"]`);
+            if (display) {
+                display.innerText = value.toFixed(1).replace(/\.0$/, "");
+            }
+        }
+
+        function applyEmotionState(nextState) {
+            voiceEmotionState = { ...createDefaultEmotionState(), ...nextState };
+            document.querySelectorAll('[data-voice-emotion]').forEach((input) => {
+                const key = input.dataset.voiceEmotion;
+                const value = clampEmotionValue(Number(voiceEmotionState[key] ?? 0));
+                voiceEmotionState[key] = value;
+                input.value = value;
+                syncEmotionValueDisplay(key, value);
+            });
+        }
+
+        function saveEmotionState() {
+            if (!isProPlan) return;
+            safeLocalStorageSet(STORAGE_VOICE_EMOTION_EXT, JSON.stringify(voiceEmotionState));
+        }
+
+        function loadVoiceEmotionState() {
+            if (!isProPlan) return null;
+            const raw = safeLocalStorageGet(STORAGE_VOICE_EMOTION_EXT);
+            if (!raw) {
+                return null;
+            }
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === "object") {
+                    if (parsed.surprise !== undefined && parsed.surprised === undefined) {
+                        parsed.surprised = parsed.surprise;
+                        delete parsed.surprise;
+                    }
+                    return parsed;
+                }
+            } catch (err) {
+                // ignore parse error
+            }
+            return null;
+        }
+
+        function loadEmotionState() {
+            if (!isProPlan) return;
+            const storedState = loadVoiceEmotionState();
+            if (!storedState) {
+                applyEmotionState(createDefaultEmotionState());
+                return;
+            }
+            applyEmotionState(storedState);
+        }
+
+        function buildVoiceCloneEmotionParams() {
+            const params = {};
+            const baseState = createDefaultEmotionState();
+            Object.keys(baseState).forEach((key) => {
+                params[key] = clampEmotionValue(Number(voiceEmotionState[key] ?? 0));
+            });
+            return params;
+        }
+
+        function buildVoiceEmotionExt() {
+            const emotionKeys = [
+                "happy",
+                "angry",
+                "sad",
+                "afraid",
+                "disgusted",
+                "melancholic",
+                "surprised",
+                "calm"
+            ];
+            let sourceState = voiceEmotionState;
+            if (window.currentTtsExt && typeof window.currentTtsExt === "object") {
+                sourceState = window.currentTtsExt;
+            }
+            if (!sourceState || typeof sourceState !== "object" || !Object.keys(sourceState).length) {
+                const storedState = loadVoiceEmotionState();
+                if (storedState) {
+                    sourceState = storedState;
+                }
+            }
+            if (sourceState?.surprise !== undefined && sourceState?.surprised === undefined) {
+                sourceState = { ...sourceState, surprised: sourceState.surprise };
+                delete sourceState.surprise;
+            }
+            const ext = {};
+            const base = sourceState || {};
+            const speedValue = Number(base.speed);
+            const pitchValue = Number(base.pitch);
+            const volumeValue = Number(base.volume);
+            if (Number.isFinite(speedValue) && Math.abs(speedValue - 1) > 0.001) {
+                ext.speed = speedValue;
+            }
+            if (Number.isFinite(pitchValue) && Math.abs(pitchValue - 1) > 0.001) {
+                ext.pitch = pitchValue;
+            }
+            if (Number.isFinite(volumeValue) && Math.abs(volumeValue - 1) > 0.001) {
+                ext.volume = volumeValue;
+            }
+            emotionKeys.forEach((key) => {
+                const numericValue = Number(base[key]);
+                if (!Number.isFinite(numericValue)) {
+                    return;
+                }
+                const clamped = Math.min(1, Math.max(0, numericValue));
+                if (clamped > 0) {
+                    ext[key] = clamped;
+                }
+            });
+            return ext;
+        }
+        function buildEmotionHistory(roundId, currentInput) {
+            const filtered = chatHistory.filter((item) => {
+                if (!item || typeof item !== "object") return false;
+                if (item.round_id == null) return true;
+                return item.round_id < roundId;
+            });
+            if (filtered.length && filtered[filtered.length - 1]?.role === "user"
+                && filtered[filtered.length - 1]?.content === currentInput) {
+                filtered.pop();
+            }
+            if (filtered.length > EMOTION_HISTORY_LIMIT) {
+                return filtered.slice(-EMOTION_HISTORY_LIMIT);
+            }
+            return filtered;
+        }
+
+        function scheduleEmotionUpdate(content) {
+            if (emotionDebounceTimer) {
+                clearTimeout(emotionDebounceTimer);
+            }
+            emotionDebounceTimer = setTimeout(() => {
+                updateEmotionOnce(content);
+            }, EMOTION_DEBOUNCE_MS);
+        }
+
+        async function updateEmotionOnce(content) {
+            // ✅ 同一轮对话只允许分析一次
+            if (emotionLocked || lastEmotionRound === currentRound) return;
+            if (!isValidUserId(currentUserId)) return;
+
+            emotionLocked = true;
+            lastEmotionRound = currentRound;
+
+            const history = buildEmotionHistory(currentRound, content);
+
+            try {
+                const res = await fetch("/api/emotion", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        user_id: currentUserId,
+                        history,
+                        current_input: content,
+                        round_id: currentRound
+                    })
+
+                });
+
+                const payload = await safeParseEmotionResponse(res);
+                if (!payload || !payload.ok || !payload.data) {
+                    emotionAnalysis.innerText = "情绪分析暂不可用";
+                    emotionSuggest.innerText = "当前情绪分析服务不可用，稍后再试。";
+                    if (emotionAnalysisMobile && emotionSuggestMobile) {
+                        emotionAnalysisMobile.innerText = "情绪分析暂不可用";
+                        emotionSuggestMobile.innerText = "当前情绪分析服务不可用，稍后再试。";
+                    }
+                    return;
+                }
+                const data = payload.data;
+                updateEmotionUI(data);
+
+            } catch (e) {
+                console.error("情绪分析失败", e);
+            } finally {
+                emotionLocked = false;
+            }
+        }
+
+        function updateEmotionUI(data) {
+            if (!data) return;
+            emotionScoreNum.innerText = data.score;
+            scoreFill.style.width = data.score + "%";
+            if (emotionScoreNumMobile && scoreFillMobile) {
+                emotionScoreNumMobile.innerText = data.score;
+                scoreFillMobile.style.width = data.score + "%";
+            }
+
+            emotionTags.innerHTML = "";
+            if (emotionTagsMobile) {
+                emotionTagsMobile.innerHTML = "";
+            }
+            if (Array.isArray(data.tags)) {
+                data.tags.forEach(tag => {
+                    const span = document.createElement("span");
+                    span.className = "emotion-tag";
+                    span.innerText = tag;
+                    emotionTags.appendChild(span);
+                    if (emotionTagsMobile) {
+                        const mobileSpan = document.createElement("span");
+                        mobileSpan.className = "emotion-tag";
+                        mobileSpan.innerText = tag;
+                        emotionTagsMobile.appendChild(mobileSpan);
+                    }
+                });
+            }
+
+            emotionAnalysis.innerText = data.analysis;
+            emotionSuggest.innerText = data.suggestion;
+            if (emotionAnalysisMobile && emotionSuggestMobile) {
+                emotionAnalysisMobile.innerText = data.analysis;
+                emotionSuggestMobile.innerText = data.suggestion;
+            }
+        }
+
+        // 获取DOM元素
+        const chatWindow = document.getElementById('chat-window');
+        const msgInput = document.getElementById('msg-input');
+        const sendBtn = document.getElementById('send-btn');
+        const emptyTip = document.getElementById('empty-tip');
+        const emotionScoreNum = document.getElementById('emotion-score-num');
+        const scoreFill = document.getElementById('score-fill');
+        const emotionTags = document.getElementById('emotion-tags');
+        const emotionAnalysis = document.getElementById('emotion-analysis');
+        const emotionSuggest = document.getElementById('emotion-suggest');
+        const loginUsernameInput = document.getElementById('login-display_name');
+        const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
+        const avatarInput = document.getElementById('avatar-input');
+        const userAvatarBox = document.getElementById('user-avatar-box');
+        const userAvatarImg = document.getElementById('user-avatar-img');
+        const lockStatus = document.getElementById('lock-status');
+        const userCardTitle = document.getElementById('user-card-title');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const drawerCloseBtn = document.getElementById('drawer-close-btn');
+        const userModal = document.getElementById('user-modal');
+        const emotionModal = document.getElementById('emotion-modal');
+        const mobileAvatarBox = document.getElementById('mobile-avatar-box');
+        const mobileAvatarImg = document.getElementById('mobile-avatar-img');
+        if (userAvatarBox) userAvatarBox.classList.add('readonly');
+        if (mobileAvatarBox) mobileAvatarBox.classList.add('readonly');
+        const mobileUsernameInput = document.getElementById('mobile-display_name');
+        const mobileLockStatus = document.getElementById('mobile-lock-status');
+        const emotionScoreNumMobile = document.getElementById('emotion-score-num-mobile');
+        const scoreFillMobile = document.getElementById('score-fill-mobile');
+        const emotionTagsMobile = document.getElementById('emotion-tags-mobile');
+        const emotionAnalysisMobile = document.getElementById('emotion-analysis-mobile');
+        const emotionSuggestMobile = document.getElementById('emotion-suggest-mobile');
+        const voiceCloneTriggers = document.querySelectorAll('[data-voice-clone-trigger]');
+        const voiceCloneModal = document.getElementById('voice-clone-modal');
+        const voiceCloneAction = document.getElementById('voice-clone-action');
+        const voiceCloneFile = document.getElementById('voice-clone-file');
+        const voiceCloneName = document.getElementById('voice-clone-name');
+        const voiceCloneDesc = document.getElementById('voice-clone-desc');
+        const voiceCloneStatus = document.getElementById('voice-clone-status');
+        const voiceEmotionReset = document.getElementById('voice-emotion-reset');
+        const voiceOutputToggle = document.getElementById('voice-output-toggle');
+        const voiceStopBtn = document.getElementById('voice-stop-btn');
+                const isProPlan = APP_PLAN === "pro";
+
+
+        function clearChatWindow() {
+            chatWindow.innerHTML = "";
+            emptyTip.style.display = 'block';
+        }
+
+        function renderHistory(history) {
+            clearChatWindow();
+            if (!Array.isArray(history) || history.length === 0) {
+                return;
+            }
+            emptyTip.style.display = 'none';
+            history.forEach((item) => {
+                if (!item || !item.role || !item.content) return;
+                addMessage(item.content, item.role === "user" ? "user" : "ai");
+            });
+        }
+
+        async function loadHistory() {
+            if (!isValidUserId(currentUserId)) return;
+            const data = await fetchJson(`/load_history?user_id=${encodeURIComponent(currentUserId)}`);
+            if (!data || !data.ok) {
+                showErrorModal(data?.msg || "加载历史失败");
+                return;
+            }
+            chatHistory.length = 0;
+            data.history.forEach((item) => chatHistory.push(item));
+            renderHistory(data.history);
+        }
+
+        async function loadProfile() {
+            const profileData = await fetchProfile();
+            if (!profileData) {
+                showErrorModal("资料加载失败");
+                return false;
+            }
+            currentUserId = (profileData.user_id || "").trim();
+            if (!isValidUserId(currentUserId)) {
+                showErrorModal("身份信息异常，请重新登录");
+                return false;
+            }
+            const fallbackName = currentUserId.slice(-6) || "用户";
+            const nextDisplayName = (profileData.display_name || "").trim() || fallbackName;
+            syncUsernameInputs(nextDisplayName);
+            updateProfileState({
+                display_name: (profileData.display_name || "").trim()
+            });
+            updateAvatar(profileData.avatar_url);
+            await loadHistory();
+            return true;
+        }
+
+        let display_nameChangeToken = 0;
+        async function applyUsernameChange({ loadRemote = true } = {}) {
+            if (!loginUsernameInput) return;
+            const display_name = loginUsernameInput.value.trim();
+            const token = ++display_nameChangeToken;
+            if (token !== display_nameChangeToken) return;
+            safeLocalStorageSet(STORAGE_USERNAME_KEY, display_name);
+            updateProfileState({ display_name });
+            setLockStatus("昵称已更新，资料将自动保存", "#3b6fb6");
+            if (loadRemote) {
+                await loadProfile();
+            }
+            await persistProfile();
+            sendBtn.disabled = msgInput.value.trim() === "";
+        }
+
+        async function persistProfile({ avatarUrl } = {}) {
+            if (!loginUsernameInput) {
+                return false;
+            }
+            const display_name = loginUsernameInput.value.trim();
+            const payload = {
+                display_name
+            };
+            if (avatarUrl !== undefined) {
+                payload.avatar_url = avatarUrl || "";
+            }
+            const data = await fetchJson("/profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            if (data?.ok) {
+                updateProfileState({
+                    display_name: data.profile?.display_name || display_name
+                });
+                setLockStatus("资料已保存", "#3b6fb6");
+                return true;
+            } else {
+                setLockStatus("资料保存失败", "#d9534f");
+                return false;
+            }
+        }
+
+        async function uploadAvatar(file) {
+                        if (!file || !currentUserId) return;
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("user_id", currentUserId);
+
+            const data = await fetchJson("/avatar_upload", {
+                method: "POST",
+                body: formData
+            });
+            if (data?.ok) {
+                updateAvatar(data.avatar_url);
+                const saved = await persistProfile({ avatarUrl: data.avatar_url });
+                if (saved) {
+                    setLockStatus("头像已更新", "#3b6fb6");
+                }
+            } else {
+                setLockStatus("头像上传失败", "#d9534f");
+            }
+        }
+
+        function openAvatarPicker() {
+            if (!isValidUserId(currentUserId)) return;
+            avatarInput.click();
+        }
+
+        // 次级页仅展示头像，不提供修改入口
+
+        let display_nameDebounceTimer = null;
+        if (loginUsernameInput) {
+            loginUsernameInput.readOnly = true;
+            loginUsernameInput.tabIndex = -1;
+        }
+        if (mobileUsernameInput) {
+            mobileUsernameInput.readOnly = true;
+            mobileUsernameInput.tabIndex = -1;
+        }
+
+        const cachedAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY);
+        if (cachedAvatar) {
+            updateAvatar(cachedAvatar);
+        }
+
+        function openModal(modal) {
+            if (!modal) return;
+            const hasActiveModal = document.querySelector('.modal-backdrop.active');
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
+            if (!hasActiveModal) {
+                lockBodyScroll();
+            }
+        }
+
+        function closeModal(modal) {
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+            if (!document.querySelector('.modal-backdrop.active')) {
+                unlockBodyScroll();
+            }
+        }
+
+        function closeAllModals() {
+            document.querySelectorAll('.modal-backdrop.active').forEach((modal) => {
+                closeModal(modal);
+            });
+        }
+
+        function closeAllTooltips() {
+            document.querySelectorAll('.info-tip.tooltip-open').forEach((btn) => {
+                btn.classList.remove('tooltip-open');
+                const tooltip = btn.querySelector('.tooltip');
+                if (tooltip) {
+                    tooltip.style.left = '';
+                    tooltip.style.right = '';
+                    tooltip.style.transform = '';
+                }
+            });
+        }
+
+        function positionTooltip(button) {
+            const tooltip = button.querySelector('.tooltip');
+            if (!tooltip) return;
+            tooltip.style.maxWidth = '90vw';
+            tooltip.style.left = '';
+            tooltip.style.right = '';
+            tooltip.style.transform = '';
+            requestAnimationFrame(() => {
+                const rect = tooltip.getBoundingClientRect();
+                if (rect.left < 8) {
+                    tooltip.style.left = '0';
+                    tooltip.style.right = 'auto';
+                    tooltip.style.transform = 'translateY(0)';
+                } else if (rect.right > window.innerWidth - 8) {
+                    tooltip.style.left = 'auto';
+                    tooltip.style.right = '0';
+                    tooltip.style.transform = 'translateY(0)';
+                }
+            });
+        }
+
+        function setupTooltips() {
+            document.querySelectorAll('.info-tip').forEach((btn) => {
+                btn.addEventListener('click', (event) => {
+                    if (!isMobile) return;
+                    event.stopPropagation();
+                    const isOpen = btn.classList.contains('tooltip-open');
+                    closeAllTooltips();
+                    if (!isOpen) {
+                        btn.classList.add('tooltip-open');
+                        positionTooltip(btn);
+                    }
+                });
+            });
+
+            document.addEventListener('click', () => {
+                if (isMobile) {
+                    closeAllTooltips();
+                }
+            });
+        }
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', () => {
+                if (!isMobile) return;
+                openDrawer();
+            });
+        }
+
+        if (drawerCloseBtn) {
+            drawerCloseBtn.addEventListener('click', () => {
+                closeDrawer();
+            });
+        }
+
+        if (voiceCloneTriggers.length) {
+            voiceCloneTriggers.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    setVoiceCloneStatus("");
+                    loadEmotionState();
+                    openModal(voiceCloneModal);
+                });
+            });
+        }
+
+        if (voiceCloneAction) {
+            voiceCloneAction.addEventListener('click', () => {
+                handleVoiceCloneUpload();
+            });
+        }
+
+        if (voiceOutputToggle) {
+            voiceOutputToggle.addEventListener('click', () => {
+                setVoiceOutputEnabled(!voiceOutputEnabled);
+            });
+        }
+
+        if (voiceStopBtn) {
+            voiceStopBtn.addEventListener('click', () => {
+                resetTtsQueue();
+                showToast("已停止播报");
+            });
+        }
+
+        document.querySelectorAll('[data-voice-emotion]').forEach((input) => {
+            input.addEventListener('input', (event) => {
+                const target = event.currentTarget;
+                const key = target.dataset.voiceEmotion;
+                const value = clampEmotionValue(Number(target.value));
+                voiceEmotionState[key] = value;
+                target.value = value;
+                syncEmotionValueDisplay(key, value);
+                saveEmotionState();
+            });
+        });
+
+        if (voiceEmotionReset) {
+            voiceEmotionReset.addEventListener('click', () => {
+                applyEmotionState(createDefaultEmotionState());
+                saveEmotionState();
+            });
+        }
+
+        document.querySelectorAll('[data-modal-close]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                closeAllModals();
+            });
+        });
+
+        document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
+            backdrop.addEventListener('click', (event) => {
+                if (event.target === backdrop) {
+                    closeModal(backdrop);
+                }
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            const wasMobile = isMobile;
+            updateDeviceMode();
+            if (wasMobile !== isMobile) {
+                closeAllTooltips();
+            }
+        });
+
+        syncViewport();
+        updateDeviceMode();
+        setupTooltips();
+
+        window.addEventListener('storage', (event) => {
+            if (![STORAGE_USERNAME_KEY, STORAGE_AVATAR_KEY].includes(event.key)) return;
+            const nextUsername = (safeLocalStorageGet(STORAGE_USERNAME_KEY) || '').trim();
+            const nextAvatar = safeLocalStorageGet(STORAGE_AVATAR_KEY) || '';
+            syncUsernameInputs(nextUsername);
+            updateProfileState({ display_name: nextUsername });
+            if (nextAvatar) updateAvatar(nextAvatar);
+        });
+        initVoiceOutputToggle();
+
+        window.addEventListener('resize', syncViewport);
+        window.addEventListener('orientationchange', syncViewport);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', syncViewport);
+            window.visualViewport.addEventListener('scroll', syncViewport);
+        }
+
+        (async function bootstrapProfile() {
+            await loadProfile();
+            sendBtn.disabled = !isValidUserId(currentUserId) || msgInput.value.trim() === '';
+        })();
+
+        // 监听输入框变化，控制发送按钮状态+自适应高度
+        msgInput.addEventListener('input', () => {
+            const content = msgInput.value.trim();
+            sendBtn.disabled = !isValidUserId(currentUserId) || content === '';
+            // 自适应输入框高度
+            msgInput.style.height = 'auto';
+            msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
+        });
+
+        // 回车发送（按住shift+回车换行）
+        msgInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // 点击发送按钮
+        sendBtn.addEventListener('click', sendMessage);
+
+        async function sendMessage() {
+        if (!isValidUserId(currentUserId)) {
+            setLockStatus("身份失效，请重新登录", "#d9534f");
+            showErrorModal("身份失效，请重新登录");
+            return;
+        }
+        const content = msgInput.value.trim();
+        if (!content) return;
+
+        let ttsRequestToken = null;
+        if (voiceOutputEnabled) {
+            unlockTtsForIOS();
+            resetTtsQueue();
+            ttsRequestToken = ttsToken;
+        }
+
+        // ✅【新增：开启新一轮对话】
+        currentRound++;
+
+        // 用户消息
+        addMessage(content, 'user');
+        scheduleEmotionUpdate(content);
+        chatHistory.push({
+            role: "user",
+            content: content,
+            round_id: currentRound
+        });
+        // 然后更新 UI
+        msgInput.value = '';
+        msgInput.style.height = 'auto';
+        sendBtn.disabled = true;
+        emptyTip.style.display = 'none';
+
+        // 创建 AI 消息气泡（空的，用来流）
+        const aiWrap = document.createElement('div');
+        aiWrap.className = 'msg-container ai-msg-wrap';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'msg-avatar ai-avatar';
+        avatar.innerHTML = '<i class="fas fa-girl"></i>';
+
+        const aiMsg = document.createElement('div');
+        aiMsg.className = 'message ai-msg';
+        aiMsg.innerText = '';
+
+        aiWrap.appendChild(avatar);
+        aiWrap.appendChild(aiMsg);
+        chatWindow.appendChild(aiWrap);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        showLoading();
+
+        try {
+            const resp = await fetch("/chat_stream", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: currentUserId,   // ← 必须有
+                    history: chatHistory,
+                    user_input: content,
+                    round_id: currentRound
+                })
+
+            });
+            const contentType = resp.headers.get("content-type") || "";
+            if (!resp.ok || contentType.includes("application/json") || contentType.includes("text/html")) {
+                const errMsg = await parseErrorMessage(resp);
+                removeLoading();
+                aiWrap.remove();
+                showErrorModal(errMsg);
+                return;
+            }
+            if (!resp.body) {
+                removeLoading();
+                aiWrap.remove();
+                showErrorModal("服务暂不可用");
+                return;
+            }
+            removeLoading();
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const chunkText = decoder.decode(value);
+                aiMsg.innerText += chunkText;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+            const finalText = aiMsg.innerText.trim();
+            if (voiceOutputEnabled && finalText) {
+                try {
+                    ttsActive = true;
+                    if (voiceStopBtn) {
+                        voiceStopBtn.disabled = false;
+                    }
+                    showToast("语音生成中…", { duration: 0 });
+                    const res = await requestVoiceCloneTts(finalText, ttsRequestToken);
+                    if (ttsRequestToken !== ttsToken) return;
+                    const blob = await res.blob();
+                    if (ttsRequestToken !== ttsToken) return;
+                    ensureTtsAudio();
+                    const url = URL.createObjectURL(blob);
+                    try {
+                        if (ttsAudioUrl) {
+                            URL.revokeObjectURL(ttsAudioUrl);
+                        }
+                        ttsAudioUrl = url;
+                        ttsAudio.src = url;
+                        let cleanup = () => {};
+                        const playEnded = new Promise((resolve, reject) => {
+                            const onEnd = () => {
+                                cleanup();
+                                resolve();
+                            };
+                            const onError = () => {
+                                cleanup();
+                                reject(new Error("audio_error"));
+                            };
+                            cleanup = () => {
+                                ttsAudio.removeEventListener("ended", onEnd);
+                                ttsAudio.removeEventListener("error", onError);
+                            };
+                            ttsAudio.addEventListener("ended", onEnd);
+                            ttsAudio.addEventListener("error", onError);
+                        });
+                        const playPromise = ttsAudio.play();
+                        if (playPromise && typeof playPromise.then === "function") {
+                            try {
+                                await playPromise;
+                                hideToast();
+                            } catch (playError) {
+                                cleanup();
+                                hideToast();
+                                throw playError;
+                            }
+                        } else {
+                            hideToast();
+                        }
+                        await playEnded;
+                    } finally {
+                        if (ttsAudioUrl === url) {
+                            URL.revokeObjectURL(url);
+                            ttsAudioUrl = null;
+                        }
+                    }
+                } catch (err) {
+                    const errorName = err?.name || "";
+                    const errorMessage = err?.message || "语音合成失败";
+                    if (errorName === "NotAllowedError") {
+                        if (!ttsUnlockHinted) {
+                            ttsUnlockHinted = true;
+                            showToast("请先点击发送按钮以启用语音播放");
+                        }
+                    } else if (errorName === "AbortError") {
+                        // 用户停止或切换时主动取消请求
+                    } else if (errorName === "TtsNonAudioError") {
+                        // 已在请求阶段提示 toast
+                    } else {
+                        showToast(errorMessage);
+                    }
+                    console.warn("语音合成失败", err);
+                } finally {
+                    hideToast();
+                    if (ttsRequestToken === ttsToken) {
+                        ttsActive = false;
+                        if (voiceStopBtn) {
+                            voiceStopBtn.disabled = true;
+                        }
+                    }
+                }
+            }
+            chatHistory.push({
+                role: "assistant",
+                content: aiMsg.innerText,
+                round_id: currentRound
+            });
+        }
+            catch (err) {
+                removeLoading();
+                aiWrap.remove();
+                showErrorModal("连接失败，请稍后再试");
+            }
+        }
+
+        // 添加消息到聊天窗口（核心：带双方头像）
+        function addMessage(content, type, emotion = 'normal') {
+            // 创建消息容器（头像+气泡）
+            const msgContainer = document.createElement('div');
+            // 创建头像元素
+            const avatar = document.createElement('div');
+            // 创建消息气泡
+            const messageDiv = document.createElement('div');
+
+            // 区分用户/AI消息的样式和内容
+            if (type === 'user') {
+                // 用户消息：容器右对齐、头像蓝色（用户）、气泡蓝色
+                msgContainer.className = 'msg-container user-msg-wrap';
+                avatar.className = 'msg-avatar user-avatar';
+                const img = document.createElement('img');
+                img.src = getUserAvatarUrl();
+                img.alt = '用户头像';
+                avatar.appendChild(img);
+                messageDiv.className = 'message user-msg';
+            } else {
+                // AI消息：容器左对齐、头像浅蓝（小盈）、气泡浅蓝
+                msgContainer.className = 'msg-container ai-msg-wrap';
+                avatar.className = 'msg-avatar ai-avatar';
+                avatar.innerHTML = '<i class="fas fa-girl"></i>';
+                messageDiv.className = 'message ai-msg';
+                messageDiv.dataset.emotion = emotion;
+            }
+
+            // 组装消息结构：容器 -> 头像 + 气泡
+            messageDiv.innerText = content;
+            msgContainer.appendChild(avatar);
+            msgContainer.appendChild(messageDiv);
+            chatWindow.appendChild(msgContainer);
+
+            // 自动滚动到最新消息
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+
+        }
+        // 显示加载动画（带小盈头像，适配布局）
+            function showLoading() {
+                const loadingWrap = document.createElement('div');
+                const avatar = document.createElement('div');
+                const loadingDiv = document.createElement('div');
+
+                loadingWrap.className = 'loading-wrap';
+                avatar.className = 'msg-avatar ai-avatar';
+                avatar.innerHTML = '<i class="fas fa-girl"></i>';
+                loadingDiv.className = 'loading';
+                loadingDiv.id = 'loading-animation';
+                loadingDiv.innerHTML = `
+                <div class="loading-dot"></div>
+                <div class="loading-dot"></div>
+                <div class="loading-dot"></div>
+            `;
+
+                loadingWrap.appendChild(avatar);
+                loadingWrap.appendChild(loadingDiv);
+                chatWindow.appendChild(loadingWrap);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+        // 移除加载动画
+        function removeLoading() {
+            const loading = document.getElementById('loading-animation');
+            if (loading) loading.parentElement.remove();
+        }
+
+    </script>
 </body>
 </html>

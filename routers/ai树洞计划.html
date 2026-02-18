@@ -118,7 +118,7 @@
                     <div class="version-highlight">
                         <p><strong>适合人群：</strong>希望通过语音获得更真实陪伴体验的用户</p>
                     </div>
-                    <a href="/treehole_pro" class="action-btn">立即体验</a>
+                    <a href="/routers/pc.html" class="action-btn" id="allroundBtn">立即体验</a>
                 </div>
             </div>
 
@@ -338,6 +338,25 @@
         }
         updateAppHeight();
         window.addEventListener('resize', updateAppHeight);
+
+        function detectDevice() {
+            const isPortrait = window.innerHeight > window.innerWidth;
+            const isMobileUA = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+            if (isPortrait || isMobileUA) {
+                return "/routers/mobile.html";
+            } else {
+                return "/routers/pc.html";
+            }
+        }
+
+        const allroundBtn = document.getElementById('allroundBtn');
+        if (allroundBtn) {
+            allroundBtn.addEventListener('click', (event) => {
+                event.preventDefault();
+                window.location = detectDevice();
+            });
+        }
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', updateAppHeight);
         }
