@@ -475,7 +475,11 @@ textarea:focus{
 
 </div>
 
+<script src="/static/js/pro_api_logic.js"></script>
 <script>
+let currentUserId = "";
+let currentRound = 0;
+const chatHistory = [];
 
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
@@ -514,20 +518,51 @@ function appendMessage(text, side){
 
     chat.appendChild(msg);
     chat.scrollTop = chat.scrollHeight;
+    return bubble;
 }
+
 /* 发送逻辑 */
-function sendMessage(){
+async function sendMessage(){
     const text = input.value.trim();
     if(!text) return;
+    if(!ProApiLogic.isValidUserId(currentUserId)){
+        alert("身份失效，请重新登录");
+        return;
+    }
 
     appendMessage(text, "right");
+    currentRound += 1;
+    chatHistory.push({ role: "user", content: text, round_id: currentRound });
+
     input.value = "";
     sendBtn.disabled = true;
     sendBtn.classList.remove("active");
 
-    setTimeout(() => {
-        appendMessage("玩命加载中......", "left");
-    }, 500);
+    const aiBubble = appendMessage("", "left");
+
+    const result = await ProApiLogic.sendMessageAPI({
+        userId: currentUserId,
+        history: chatHistory,
+        userInput: text,
+        roundId: currentRound,
+        onChunk: (_, fullText) => {
+            aiBubble.innerText = fullText;
+            chat.scrollTop = chat.scrollHeight;
+        }
+    });
+
+    if(!result.ok){
+        aiBubble.innerText = result.msg || "服务暂不可用";
+        return;
+    }
+
+    const finalText = (result.text || "").trim();
+    if(!finalText){
+        aiBubble.innerText = "服务暂不可用";
+        return;
+    }
+    chatHistory.push({ role: "assistant", content: finalText, round_id: currentRound });
+    loadEmotion(text);
 }
 
 sendBtn.addEventListener("click", sendMessage);
@@ -539,12 +574,13 @@ input.addEventListener("keydown", function(e){
         sendMessage();
     }
 });
+
 const overlay = document.getElementById("overlay");
 const drawer = document.getElementById("drawer");
 const menuBtn = document.getElementById("menuBtn");
 
 menuBtn.addEventListener("click", (e) => {
-    e.stopPropagation();   // 阻止事件往 overlay 传
+    e.stopPropagation();
     overlay.classList.toggle("show");
 });
 
@@ -561,6 +597,54 @@ const voiceSwitch = document.querySelector(".switch");
 voiceSwitch.addEventListener("click", () => {
     voiceSwitch.classList.toggle("active");
 });
+
+async function loadProfile(){
+    const ctx = await ProApiLogic.getUserContext();
+    if(!ctx.isValidUserId) return;
+    currentUserId = ctx.user_id;
+    const nameNode = document.querySelector(".username");
+    if(nameNode){
+        nameNode.textContent = (ctx.profile?.display_name || "").trim() || currentUserId.slice(-6);
+    }
+}
+
+async function loadEmotion(currentInput = ""){
+    if(!ProApiLogic.isValidUserId(currentUserId)) return;
+    const result = await ProApiLogic.analyzeEmotionAPI({
+        userId: currentUserId,
+        history: chatHistory,
+        currentInput,
+        roundId: currentRound
+    });
+    if(!result.ok) return;
+    const score = Number(result.data.score || 0);
+    const scoreNode = document.querySelector(".score-row span:last-child");
+    if(scoreNode){
+        scoreNode.textContent = `${score} / 100`;
+    }
+    const bar = document.querySelector(".progress-bar");
+    if(bar){
+        bar.style.width = `${score}%`;
+    }
+}
+
+const voiceBtn = document.querySelector('.voice-btn');
+if (voiceBtn) {
+    voiceBtn.addEventListener('click', async () => {
+        if(!ProApiLogic.isValidUserId(currentUserId)){
+            alert('身份失效，请重新登录');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('user_id', currentUserId);
+        formData.append('name', '我的声音');
+        const result = await ProApiLogic.voiceCloneAPI(formData);
+        alert(result.ok ? '语音克隆请求已提交' : (result.msg || '语音克隆失败'));
+    });
+}
+
+loadProfile();
+loadEmotion();
 </script>
 
 </body>
