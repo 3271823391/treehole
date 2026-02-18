@@ -456,7 +456,7 @@ button.send{
         <!-- 语音克隆 -->
         <div class="card">
             <div class="card-title">🎙 语音克隆</div>
-            <button class="primary-btn" id="voiceCloneBtn">
+            <button class="primary-btn" id="voiceCloneBtn" data-voice-clone-trigger>
                 语音克隆
             </button>
         </div>
@@ -471,6 +471,23 @@ button.send{
         功能区域
     </div>
 </div>
+
+<div class="bottom-overlay" id="voice-clone-modal" style="display:none;">
+    <div class="card" style="margin: 24px; max-height: calc(100vh - 80px); overflow:auto;">
+        <div class="card-title">语音克隆</div>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+            <label for="voice-clone-file">参考音频</label>
+            <input type="file" id="voice-clone-file" accept="audio/*">
+            <label for="voice-clone-name">名称</label>
+            <input type="text" id="voice-clone-name" value="我的声音" maxlength="32">
+            <label for="voice-clone-desc">描述（可选）</label>
+            <textarea id="voice-clone-desc" rows="2" placeholder="如：情绪平稳、无背景音"></textarea>
+            <div id="voice-clone-status"></div>
+            <button class="primary-btn" id="voice-clone-action" type="button">上传/创建</button>
+            <button class="primary-btn" data-modal-close type="button">关闭</button>
+        </div>
+    </div>
+</div>
 <script src="/static/js/pro_api_logic.js"></script>
 <script>
 let drawerOpen = false;
@@ -478,6 +495,144 @@ let bottomOpen = false;
 let currentUserId = "";
 let currentRound = 0;
 const chatHistory = [];
+const STORAGE_VOICE_AUDIO_ID = "voice_audio_id";
+
+const voiceCloneTriggers = document.querySelectorAll('[data-voice-clone-trigger]');
+const voiceCloneModal = document.getElementById('voice-clone-modal');
+const voiceCloneAction = document.getElementById('voice-clone-action');
+const voiceCloneFile = document.getElementById('voice-clone-file');
+const voiceCloneName = document.getElementById('voice-clone-name');
+const voiceCloneDesc = document.getElementById('voice-clone-desc');
+const voiceCloneStatus = document.getElementById('voice-clone-status');
+const isProPlan = true;
+
+function safeLocalStorageSet(key, value) {
+    try {
+        localStorage.setItem(key, value);
+    } catch (e) {
+    }
+}
+
+function showToast(message = "系统错误") {
+    alert(message);
+}
+
+function showErrorModal(message) {
+    showToast(message || "服务暂不可用");
+}
+
+function openModal(modal) {
+    if (!modal) return;
+    modal.style.display = 'block';
+}
+
+function closeModal(modal) {
+    if (!modal) return;
+    modal.style.display = 'none';
+}
+
+function closeAllModals() {
+    document.querySelectorAll('#voice-clone-modal').forEach((modal) => {
+        closeModal(modal);
+    });
+}
+
+function createDefaultEmotionState() {
+    return {
+        happy: 0,
+        angry: 0,
+        sad: 0,
+        afraid: 0,
+        disgusted: 0,
+        melancholic: 0,
+        surprised: 0,
+        calm: 0
+    };
+}
+
+let voiceEmotionState = createDefaultEmotionState();
+
+function clampEmotionValue(value) {
+    if (!Number.isFinite(value)) return 0;
+    return Math.min(1, Math.max(0, Math.round(value * 10) / 10));
+}
+
+function buildVoiceCloneEmotionParams() {
+    const params = {};
+    const baseState = createDefaultEmotionState();
+    Object.keys(baseState).forEach((key) => {
+        params[key] = clampEmotionValue(Number(voiceEmotionState[key] ?? 0));
+    });
+    return params;
+}
+
+function requestVoiceClone(payload) {
+    return ProApiLogic.fetchJson("/api/voice_clone/reference/upload", {
+        method: "POST",
+        body: payload
+    });
+}
+
+function setVoiceCloneStatus(message, type = "") {
+    if (!voiceCloneStatus) return;
+    voiceCloneStatus.textContent = message || "";
+    voiceCloneStatus.className = "";
+    if (type) {
+        voiceCloneStatus.classList.add(type);
+    }
+}
+
+function loadEmotionState() {
+    applyEmotionState(createDefaultEmotionState());
+}
+
+function applyEmotionState(nextState) {
+    voiceEmotionState = { ...createDefaultEmotionState(), ...nextState };
+}
+
+async function handleVoiceCloneUpload() {
+    if (!voiceCloneFile || !voiceCloneAction) return;
+    if (!ProApiLogic.isValidUserId(currentUserId)) {
+        setVoiceCloneStatus("身份失效，请重新登录", "error");
+        showToast("身份失效，请重新登录");
+        return;
+    }
+    const file = voiceCloneFile.files?.[0];
+    if (!file) {
+        setVoiceCloneStatus("请先选择音频文件", "error");
+        showToast("请先选择音频文件");
+        return;
+    }
+    const name = (voiceCloneName?.value || "").trim() || "我的声音";
+    const describe = (voiceCloneDesc?.value || "").trim();
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("name", name);
+    formData.append("describe", describe);
+    formData.append("user_id", currentUserId);
+    formData.append("emotion_params", JSON.stringify(buildVoiceCloneEmotionParams()));
+
+    voiceCloneAction.disabled = true;
+    setVoiceCloneStatus("上传中，请稍候...");
+
+    try {
+        const data = await requestVoiceClone(formData);
+        if (data?.ok && data.data?.audioId) {
+            const audioId = data.data.audioId;
+            setVoiceCloneStatus(`上传成功：audioId=${audioId}`, "success");
+            if (isProPlan) {
+                safeLocalStorageSet(STORAGE_VOICE_AUDIO_ID, audioId);
+            }
+            showToast("语音克隆上传成功");
+            return;
+        }
+        const errorMsg = data?.msg || "上传失败";
+        setVoiceCloneStatus(errorMsg, "error");
+        showErrorModal(errorMsg);
+    } finally {
+        voiceCloneAction.disabled = false;
+    }
+}
 
 function toggleDrawer(){
     const drawer = document.querySelector(".drawer");
@@ -627,19 +782,35 @@ async function loadEmotion(currentInput = ""){
     document.getElementById("emotionBar").style.width = score + "%";
 }
 
-// 语音克隆按钮
-document.getElementById("voiceCloneBtn")
-?.addEventListener("click", async ()=>{
-    if(!ProApiLogic.isValidUserId(currentUserId)){
-        alert("身份失效，请重新登录");
-        return;
-    }
-    const formData = new FormData();
-    formData.append("user_id", currentUserId);
-    formData.append("name", "我的声音");
-    const result = await ProApiLogic.voiceCloneAPI(formData);
-    alert(result.ok ? "语音克隆请求已提交" : (result.msg || "语音克隆失败"));
+if (voiceCloneTriggers.length) {
+    voiceCloneTriggers.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            setVoiceCloneStatus("");
+            loadEmotionState();
+            openModal(voiceCloneModal);
+        });
+    });
+}
+
+if (voiceCloneAction) {
+    voiceCloneAction.addEventListener('click', () => {
+        handleVoiceCloneUpload();
+    });
+}
+
+document.querySelectorAll('[data-modal-close]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        closeAllModals();
+    });
 });
+
+if (voiceCloneModal) {
+    voiceCloneModal.addEventListener('click', (event) => {
+        if (event.target === voiceCloneModal) {
+            closeModal(voiceCloneModal);
+        }
+    });
+}
 
 loadProfile();
 loadEmotion();
