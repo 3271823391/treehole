@@ -716,7 +716,7 @@ button.send{
 
 <div class="phone">
     <div class="header">
-        <button class="back-btn">←</button>
+        <button class="back-btn" onclick="handleBack()">←</button>
         聊天窗口
         <button class="menu-btn" onclick="toggleDrawer()">···</button>
     </div>
@@ -1366,6 +1366,18 @@ function closeDrawer(){
     drawerOpen = false;
 }
 
+function handleBack(){
+    if(typeof drawerOpen !== "undefined" && drawerOpen){
+        closeDrawer();
+        return;
+    }
+    if(typeof bottomOpen !== "undefined" && bottomOpen){
+        closeBottomPanel();
+        return;
+    }
+    window.history.back();
+}
+
 function appendMessage(text, side){
     const chat = document.getElementById("chat");
     const msg = document.createElement("div");
@@ -1405,6 +1417,7 @@ async function sendMessage(){
     currentRound += 1;
     chatHistory.push({ role: "user", content: text, round_id: currentRound });
     input.value = "";
+    input.dispatchEvent(new Event("input"));
     scrollToBottom();
 
     const replyMsg = appendMessage("", "left");
