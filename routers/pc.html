@@ -300,13 +300,53 @@ textarea:focus{
     transition:0.3s;
 }
 
-.switch.active{
+.switch.on{
     background:#4b7bd6;
 }
 
-.switch.active::after{
+.switch.on::after{
     left:26px;
 }
+
+.voice-emotion-card {
+    background:#f8faff;
+    border:1px solid #e3ecff;
+    border-radius:12px;
+    padding:12px;
+    margin:8px 0;
+}
+
+.voice-emotion-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:8px;
+}
+
+.voice-emotion-sliders {
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.voice-emotion-item { display:grid; grid-template-columns:70px 1fr 24px; gap:8px; align-items:center; }
+
+.toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 9999;
+}
+.toast.show { opacity: 1; }
 
 /* 标题 */
 .section-title{
@@ -486,12 +526,29 @@ textarea:focus{
             <input type="text" id="voice-clone-name" value="我的声音" maxlength="32">
             <label for="voice-clone-desc">描述（可选）</label>
             <textarea id="voice-clone-desc" rows="2" placeholder="如：情绪平稳、无背景音"></textarea>
+            <div class="voice-emotion-card">
+                <div class="voice-emotion-header">
+                    <div class="voice-emotion-title">设定情感参数</div>
+                    <button class="voice-emotion-reset" id="voice-emotion-reset" type="button">重置</button>
+                </div>
+                <div class="voice-emotion-sliders">
+                    <div class="voice-emotion-item"><span>开心</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="happy"><span class="voice-emotion-value" data-voice-emotion-value="happy">0</span></div>
+                    <div class="voice-emotion-item"><span>愤怒</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="angry"><span class="voice-emotion-value" data-voice-emotion-value="angry">0</span></div>
+                    <div class="voice-emotion-item"><span>悲伤</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="sad"><span class="voice-emotion-value" data-voice-emotion-value="sad">0</span></div>
+                    <div class="voice-emotion-item"><span>害怕</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="afraid"><span class="voice-emotion-value" data-voice-emotion-value="afraid">0</span></div>
+                    <div class="voice-emotion-item"><span>厌恶</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="disgusted"><span class="voice-emotion-value" data-voice-emotion-value="disgusted">0</span></div>
+                    <div class="voice-emotion-item"><span>忧郁</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="melancholic"><span class="voice-emotion-value" data-voice-emotion-value="melancholic">0</span></div>
+                    <div class="voice-emotion-item"><span>惊讶</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="surprised"><span class="voice-emotion-value" data-voice-emotion-value="surprised">0</span></div>
+                    <div class="voice-emotion-item"><span>平静</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="calm"><span class="voice-emotion-value" data-voice-emotion-value="calm">0</span></div>
+                </div>
+            </div>
             <div id="voice-clone-status"></div>
             <button class="voice-btn" id="voice-clone-action" type="button">上传/创建</button>
             <button class="voice-btn" data-modal-close type="button">关闭</button>
         </div>
     </div>
 </div>
+<div id="toast" class="toast"></div>
 
 <script src="/static/js/pro_api_logic.js"></script>
 <script>
@@ -508,6 +565,7 @@ const voiceCloneFile = document.getElementById('voice-clone-file');
 const voiceCloneName = document.getElementById('voice-clone-name');
 const voiceCloneDesc = document.getElementById('voice-clone-desc');
 const voiceCloneStatus = document.getElementById('voice-clone-status');
+const voiceEmotionReset = document.getElementById('voice-emotion-reset');
 const voiceOutputToggle = document.getElementById('voice-output-toggle');
 const voiceStopBtn = document.getElementById('voice-stop-btn');
 const isProPlan = true;
@@ -537,11 +595,22 @@ function safeLocalStorageGet(key) {
     }
 }
 
-function showToast(message = "系统错误") {
-    alert(message);
+let toastTimer = null;
+function showToast(text, duration=2000) {
+    const toast = document.getElementById("toast");
+    toast.innerText = text;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+    }, duration);
 }
 
-function hideToast() {}
+function hideToast() {
+    const toast = document.getElementById("toast");
+    if (toast) toast.classList.remove("show");
+    if (toastTimer) clearTimeout(toastTimer);
+}
 
 function showErrorModal(message) {
     showToast(message || "服务暂不可用");
@@ -576,7 +645,27 @@ function createDefaultEmotionState() {
     };
 }
 
-let voiceEmotionState = createDefaultEmotionState();
+let emotionParams = {
+    happy: 0,
+    angry: 0,
+    sad: 0,
+    afraid: 0,
+    disgusted: 0,
+    melancholic: 0,
+    surprised: 0,
+    calm: 0
+};
+
+function resetEmotion() {
+    emotionParams = createDefaultEmotionState();
+    document.querySelectorAll('[data-voice-emotion]').forEach((input) => {
+        const key = input.dataset.voiceEmotion;
+        const value = emotionParams[key] || 0;
+        input.value = value;
+        const display = document.querySelector(`[data-voice-emotion-value="${key}"]`);
+        if (display) display.innerText = value;
+    });
+}
 
 function clampEmotionValue(value) {
     if (!Number.isFinite(value)) return 0;
@@ -587,7 +676,7 @@ function buildVoiceCloneEmotionParams() {
     const params = {};
     const baseState = createDefaultEmotionState();
     Object.keys(baseState).forEach((key) => {
-        params[key] = clampEmotionValue(Number(voiceEmotionState[key] ?? 0));
+        params[key] = clampEmotionValue(Number(emotionParams[key] ?? 0));
     });
     return params;
 }
@@ -609,11 +698,11 @@ function setVoiceCloneStatus(message, type = "") {
 }
 
 function loadEmotionState() {
-    applyEmotionState(createDefaultEmotionState());
+    resetEmotion();
 }
 
 function applyEmotionState(nextState) {
-    voiceEmotionState = { ...createDefaultEmotionState(), ...nextState };
+    emotionParams = { ...createDefaultEmotionState(), ...nextState };
 }
 
 async function parseErrorMessage(res) {
@@ -657,7 +746,7 @@ async function parseErrorPayload(res) {
 
 function buildVoiceEmotionExt() {
     const emotionKeys = ["happy", "angry", "sad", "afraid", "disgusted", "melancholic", "surprised", "calm"];
-    let sourceState = voiceEmotionState;
+    let sourceState = emotionParams;
     if (window.currentTtsExt && typeof window.currentTtsExt === "object") {
         sourceState = window.currentTtsExt;
     }
@@ -924,7 +1013,7 @@ async function sendMessage(){
     const text = input.value.trim();
     if(!text) return;
     if(!ProApiLogic.isValidUserId(currentUserId)){
-        alert("身份失效，请重新登录");
+        showToast("身份失效，请重新登录");
         return;
     }
 
@@ -966,36 +1055,50 @@ async function sendMessage(){
         aiBubble.innerText = "服务暂不可用";
         return;
     }
-    let ttsPrefetchPromise = null;
-    if (voiceOutputEnabled && finalText) {
-        unlockTtsForIOS();
-        resetTtsQueue();
-        ttsRequestToken = ttsToken;
-        ttsPrefetchPromise = requestVoiceCloneTts(finalText, ttsRequestToken);
-    }
-
-    chatHistory.push({ role: "assistant", content: finalText, round_id: currentRound });
     if (voiceOutputEnabled && finalText) {
         try {
             ttsActive = true;
             if (voiceStopBtn) {
                 voiceStopBtn.disabled = false;
             }
-            showToast("语音生成中…");
-            const res = await ttsPrefetchPromise;
+            showToast("语音生成中...");
+            const res = await requestVoiceCloneTts(finalText, ttsRequestToken);
             if (ttsRequestToken !== ttsToken) return;
             const blob = await res.blob();
             if (ttsRequestToken !== ttsToken) return;
             ensureTtsAudio();
             const url = URL.createObjectURL(blob);
             try {
-                if (ttsAudioUrl) URL.revokeObjectURL(ttsAudioUrl);
+                if (ttsAudioUrl) {
+                    URL.revokeObjectURL(ttsAudioUrl);
+                }
                 ttsAudioUrl = url;
                 ttsAudio.src = url;
+                let cleanup = () => {};
+                const playEnded = new Promise((resolve, reject) => {
+                    const onEnd = () => { cleanup(); resolve(); };
+                    const onError = () => { cleanup(); reject(new Error("audio_error")); };
+                    cleanup = () => {
+                        ttsAudio.removeEventListener("ended", onEnd);
+                        ttsAudio.removeEventListener("error", onError);
+                    };
+                    ttsAudio.addEventListener("ended", onEnd);
+                    ttsAudio.addEventListener("error", onError);
+                });
                 const playPromise = ttsAudio.play();
                 if (playPromise && typeof playPromise.then === "function") {
-                    await playPromise;
+                    try {
+                        await playPromise;
+                        hideToast();
+                    } catch (playError) {
+                        cleanup();
+                        hideToast();
+                        throw playError;
+                    }
+                } else {
+                    hideToast();
                 }
+                await playEnded;
             } finally {
                 if (ttsAudioUrl === url) {
                     URL.revokeObjectURL(url);
@@ -1010,18 +1113,23 @@ async function sendMessage(){
                     ttsUnlockHinted = true;
                     showToast("请先点击发送按钮以启用语音播放");
                 }
-            } else if (errorName === "AbortError" || errorName === "TtsNonAudioError") {
+            } else if (errorName === "AbortError") {
+            } else if (errorName === "TtsNonAudioError") {
             } else {
                 showToast(errorMessage);
             }
             console.warn("语音合成失败", err);
         } finally {
+            hideToast();
             if (ttsRequestToken === ttsToken) {
                 ttsActive = false;
-                if (voiceStopBtn) voiceStopBtn.disabled = true;
+                if (voiceStopBtn) {
+                    voiceStopBtn.disabled = true;
+                }
             }
         }
     }
+    chatHistory.push({ role: "assistant", content: finalText, round_id: currentRound });
     loadEmotion(text);
 }
 
@@ -1054,8 +1162,27 @@ drawer.addEventListener("click", (e) => {
     e.stopPropagation();
 });
 if (voiceOutputToggle) {
-    voiceOutputToggle.addEventListener('click', () => {
-        setVoiceOutputEnabled(!voiceOutputEnabled);
+    voiceOutputToggle.addEventListener("click", () => {
+        voiceOutputEnabled = !voiceOutputEnabled;
+        voiceOutputToggle.classList.toggle("on", voiceOutputEnabled);
+    });
+}
+
+document.querySelectorAll('[data-voice-emotion]').forEach((input) => {
+    input.addEventListener('input', (event) => {
+        const target = event.currentTarget;
+        const key = target.dataset.voiceEmotion;
+        const value = clampEmotionValue(Number(target.value));
+        emotionParams[key] = value;
+        target.value = value;
+        const display = document.querySelector(`[data-voice-emotion-value="${key}"]`);
+        if (display) display.innerText = value.toFixed(1).replace(/\.0$/, "");
+    });
+});
+
+if (voiceEmotionReset) {
+    voiceEmotionReset.addEventListener('click', () => {
+        resetEmotion();
     });
 }
 
@@ -1129,6 +1256,7 @@ if (voiceCloneModal) {
 loadProfile();
 loadEmotion();
 initVoiceOutputToggle();
+resetEmotion();
 </script>
 
 </body>
