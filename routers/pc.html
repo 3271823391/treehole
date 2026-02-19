@@ -310,11 +310,101 @@ textarea:focus{
     transform:translateX(20px);
 }
 
-.voice-emotion-card {
-    background:#f8faff;
-    border:1px solid #e3ecff;
+.modal-card {
+    background:#ffffff;
+    border-radius:20px;
+    padding:28px;
+    box-shadow:0 25px 60px rgba(0,0,0,0.12);
+    animation:fadeInScale .2s ease;
+}
+
+@keyframes fadeInScale {
+    from{
+        opacity:0;
+        transform:scale(.96);
+    }
+    to{
+        opacity:1;
+        transform:scale(1);
+    }
+}
+
+#voice-clone-modal .modal-title{
+    font-size:20px;
+    font-weight:600;
+    color:#2c2c2c;
+    margin-bottom:20px;
+}
+
+#voice-clone-modal .modal-divider{
+    height:1px;
+    background:#f1f3f5;
+    margin:16px 0;
+}
+
+#voice-clone-modal .modal-form{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+#voice-clone-modal .modal-label{
+    font-size:13px;
+    font-weight:500;
+    color:#8c8c8c;
+}
+
+#voice-clone-modal .input-soft,
+#voice-clone-modal textarea.input-soft,
+#voice-clone-modal input[type="text"].input-soft,
+#voice-clone-modal input[type="file"].input-soft {
+    width:100%;
+    border:none;
+    background:#f7f8fa;
+    padding:14px 16px;
+    border-radius:14px;
+    font-size:14px;
+    color:#2c2c2c;
+    box-sizing:border-box;
+    transition:.2s;
+}
+
+#voice-clone-modal .input-soft::placeholder{
+    color:#a0a0a0;
+}
+
+#voice-clone-modal .input-soft:focus{
+    outline:none;
+    background:#ffffff;
+    box-shadow:0 0 0 3px rgba(124,131,253,.15);
+}
+
+#voice-clone-modal input[type="file"].input-soft{
+    border:none;
+    background:#f1f3f5;
     border-radius:12px;
-    padding:12px;
+    padding:10px 14px;
+    cursor:pointer;
+}
+
+#voice-clone-modal input[type="file"].input-soft:hover{
+    background:#e9ecef;
+}
+
+#voice-clone-modal input[type="file"].input-soft::file-selector-button{
+    border:none;
+    background:#ffffff;
+    color:#555;
+    border-radius:10px;
+    padding:8px 12px;
+    margin-right:10px;
+    cursor:pointer;
+}
+
+.voice-emotion-card {
+    background:#fafafa;
+    border-radius:18px;
+    padding:18px;
     margin:8px 0;
 }
 
@@ -322,16 +412,138 @@ textarea:focus{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    margin-bottom:8px;
+    margin-bottom:12px;
+}
+
+.voice-emotion-title{
+    font-size:15px;
+    color:#2c2c2c;
+    font-weight:600;
+}
+
+.voice-emotion-reset{
+    border:none;
+    background:#f1f3f5;
+    color:#666;
+    border-radius:12px;
+    padding:8px 12px;
+    cursor:pointer;
 }
 
 .voice-emotion-sliders {
     display:flex;
     flex-direction:column;
-    gap:8px;
 }
 
-.voice-emotion-item { display:grid; grid-template-columns:70px 1fr 24px; gap:8px; align-items:center; }
+.voice-emotion-item{
+    display:flex;
+    align-items:center;
+    margin-bottom:14px;
+    gap:10px;
+}
+
+.voice-emotion-item:last-child{
+    margin-bottom:0;
+}
+
+.voice-emotion-item > span:first-child{
+    width:60px;
+    font-size:14px;
+    color:#555;
+}
+
+.voice-emotion-value{
+    width:24px;
+    text-align:right;
+    color:#7c83fd;
+    font-weight:500;
+}
+
+#voice-clone-modal input[type="range"]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:6px;
+    border-radius:6px;
+    background:#e9ecef;
+    outline:none;
+    transition:.2s;
+    margin:0;
+}
+
+#voice-clone-modal input[type="range"]:hover{
+    background:#dee2e6;
+}
+
+#voice-clone-modal input[type="range"]::-webkit-slider-runnable-track{
+    height:6px;
+    border-radius:6px;
+    background:transparent;
+}
+
+#voice-clone-modal input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    height:18px;
+    width:18px;
+    border-radius:50%;
+    background:#7c83fd;
+    box-shadow:0 4px 10px rgba(124,131,253,.4);
+    cursor:pointer;
+    margin-top:-6px;
+}
+
+#voice-clone-modal input[type="range"]::-moz-range-track{
+    height:6px;
+    border-radius:6px;
+    background:#e9ecef;
+}
+
+#voice-clone-modal input[type="range"]::-moz-range-thumb{
+    height:18px;
+    width:18px;
+    border:none;
+    border-radius:50%;
+    background:#7c83fd;
+    box-shadow:0 4px 10px rgba(124,131,253,.4);
+    cursor:pointer;
+}
+
+#voice-clone-modal .primary-btn,
+#voice-clone-modal .secondary-btn{
+    width:100%;
+    border:none;
+    margin-top:14px;
+    cursor:pointer;
+}
+
+#voice-clone-modal .primary-btn{
+    height:50px;
+    border-radius:16px;
+    font-size:15px;
+    font-weight:600;
+    color:#fff;
+    background:linear-gradient(135deg,#7c83fd,#6366f1);
+    transition:.2s;
+}
+
+#voice-clone-modal .primary-btn:hover{
+    transform:translateY(-1px);
+    box-shadow:0 10px 20px rgba(124,131,253,.3);
+}
+
+#voice-clone-modal .secondary-btn{
+    height:46px;
+    border-radius:14px;
+    font-size:14px;
+    background:#f1f3f5;
+    color:#444;
+}
+
+#voice-clone-modal #voice-clone-status{
+    color:#8c8c8c;
+    font-size:13px;
+    min-height:18px;
+}
 
 .toast {
     position: fixed;
@@ -519,34 +731,35 @@ textarea:focus{
 
 
 <div id="voice-clone-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000;">
-    <div class="card" style="width:min(520px,90vw); margin:40px auto; max-height: calc(100vh - 80px); overflow:auto;">
-        <div class="section-title">语音克隆</div>
-        <div style="display:flex; flex-direction:column; gap:10px;">
-            <label for="voice-clone-file">参考音频</label>
-            <input type="file" id="voice-clone-file" accept="audio/*">
-            <label for="voice-clone-name">名称</label>
-            <input type="text" id="voice-clone-name" value="我的声音" maxlength="32">
-            <label for="voice-clone-desc">描述（可选）</label>
-            <textarea id="voice-clone-desc" rows="2" placeholder="如：情绪平稳、无背景音"></textarea>
-            <div class="voice-emotion-card">
+    <div class="modal-card" style="width:min(520px,90vw); margin:40px auto; max-height: calc(100vh - 80px); overflow:auto;">
+        <div class="modal-title">语音克隆</div>
+        <div class="modal-divider"></div>
+        <div class="modal-form">
+            <label class="modal-label" for="voice-clone-file">参考音频</label>
+            <input class="input-soft" type="file" id="voice-clone-file" accept="audio/*">
+            <label class="modal-label" for="voice-clone-name">名称</label>
+            <input class="input-soft" type="text" id="voice-clone-name" value="我的声音" maxlength="32">
+            <label class="modal-label" for="voice-clone-desc">描述（可选）</label>
+            <textarea class="input-soft" id="voice-clone-desc" rows="2" placeholder="如：情绪平稳、无背景音"></textarea>
+            <div class="voice-emotion-card emotion-panel">
                 <div class="voice-emotion-header">
                     <div class="voice-emotion-title">设定情感参数</div>
-                    <button class="voice-emotion-reset" id="voice-emotion-reset" type="button">重置</button>
+                    <button class="voice-emotion-reset secondary-btn" id="voice-emotion-reset" type="button">重置</button>
                 </div>
                 <div class="voice-emotion-sliders">
-                    <div class="voice-emotion-item"><span>开心</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="happy"><span class="voice-emotion-value" data-voice-emotion-value="happy">0</span></div>
-                    <div class="voice-emotion-item"><span>愤怒</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="angry"><span class="voice-emotion-value" data-voice-emotion-value="angry">0</span></div>
-                    <div class="voice-emotion-item"><span>悲伤</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="sad"><span class="voice-emotion-value" data-voice-emotion-value="sad">0</span></div>
-                    <div class="voice-emotion-item"><span>害怕</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="afraid"><span class="voice-emotion-value" data-voice-emotion-value="afraid">0</span></div>
-                    <div class="voice-emotion-item"><span>厌恶</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="disgusted"><span class="voice-emotion-value" data-voice-emotion-value="disgusted">0</span></div>
-                    <div class="voice-emotion-item"><span>忧郁</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="melancholic"><span class="voice-emotion-value" data-voice-emotion-value="melancholic">0</span></div>
-                    <div class="voice-emotion-item"><span>惊讶</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="surprised"><span class="voice-emotion-value" data-voice-emotion-value="surprised">0</span></div>
-                    <div class="voice-emotion-item"><span>平静</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="calm"><span class="voice-emotion-value" data-voice-emotion-value="calm">0</span></div>
+                    <div class="voice-emotion-item emotion-row"><span class="emotion-label">开心</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="happy"><span class="voice-emotion-value emotion-value" data-voice-emotion-value="happy">0</span></div>
+                    <div class="voice-emotion-item emotion-row"><span class="emotion-label">愤怒</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="angry"><span class="voice-emotion-value emotion-value" data-voice-emotion-value="angry">0</span></div>
+                    <div class="voice-emotion-item emotion-row"><span class="emotion-label">悲伤</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="sad"><span class="voice-emotion-value emotion-value" data-voice-emotion-value="sad">0</span></div>
+                    <div class="voice-emotion-item emotion-row"><span class="emotion-label">害怕</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="afraid"><span class="voice-emotion-value emotion-value" data-voice-emotion-value="afraid">0</span></div>
+                    <div class="voice-emotion-item emotion-row"><span class="emotion-label">厌恶</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="disgusted"><span class="voice-emotion-value emotion-value" data-voice-emotion-value="disgusted">0</span></div>
+                    <div class="voice-emotion-item emotion-row"><span class="emotion-label">忧郁</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="melancholic"><span class="voice-emotion-value emotion-value" data-voice-emotion-value="melancholic">0</span></div>
+                    <div class="voice-emotion-item emotion-row"><span class="emotion-label">惊讶</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="surprised"><span class="voice-emotion-value emotion-value" data-voice-emotion-value="surprised">0</span></div>
+                    <div class="voice-emotion-item emotion-row"><span class="emotion-label">平静</span><input type="range" min="0" max="1" step="0.1" value="0" data-voice-emotion="calm"><span class="voice-emotion-value emotion-value" data-voice-emotion-value="calm">0</span></div>
                 </div>
             </div>
             <div id="voice-clone-status"></div>
-            <button class="voice-btn" id="voice-clone-action" type="button">上传/创建</button>
-            <button class="voice-btn" data-modal-close type="button">关闭</button>
+            <button class="primary-btn" id="voice-clone-action" type="button">上传/创建</button>
+            <button class="secondary-btn" data-modal-close type="button">关闭</button>
         </div>
     </div>
 </div>
