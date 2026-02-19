@@ -1291,6 +1291,7 @@ async function sendMessage(){
     chatHistory.push({ role: "user", content: text, round_id: currentRound });
 
     input.value = "";
+    input.dispatchEvent(new Event("input"));
     sendBtn.disabled = true;
     sendBtn.classList.remove("active");
 
