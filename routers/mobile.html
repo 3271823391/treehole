@@ -273,13 +273,22 @@ html, body{
     border-top:1px solid #ddd;
     gap:6px;
 }
-input{
+
+.input-bar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+#input{
     flex:1;
     height:36px;
     border-radius:4px;
     border:1px solid #e0e0e0;
-    padding:0 14px;
+    padding:8px 14px;
     font-size:15px;
+    resize:none;
+    transition:all .2s ease;
 }
 
 input[type=range]{
@@ -334,6 +343,16 @@ button.send{
     border-radius:18px;
     padding:0 16px;
     cursor:pointer;
+    transition:opacity .15s ease, transform .15s ease;
+}
+
+.send.hidden{
+    opacity:0;
+    transform:scale(.9);
+    pointer-events:none;
+    width:0;
+    padding:0;
+    margin:0;
 }
 
 .drawer{
@@ -712,10 +731,10 @@ button.send{
         </div>
     </div>
 
-    <div class="input-area">
-        <input id="input" placeholder="输入消息...">
-        <button class="send" onclick="sendMessage()">发送</button>
-        <button class="more-btn" onclick="toggleBottomPanel()">＋</button>
+    <div class="input-area input-bar">
+        <textarea id="input" placeholder="输入消息..."></textarea>
+        <button id="sendBtn" class="send" onclick="sendMessage()">发送</button>
+        <button class="plus-btn more-btn" onclick="toggleBottomPanel()">＋</button>
     </div>
 </div>
 
@@ -1480,6 +1499,25 @@ document.getElementById("input").addEventListener("keydown", function(e){
         sendMessage();
     }
 });
+
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+
+input.addEventListener("input", () => {
+    const hasText = input.value.trim().length > 0;
+
+    if(hasText){
+        sendBtn.classList.remove("hidden");
+        sendBtn.disabled = false;
+    }else{
+        sendBtn.classList.add("hidden");
+        sendBtn.disabled = true;
+    }
+});
+
+if(input.value.trim().length === 0){
+    sendBtn.classList.add("hidden");
+}
 
 async function loadProfile(){
     const ctx = await ProApiLogic.getUserContext();
