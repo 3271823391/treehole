@@ -280,32 +280,34 @@ textarea:focus{
 }
 
 .switch{
-    width:50px;
+    width:46px;
     height:26px;
-    background:#ccc;
-    border-radius:20px;
+    background:#e5e5e5;
+    border-radius:26px;
     position:relative;
     cursor:pointer;
+    transition:background 0.25s ease;
 }
 
 .switch::after{
     content:"";
+    position:absolute;
     width:22px;
     height:22px;
+    left:2px;
+    top:2px;
     background:#fff;
     border-radius:50%;
-    position:absolute;
-    top:2px;
-    left:2px;
-    transition:0.3s;
+    transition:transform 0.25s ease;
+    box-shadow:0 1px 3px rgba(0,0,0,0.15);
 }
 
 .switch.on{
-    background:#4b7bd6;
+    background:#6b8cff;
 }
 
 .switch.on::after{
-    left:26px;
+    transform:translateX(20px);
 }
 
 .voice-emotion-card {
