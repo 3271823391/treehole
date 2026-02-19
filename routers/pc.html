@@ -313,9 +313,12 @@ textarea:focus{
 .modal-card {
     background:#ffffff;
     border-radius:20px;
-    padding:28px;
+    padding:24px 28px 20px 28px;
     box-shadow:0 25px 60px rgba(0,0,0,0.12);
     animation:fadeInScale .2s ease;
+    display:flex;
+    flex-direction:column;
+    max-height:85vh;
 }
 
 @keyframes fadeInScale {
@@ -333,19 +336,23 @@ textarea:focus{
     font-size:20px;
     font-weight:600;
     color:#2c2c2c;
-    margin-bottom:20px;
+    margin-bottom:12px;
 }
 
 #voice-clone-modal .modal-divider{
     height:1px;
     background:#f1f3f5;
-    margin:16px 0;
+    margin:12px 0;
 }
 
 #voice-clone-modal .modal-form{
     display:flex;
     flex-direction:column;
     gap:12px;
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    padding-right:4px;
 }
 
 #voice-clone-modal .modal-label{
@@ -404,8 +411,8 @@ textarea:focus{
 .voice-emotion-card {
     background:#fafafa;
     border-radius:18px;
-    padding:18px;
-    margin:8px 0;
+    padding:14px;
+    margin:6px 0;
 }
 
 .voice-emotion-header {
@@ -438,8 +445,16 @@ textarea:focus{
 .voice-emotion-item{
     display:flex;
     align-items:center;
-    margin-bottom:14px;
+    margin-bottom:10px;
     gap:10px;
+}
+
+.modal-footer{
+    position:sticky;
+    bottom:0;
+    background:#ffffff;
+    padding-top:10px;
+    margin-top:10px;
 }
 
 .voice-emotion-item:last-child{
@@ -731,7 +746,7 @@ textarea:focus{
 
 
 <div id="voice-clone-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000; align-items:center; justify-content:center;">
-    <div class="modal-card" style="width:min(520px,90vw); margin:40px auto; max-height: calc(100vh - 80px); overflow:hidden; border-radius:20px;">
+    <div class="modal-card" style="width:min(520px,90vw); margin:40px auto;">
         <div class="modal-title">语音克隆</div>
         <div class="modal-divider"></div>
         <div class="modal-form">
@@ -758,8 +773,10 @@ textarea:focus{
                 </div>
             </div>
             <div id="voice-clone-status"></div>
-            <button class="primary-btn" id="voice-clone-action" type="button">上传/创建</button>
-            <button class="secondary-btn" data-modal-close type="button">关闭</button>
+            <div class="modal-footer">
+                <button class="primary-btn" id="voice-clone-action" type="button">上传/创建</button>
+                <button class="secondary-btn" data-modal-close type="button">关闭</button>
+            </div>
         </div>
     </div>
 </div>
