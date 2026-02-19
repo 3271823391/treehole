@@ -265,7 +265,7 @@ html, body{
 }
 
 .input-area{
-    height:48px;
+    height:40px;
     background:#ffffff;
     display:flex;
     align-items:center;
@@ -275,29 +275,21 @@ html, body{
 }
 
 .input-bar{
-    position:relative;
     flex:1;
     display:flex;
     align-items:center;
+    gap:6px;
 }
-
 #input{
     flex:1;
-    height:36px;
+    height:17px;
     border-radius:4px;
     border:1px solid #e0e0e0;
     padding:8px 14px;
-    padding-right:60px;
     font-size:15px;
     resize:none;
-    transition:padding-right .25s ease;
 }
-
-#input.expand{
-    padding-right:0;
-}
-
-input[type=range]{
+put[type=range]{
     -webkit-appearance:none;
     appearance:none;
     width:100%;
@@ -341,25 +333,25 @@ input[type=range]::-moz-range-thumb{
 }
 
 button.send{
-    position:absolute;
-    right:0;
-    height:36px;
+    height:34px;
     border:none;
     background:#4caf50;
     color:white;
-    border-radius:18px;
-    padding:0 16px;
+    border-radius:4px;
+    padding:0 1px;
     cursor:pointer;
-    transform:translateX(100%);
+
+    width:0;
     opacity:0;
-    transition:transform .25s ease, opacity .2s ease;
+    overflow:hidden;
+
+    transition:width .25s ease, opacity .2s ease;
 }
 
 .send.show{
-    transform:translateX(0);
+    width:68px;   /* 你按钮实际宽度 */
     opacity:1;
 }
-
 .drawer{
     position:fixed;
     top:0;
@@ -396,8 +388,8 @@ button.send{
     cursor:pointer;
 }
 .more-btn{
-    height:32px;
-    width:32px;
+    height:34px;
+    width:34px;
     border:none;
     background:#eee;
     border-radius:6px;
@@ -1515,11 +1507,10 @@ input.addEventListener("input", () => {
 
     if(hasText){
         sendBtn.classList.add("show");
-        input.classList.remove("expand");
         sendBtn.disabled = false;
-    }else{
+    }
+    else{
         sendBtn.classList.remove("show");
-        input.classList.add("expand");
         sendBtn.disabled = true;
     }
 });
