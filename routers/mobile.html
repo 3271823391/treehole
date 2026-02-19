@@ -844,6 +844,7 @@ let bottomOpen = false;
 let currentUserId = "";
 let currentRound = 0;
 const chatHistory = [];
+const STORAGE_CHAT_HISTORY = "chat_history_" + currentUserId;
 const STORAGE_VOICE_AUDIO_ID = "voice_audio_id";
 const STORAGE_VOICE_OUTPUT = "voice_output_enabled";
 
@@ -893,6 +894,35 @@ function safeLocalStorageGet(key) {
         return localStorage.getItem(key);
     } catch (e) {
         return "";
+    }
+}
+
+function getChatHistoryStorageKey() {
+    return STORAGE_CHAT_HISTORY + currentUserId;
+}
+
+function restoreChatHistory(){
+    if(!currentUserId) return;
+    const stored = safeLocalStorageGet(getChatHistoryStorageKey());
+    if(!stored) return;
+
+    try{
+        const list = JSON.parse(stored);
+        if(!Array.isArray(list)) return;
+
+        chatHistory.length = 0;
+
+        list.forEach(item=>{
+            if(!item?.content) return;
+
+            const side = item.role === "user" ? "right" : "left";
+            appendMessage(item.content, side);
+            chatHistory.push(item);
+        });
+
+        scrollToBottom();
+    }catch(e){
+        console.warn("聊天记录恢复失败", e);
     }
 }
 
@@ -1476,6 +1506,7 @@ async function sendMessage(){
         }
     }
     chatHistory.push({ role: "assistant", content: finalText, round_id: currentRound });
+    safeLocalStorageSet(getChatHistoryStorageKey(), JSON.stringify(chatHistory));
     loadEmotion(text);
 }
 
@@ -1527,6 +1558,7 @@ async function loadProfile(){
     if(ctx.isValidUserId){
         currentUserId = ctx.user_id;
         document.getElementById("nickname").textContent = (ctx.profile?.display_name || "").trim() || currentUserId.slice(-6);
+        restoreChatHistory();
     }
 }
 
@@ -1612,6 +1644,7 @@ if (voiceCloneModal) {
 
 loadProfile();
 loadEmotion();
+restoreChatHistory();
 initVoiceOutputToggle();
 resetEmotion();
 </script>
