@@ -412,7 +412,7 @@ textarea:focus{
 
             <div class="toggle-row">
                 <span>语音输出</span>
-                <div class="switch active"></div>
+                <button class="switch" id="voice-output-toggle" type="button" role="switch" aria-checked="false"></button>
             </div>
         </div>
 
@@ -500,6 +500,7 @@ let currentRound = 0;
 const chatHistory = [];
 
 const STORAGE_VOICE_AUDIO_ID = "voice_audio_id";
+const STORAGE_VOICE_OUTPUT = "voice_output_enabled";
 const voiceCloneTriggers = document.querySelectorAll('[data-voice-clone-trigger]');
 const voiceCloneModal = document.getElementById('voice-clone-modal');
 const voiceCloneAction = document.getElementById('voice-clone-action');
@@ -507,7 +508,19 @@ const voiceCloneFile = document.getElementById('voice-clone-file');
 const voiceCloneName = document.getElementById('voice-clone-name');
 const voiceCloneDesc = document.getElementById('voice-clone-desc');
 const voiceCloneStatus = document.getElementById('voice-clone-status');
+const voiceOutputToggle = document.getElementById('voice-output-toggle');
+const voiceStopBtn = document.getElementById('voice-stop-btn');
 const isProPlan = true;
+let voiceOutputEnabled = false;
+let ttsActive = false;
+let ttsAudio = null;
+let ttsAudioUrl = null;
+let ttsAbortControllers = new Set();
+let ttsToken = 0;
+let ttsUnlocked = false;
+let ttsUnlockHinted = false;
+const isiOS = /iP(ad|hone|od)/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 function safeLocalStorageSet(key, value) {
     try {
@@ -516,9 +529,19 @@ function safeLocalStorageSet(key, value) {
     }
 }
 
+function safeLocalStorageGet(key) {
+    try {
+        return localStorage.getItem(key);
+    } catch (e) {
+        return "";
+    }
+}
+
 function showToast(message = "系统错误") {
     alert(message);
 }
+
+function hideToast() {}
 
 function showErrorModal(message) {
     showToast(message || "服务暂不可用");
@@ -591,6 +614,225 @@ function loadEmotionState() {
 
 function applyEmotionState(nextState) {
     voiceEmotionState = { ...createDefaultEmotionState(), ...nextState };
+}
+
+async function parseErrorMessage(res) {
+    const fallback = "服务暂不可用";
+    if (!res) return fallback;
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+        try {
+            const data = await res.json();
+            return data?.msg || fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }
+    try {
+        const text = await res.text();
+        if (text) return text.length > 160 ? `${text.slice(0, 160)}...` : text;
+    } catch (e) {
+    }
+    return fallback;
+}
+
+async function parseErrorPayload(res) {
+    if (!res) return { msg: "服务暂不可用", detail: null };
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+        try {
+            const data = await res.json();
+            return { msg: data?.msg || "服务暂不可用", detail: data?.detail };
+        } catch (e) {
+            return { msg: "服务暂不可用", detail: null };
+        }
+    }
+    try {
+        const text = await res.text();
+        if (text) return { msg: text.length > 160 ? `${text.slice(0, 160)}...` : text, detail: null };
+    } catch (e) {
+    }
+    return { msg: "服务暂不可用", detail: null };
+}
+
+function buildVoiceEmotionExt() {
+    const emotionKeys = ["happy", "angry", "sad", "afraid", "disgusted", "melancholic", "surprised", "calm"];
+    let sourceState = voiceEmotionState;
+    if (window.currentTtsExt && typeof window.currentTtsExt === "object") {
+        sourceState = window.currentTtsExt;
+    }
+    if (sourceState?.surprise !== undefined && sourceState?.surprised === undefined) {
+        sourceState = { ...sourceState, surprised: sourceState.surprise };
+        delete sourceState.surprise;
+    }
+    const ext = {};
+    const base = sourceState || {};
+    const speedValue = Number(base.speed);
+    const pitchValue = Number(base.pitch);
+    const volumeValue = Number(base.volume);
+    if (Number.isFinite(speedValue) && Math.abs(speedValue - 1) > 0.001) ext.speed = speedValue;
+    if (Number.isFinite(pitchValue) && Math.abs(pitchValue - 1) > 0.001) ext.pitch = pitchValue;
+    if (Number.isFinite(volumeValue) && Math.abs(volumeValue - 1) > 0.001) ext.volume = volumeValue;
+    emotionKeys.forEach((key) => {
+        const numericValue = Number(base[key]);
+        if (!Number.isFinite(numericValue)) return;
+        const clamped = Math.min(1, Math.max(0, numericValue));
+        if (clamped > 0) ext[key] = clamped;
+    });
+    return ext;
+}
+
+function initVoiceOutputToggle() {
+    if (!voiceOutputToggle) return;
+    const stored = safeLocalStorageGet(STORAGE_VOICE_OUTPUT);
+    voiceOutputEnabled = stored === "1";
+    voiceOutputToggle.classList.toggle('on', voiceOutputEnabled);
+    voiceOutputToggle.classList.toggle('off', !voiceOutputEnabled);
+    voiceOutputToggle.setAttribute('aria-checked', voiceOutputEnabled ? 'true' : 'false');
+}
+
+function setVoiceOutputEnabled(nextValue) {
+    voiceOutputEnabled = Boolean(nextValue);
+    safeLocalStorageSet(STORAGE_VOICE_OUTPUT, voiceOutputEnabled ? "1" : "0");
+    if (voiceOutputToggle) {
+        voiceOutputToggle.classList.toggle('on', voiceOutputEnabled);
+        voiceOutputToggle.classList.toggle('off', !voiceOutputEnabled);
+        voiceOutputToggle.setAttribute('aria-checked', voiceOutputEnabled ? 'true' : 'false');
+    }
+    if (!voiceOutputEnabled) {
+        resetTtsQueue();
+    }
+    showToast(voiceOutputEnabled ? "语音输出已开启" : "语音输出已关闭");
+}
+
+function resetTtsQueue() {
+    ttsToken += 1;
+    ttsActive = false;
+    if (ttsAbortControllers.size) {
+        ttsAbortControllers.forEach((controller) => controller.abort());
+        ttsAbortControllers.clear();
+    }
+    if (ttsAudio) {
+        ttsAudio.pause();
+        ttsAudio.removeAttribute('src');
+        ttsAudio.load();
+    }
+    if (ttsAudioUrl) {
+        URL.revokeObjectURL(ttsAudioUrl);
+        ttsAudioUrl = null;
+    }
+    hideToast();
+    if (voiceStopBtn) {
+        voiceStopBtn.disabled = true;
+    }
+}
+
+function ensureTtsAudio() {
+    if (ttsAudio) return;
+    ttsAudio = new Audio();
+    ttsAudio.preload = "auto";
+    ttsAudio.setAttribute("playsinline", "");
+    ttsAudio.setAttribute("webkit-playsinline", "");
+}
+
+function unlockTtsForIOS() {
+    if (!voiceOutputEnabled || ttsUnlocked) return;
+    ensureTtsAudio();
+    if (!ttsAudio) return;
+    const silentWav = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
+    ttsAudio.muted = true;
+    ttsAudio.src = silentWav;
+    const playPromise = ttsAudio.play();
+    if (playPromise && typeof playPromise.then === "function") {
+        playPromise.then(() => {
+            ttsAudio.pause();
+            ttsAudio.currentTime = 0;
+            ttsAudio.muted = false;
+            ttsUnlocked = true;
+        }).catch(() => {
+            ttsAudio.muted = false;
+        });
+    } else {
+        ttsAudio.muted = false;
+        ttsUnlocked = true;
+    }
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function requestVoiceCloneTts(text, token) {
+    if (!ProApiLogic.isValidUserId(currentUserId)) throw new Error("user_id_invalid");
+    const ext = buildVoiceEmotionExt();
+    const extPayload = Object.keys(ext).length ? ext : {};
+    console.log("[TTS] extPayload =", extPayload);
+    const { speed: extSpeed, ...extWithoutSpeed } = extPayload;
+    const requestPayload = { user_id: currentUserId, text: text, ext: extWithoutSpeed };
+    if (Number.isFinite(extSpeed)) requestPayload.speed = extSpeed;
+    const controller = new AbortController();
+    ttsAbortControllers.add(controller);
+    try {
+        const createRes = await fetch("/api/voice_clone/tts/create", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...requestPayload }), signal: controller.signal
+        });
+        if (token !== ttsToken) {
+            const cancelError = new Error("tts_cancelled");
+            cancelError.name = "AbortError";
+            throw cancelError;
+        }
+        if (!createRes.ok) throw new Error((await parseErrorMessage(createRes)) || "语音合成失败");
+        const createPayload = await createRes.json();
+        if (!createPayload.ok || !createPayload.taskId) throw new Error(createPayload.msg || "语音合成失败");
+        const taskId = createPayload.taskId;
+        const timeoutMs = 60000;
+        const start = Date.now();
+        let voiceUrl = "";
+        let waitMs = 400;
+        while (Date.now() - start < timeoutMs) {
+            if (token !== ttsToken) {
+                const cancelError = new Error("tts_cancelled");
+                cancelError.name = "AbortError";
+                throw cancelError;
+            }
+            const resultRes = await fetch(`/api/voice_clone/tts/result?user_id=${encodeURIComponent(currentUserId)}&taskId=${encodeURIComponent(taskId)}`, {
+                method: "GET", signal: controller.signal
+            });
+            if (!resultRes.ok) throw new Error((await parseErrorMessage(resultRes)) || "语音合成失败");
+            const resultPayload = await resultRes.json();
+            if (!resultPayload.ok) throw new Error(resultPayload.msg || "语音合成失败");
+            const status = resultPayload.status;
+            if (status === 1) {
+                await sleep(waitMs);
+                waitMs = Math.min(waitMs + 200, 1000);
+                continue;
+            }
+            if (status === 2 && resultPayload.voiceUrl) {
+                voiceUrl = resultPayload.voiceUrl;
+                break;
+            }
+            if (status === 3) throw new Error("语音合成失败");
+        }
+        if (!voiceUrl) throw new Error("生成较慢，可稍后重试");
+        const audioRes = await fetch(`/api/voice_clone/tts/audio?voiceUrl=${encodeURIComponent(voiceUrl)}`, {
+            method: "GET", signal: controller.signal
+        });
+        if (!audioRes.ok) throw new Error((await parseErrorMessage(audioRes)) || "语音合成失败");
+        const contentType = audioRes.headers.get("content-type") || "";
+        if (!contentType.startsWith("audio/") && contentType !== "application/octet-stream") {
+            const { msg, detail } = await parseErrorPayload(audioRes);
+            showToast(msg || "语音合成失败");
+            if (detail) console.warn("语音合成返回非音频", detail);
+            else console.warn("语音合成返回非音频");
+            const err = new Error(msg || "语音合成失败");
+            err.name = "TtsNonAudioError";
+            throw err;
+        }
+        return audioRes;
+    } finally {
+        ttsAbortControllers.delete(controller);
+    }
 }
 
 async function handleVoiceCloneUpload() {
@@ -686,6 +928,13 @@ async function sendMessage(){
         return;
     }
 
+    let ttsRequestToken = null;
+    if (voiceOutputEnabled) {
+        unlockTtsForIOS();
+        resetTtsQueue();
+        ttsRequestToken = ttsToken;
+    }
+
     appendMessage(text, "right");
     currentRound += 1;
     chatHistory.push({ role: "user", content: text, round_id: currentRound });
@@ -717,7 +966,62 @@ async function sendMessage(){
         aiBubble.innerText = "服务暂不可用";
         return;
     }
+    let ttsPrefetchPromise = null;
+    if (voiceOutputEnabled && finalText) {
+        unlockTtsForIOS();
+        resetTtsQueue();
+        ttsRequestToken = ttsToken;
+        ttsPrefetchPromise = requestVoiceCloneTts(finalText, ttsRequestToken);
+    }
+
     chatHistory.push({ role: "assistant", content: finalText, round_id: currentRound });
+    if (voiceOutputEnabled && finalText) {
+        try {
+            ttsActive = true;
+            if (voiceStopBtn) {
+                voiceStopBtn.disabled = false;
+            }
+            showToast("语音生成中…");
+            const res = await ttsPrefetchPromise;
+            if (ttsRequestToken !== ttsToken) return;
+            const blob = await res.blob();
+            if (ttsRequestToken !== ttsToken) return;
+            ensureTtsAudio();
+            const url = URL.createObjectURL(blob);
+            try {
+                if (ttsAudioUrl) URL.revokeObjectURL(ttsAudioUrl);
+                ttsAudioUrl = url;
+                ttsAudio.src = url;
+                const playPromise = ttsAudio.play();
+                if (playPromise && typeof playPromise.then === "function") {
+                    await playPromise;
+                }
+            } finally {
+                if (ttsAudioUrl === url) {
+                    URL.revokeObjectURL(url);
+                    ttsAudioUrl = null;
+                }
+            }
+        } catch (err) {
+            const errorName = err?.name || "";
+            const errorMessage = err?.message || "语音合成失败";
+            if (errorName === "NotAllowedError") {
+                if (!ttsUnlockHinted) {
+                    ttsUnlockHinted = true;
+                    showToast("请先点击发送按钮以启用语音播放");
+                }
+            } else if (errorName === "AbortError" || errorName === "TtsNonAudioError") {
+            } else {
+                showToast(errorMessage);
+            }
+            console.warn("语音合成失败", err);
+        } finally {
+            if (ttsRequestToken === ttsToken) {
+                ttsActive = false;
+                if (voiceStopBtn) voiceStopBtn.disabled = true;
+            }
+        }
+    }
     loadEmotion(text);
 }
 
@@ -749,10 +1053,18 @@ overlay.addEventListener("click", () => {
 drawer.addEventListener("click", (e) => {
     e.stopPropagation();
 });
-const voiceSwitch = document.querySelector(".switch");
-voiceSwitch.addEventListener("click", () => {
-    voiceSwitch.classList.toggle("active");
-});
+if (voiceOutputToggle) {
+    voiceOutputToggle.addEventListener('click', () => {
+        setVoiceOutputEnabled(!voiceOutputEnabled);
+    });
+}
+
+if (voiceStopBtn) {
+    voiceStopBtn.addEventListener('click', () => {
+        resetTtsQueue();
+        showToast("已停止播报");
+    });
+}
 
 async function loadProfile(){
     const ctx = await ProApiLogic.getUserContext();
@@ -816,6 +1128,7 @@ if (voiceCloneModal) {
 
 loadProfile();
 loadEmotion();
+initVoiceOutputToggle();
 </script>
 
 </body>
