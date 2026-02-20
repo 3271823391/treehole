@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-python-multipart
-Pillow
-python-dotenv
-requests
-httpx
