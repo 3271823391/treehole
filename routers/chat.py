@@ -15,8 +15,11 @@ from core.guards import enforce_reply
 from core.llm_client import llm_stream
 from core.lock_manager import get_lock
 from core.prompt_builder import build_messages as build_pipeline_messages, render_history_text
+from core.pro_state_parser import apply_treehole_state, split_reply_and_state
 from core.response_planner import compute_plan
 from core.schemas import EmotionAnalysis, TurnRecord
+from core.treehole_policy import build_treehole_messages
+from core.treehole_quick_emotion import quick_analyze
 from data_store import load_user_data, save_user_data
 
 router = APIRouter()
@@ -49,6 +52,7 @@ class ChatStreamRequest(BaseModel):
     user_input: str
     character_id: str | None = None
     device_id: str | None = None
+    tier: str | None = None
 
 
 @router.post("/chat_stream")
@@ -61,6 +65,8 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
 
     user_input = req.user_input.strip()
     character_id = (req.character_id or "").strip() or None
+    is_ip = character_id is not None
+    tier = (req.tier or "plus").lower()
     if character_id and character_id not in IP_PROMPT_MAP:
         return JSONResponse(status_code=400, content={"ok": False, "msg": "invalid_character_id"})
 
@@ -94,23 +100,32 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
     async with lock:
         state = ensure_state(user_id, conv_key)
         history_map = user_info.get("character_histories", {})
-        if character_id:
+        if is_ip:
             history_key = build_character_history_key(user_id, character_id)
             history = history_map.get(history_key, history_map.get(character_id, []))
         else:
             history = user_info.get("history", [])
 
-        history_text = render_history_text(state.summary, history, limit_rounds=12)
+        history_text = render_history_text(state.summary, history, limit_rounds=12 if is_ip else (10 if tier == "pro" else 8))
 
-        analysis_error = None
-        try:
-            analysis = analyze_emotion(history_text, user_input)
-        except EmotionAnalyzerError as exc:
-            analysis_error = str(exc)
-            analysis = EmotionAnalysis(intent="venting", summary="fallback-neutral", error=analysis_error)
+        if is_ip:
+            analysis_error = None
+            try:
+                analysis = analyze_emotion(history_text, user_input)
+            except EmotionAnalyzerError as exc:
+                analysis_error = str(exc)
+                analysis = EmotionAnalysis(intent="venting", summary="fallback-neutral", error=analysis_error)
+        else:
+            analysis_error = None
+            analysis = quick_analyze(history_text, user_input)
 
         last_plan = state.turns[-1].plan if state.turns else None
-        plan = compute_plan(analysis, get_character_bias(character_id), last_plan)
+        plan = compute_plan(analysis, get_character_bias(character_id if is_ip else None), last_plan)
+        if not is_ip:
+            if tier == "pro":
+                plan.style_flags.extend(["treehole_pro", "oral", "anti_csr", "hook"])
+            else:
+                plan.style_flags.extend(["treehole_plus", "oral", "gentle"])
 
         round_id = next_round_id(state)
         state.turns.append(
@@ -126,7 +141,21 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
         save_state(user_id, state)
 
     system_prompt = get_character_system_prompt(user_info, character_id)
-    messages = build_pipeline_messages(system_prompt, plan, history_text, user_input)
+    if is_ip:
+        messages = build_pipeline_messages(system_prompt, plan, history_text, user_input)
+    else:
+        profile = user_info.get("treehole_profile", {})
+        memory_nuggets = profile.get("memory_nuggets", [])
+        bond_level = profile.get("bond_level", 0)
+        messages = build_treehole_messages(
+            system_prompt,
+            plan,
+            history_text,
+            user_input,
+            tier,
+            memory_nuggets,
+            bond_level,
+        )
 
     async def pipeline_stream():
         full_reply = ""
@@ -135,19 +164,26 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
                 if delta:
                     full_reply += delta
                     yield delta
-                    time.sleep(0.01)
+                    if is_ip:
+                        time.sleep(0.01)
         except Exception:
             full_reply = "（对话异常，请稍后再试）"
             for c in full_reply:
                 yield c
-                time.sleep(0.01)
+                if is_ip:
+                    time.sleep(0.01)
 
-        final_text = enforce_reply(full_reply, safety_mode=plan.safety_mode)
+        state_dict = None
+        if not is_ip and tier == "pro":
+            reply_text, state_dict = split_reply_and_state(full_reply)
+            final_text = enforce_reply(reply_text, safety_mode=plan.safety_mode)
+        else:
+            final_text = enforce_reply(full_reply, safety_mode=plan.safety_mode)
 
         async with lock:
             user_info_latest = load_user_data(user_id)
             history_map_latest = user_info_latest.get("character_histories", {})
-            if character_id:
+            if is_ip:
                 history_key_latest = build_character_history_key(user_id, character_id)
                 history_latest = history_map_latest.get(history_key_latest, history_map_latest.get(character_id, []))
                 history_latest.append({"role": "user", "content": user_input})
@@ -158,6 +194,8 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
                 history_latest.append({"role": "user", "content": user_input})
                 history_latest.append({"role": "assistant", "content": final_text})
                 user_info_latest["history"] = history_latest[-MAX_HISTORY * 2 :]
+                if tier == "pro" and state_dict:
+                    apply_treehole_state(user_info_latest, state_dict)
             save_user_data(user_id, user_info_latest)
 
             state_latest = ensure_state(user_id, conv_key)
